@@ -39,11 +39,18 @@ h1{font-size:1.15rem;margin:4px 0 12px;font-weight:650;text-wrap:balance}
 .err{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;color:var(--ink);background:var(--stage)}
 #caption{margin:12px 2px 10px;min-height:3em;font-size:1rem}
 .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-button,select{font:inherit;font-size:.9rem;color:var(--ink);background:var(--btn);border:1px solid var(--line);border-radius:8px;padding:6px 12px;min-height:36px}
+button,select,input{font:inherit;font-size:.9rem;color:var(--ink);background:var(--btn);border:1px solid var(--line);border-radius:8px;padding:6px 12px;min-height:36px}
 button{cursor:pointer;min-width:64px}
 button:hover:not(:disabled){background:var(--btnHover)}
 button:disabled{opacity:.45;cursor:default}
-button:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.custom-input{margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.custom-input h2{font-size:1rem;margin:0 0 8px}
+.input-fields{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
+.input-fields label{display:grid;gap:4px;color:var(--muted);font-size:.85rem}
+.input-fields input{width:min(100%,26rem);min-height:36px;background:var(--bg)}
+.input-help,.input-status{margin:7px 0 0;color:var(--muted);font-size:.82rem}
+.input-status:not(:empty){min-height:1.2em}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 #code{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 0;overflow:auto;max-height:70vh;min-width:0;font:13px/1.7 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
 @media (max-width:420px){#code{font-size:12px}}
@@ -77,6 +84,17 @@ button:focus-visible,select:focus-visible{outline:3px solid var(--accent);outlin
           <option value="220">Very fast</option>
         </select>
       </div>
+      <form class="custom-input" id="customForm">
+        <h2>Play with your own input</h2>
+        <div class="input-fields">
+          <label for="customText">Text to encode
+            <input id="customText" name="text" type="text" value="aaabbc" maxlength="24" autocomplete="off" spellcheck="false" aria-describedby="inputHelp inputStatus">
+          </label>
+          <button type="submit">Run my input</button>
+        </div>
+        <p class="input-help" id="inputHelp">Use up to 24 English letters (A–Z or a–z). Empty text is allowed. Digits and punctuation are excluded because this encoding uses digits to store run lengths.</p>
+        <p class="input-status" id="inputStatus" role="status" aria-live="polite"></p>
+      </form>
     </div>
     <div id="code" role="region" aria-label="Python source code"></div>
   </div>
@@ -223,6 +241,7 @@ function simulate(s){
 const $ = function(id){ return document.getElementById(id); };
 const $cv = $('cv'), $stage = $('stage'), $cap = $('caption'), $tag = $('tag'), $err = $('err'), $code = $('code');
 const $back = $('bBack'), $play = $('bPlay'), $next = $('bNext'), $reset = $('bReset'), $preset = $('preset'), $speed = $('speed');
+const $customForm = $('customForm'), $customText = $('customText'), $inputStatus = $('inputStatus');
 const RM = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches:false };
 
 const rows = SRC.map(function(txt, i){
@@ -543,14 +562,18 @@ function step(d){
   show(j, true);
 }
 function reset(){ pause(); show(0, false); }
-function loadPreset(i){
+function loadInput(text, name){
   pause();
-  const p = PRESETS[i];
-  const sim = simulate.apply(null, p.args);
-  S.cfg = { name:p.name, s:p.args[0], N:Math.max(p.args[0].length, sim.result[0].length) };
+  const sim = simulate(text);
+  S.cfg = { name:name, s:text, N:Math.max(text.length, sim.result[0].length) };
   S.frames = sim.frames; S.shown = -1; S.idx = 0;
+  $customText.value = text;
   build(S.cfg);
   show(0, false);
+}
+function loadPreset(i){
+  const p = PRESETS[i];
+  loadInput(p.args[0], p.name);
 }
 
 $back.addEventListener('click', function(){ step(-1); });
@@ -558,6 +581,17 @@ $next.addEventListener('click', function(){ step(1); });
 $play.addEventListener('click', play);
 $reset.addEventListener('click', reset);
 $preset.addEventListener('change', function(){ loadPreset(Number($preset.value)); });
+$customForm.addEventListener('submit', function(e){
+  e.preventDefault();
+  const text = $customText.value;
+  if (text.length > 24){ $inputStatus.textContent = 'Use no more than 24 letters.'; $customText.focus(); return; }
+  if (!/^[A-Za-z]*$/.test(text)){
+    $inputStatus.textContent = 'Use English letters only; digits and punctuation cannot be decoded unambiguously by this encoding.';
+    $customText.focus(); return;
+  }
+  $inputStatus.textContent = 'Running your text (' + text.length + ' character' + (text.length === 1 ? '' : 's') + ').';
+  loadInput(text, 'Your input');
+});
 $speed.addEventListener('change', function(){
   S.speed = Number($speed.value);
   if (S.state === 'playing') schedule();

@@ -58,6 +58,13 @@ button:focus-visible,select:focus-visible{outline:3px solid var(--accent);outlin
 .pad[hidden]{display:none}
 .pad button{min-width:36px;min-height:36px;padding:4px 0;text-transform:uppercase}
 .pad .wide{min-width:92px;padding:4px 12px;text-transform:none}
+.word-form{display:flex;flex-wrap:wrap;gap:8px;align-items:end;margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.word-form[hidden]{display:none}
+.word-form label{display:grid;gap:4px;color:var(--muted);font-size:.85rem}
+.word-form input{width:min(100%,15rem);min-height:36px;padding:6px 9px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink);font:inherit}
+.word-form input:focus-visible,button:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.word-help{flex-basis:100%;margin:0;color:var(--muted);font-size:.82rem}
+.word-status{flex-basis:100%;margin:0;color:var(--muted);font-size:.82rem}
 </style>
 </head>
 <body>
@@ -88,6 +95,14 @@ button:focus-visible,select:focus-visible{outline:3px solid var(--accent);outlin
         </select>
       </div>
       <div class="pad" id="pad" role="group" aria-label="Letter guesses" hidden></div>
+      <form class="word-form" id="wordForm" hidden>
+        <label for="customWord">Choose your secret word
+          <input id="customWord" name="word" type="text" maxlength="12" autocomplete="off" spellcheck="false" aria-describedby="wordHelp wordStatus">
+        </label>
+        <button type="submit">Start with this word</button>
+        <p class="word-help" id="wordHelp">Enter 1–12 lowercase English letters. The word will be visible here while you play.</p>
+        <p class="word-status" id="wordStatus" role="status" aria-live="polite"></p>
+      </form>
     </div>
     <div id="code" role="region" aria-label="Python source code"></div>
   </div>
@@ -201,6 +216,7 @@ PRESETS.forEach(function(p, i){
 });
 { const po = document.createElement('option'); po.value = 'play'; po.textContent = 'Play it yourself'; $preset.appendChild(po); }
 const $pad = $('pad'), padBtn = {};
+const $wordForm = $('wordForm'), $customWord = $('customWord'), $wordStatus = $('wordStatus');
 'abcdefghijklmnopqrstuvwxyz'.split('').forEach(function(l){
   const b = document.createElement('button'); b.type = 'button'; b.textContent = l; b.setAttribute('aria-label', 'Guess ' + l);
   b.addEventListener('click', function(){ guess(l); }); $pad.appendChild(b); padBtn[l] = b;
@@ -493,7 +509,7 @@ $play.addEventListener('click', play);
 $reset.addEventListener('click', reset);
 $preset.addEventListener('change', function(){
   if ($preset.value === 'play'){ startGame(); return; }
-  G.on = false; $pad.hidden = true; loadPreset(Number($preset.value));
+  G.on = false; G.over = false; $pad.hidden = true; $wordForm.hidden = true; loadPreset(Number($preset.value));
 });
 $speed.addEventListener('change', function(){
   S.speed = Number($speed.value);
@@ -526,12 +542,26 @@ const G = { word:'', guesses:[], max:6, on:false, over:false };
 function refreshPad(){
   Object.keys(padBtn).forEach(function(l){ padBtn[l].disabled = G.over || G.guesses.indexOf(l) >= 0; });
 }
-function startGame(){
+function startGame(customWord){
   pause();
-  let w = WORDS[Math.floor(Math.random() * WORDS.length)];
-  if (w === G.word) w = WORDS[(WORDS.indexOf(w) + 1) % WORDS.length];
+  const hasCustomWord = typeof customWord !== 'undefined';
+  let w = customWord;
+  if (!hasCustomWord){
+    w = WORDS[Math.floor(Math.random() * WORDS.length)];
+    if (w === G.word) w = WORDS[(WORDS.indexOf(w) + 1) % WORDS.length];
+    $wordStatus.textContent = 'Playing a randomly selected word.';
+    $customWord.value = '';
+  } else {
+    w = w.trim();
+    if (!/^[a-z]{1,12}$/.test(w)){
+      $wordStatus.textContent = 'Enter 1–12 lowercase English letters.'; $customWord.focus(); return;
+    }
+    $wordStatus.textContent = 'Playing your chosen word.';
+  }
   G.word = w; G.guesses = []; G.on = true; G.over = false;
   $pad.hidden = false;
+  $wordForm.hidden = false;
+  if (hasCustomWord) $customWord.value = w;
   S.cfg = { name:'Play', word:w, max:G.max };
   S.frames = simulate(w, [], G.max).frames; S.shown = -1; S.idx = 1;
   build(S.cfg); show(1, false); refreshPad();
@@ -545,6 +575,10 @@ function guess(letter){
   if (S.frames[S.idx].status !== 'playing') G.over = true;
   refreshPad();
 }
+$wordForm.addEventListener('submit', function(e){
+  e.preventDefault();
+  startGame($customWord.value);
+});
 document.addEventListener('keydown', function(e){
   const t = e.target && e.target.tagName;
   if (!G.on || t === 'SELECT' || t === 'INPUT' || t === 'TEXTAREA' || e.ctrlKey || e.metaKey || e.altKey) return;

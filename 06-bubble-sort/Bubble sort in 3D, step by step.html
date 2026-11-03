@@ -43,11 +43,19 @@ h1{font-size:1.15rem;margin:4px 0 12px;font-weight:650}
 .err[hidden]{display:none}
 #caption{margin:12px 2px 10px;min-height:3em;font-size:1rem}
 .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-button,select{font:inherit;font-size:.9rem;color:var(--ink);background:var(--btn);border:1px solid var(--line);border-radius:8px;padding:6px 12px;min-height:36px}
+button,select,input{font:inherit;font-size:.9rem;color:var(--ink);background:var(--btn);border:1px solid var(--line);border-radius:8px;padding:6px 12px;min-height:36px}
 button{cursor:pointer;min-width:64px}
 button:hover:not(:disabled){background:var(--btnHover)}
 button:disabled{opacity:.45;cursor:default}
-button:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.custom-input{margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.custom-input h2{font-size:1rem;margin:0 0 8px}
+.input-fields{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
+.input-fields label{display:grid;gap:4px;color:var(--muted);font-size:.85rem}
+.input-fields input[type="text"]{width:min(100%,26rem);min-height:36px;background:var(--bg)}
+.check-field{display:flex!important;grid-auto-flow:column;align-items:center;min-height:36px}
+.input-help,.input-status{margin:7px 0 0;color:var(--muted);font-size:.82rem}
+.input-status:not(:empty){min-height:1.2em}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 #code{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 0;overflow:auto;max-height:70vh;font:13px/1.7 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
 @media (max-width:420px){#code{font-size:12px}}
@@ -83,6 +91,20 @@ button:focus-visible,select:focus-visible{outline:3px solid var(--accent);outlin
           <option value="220">Very fast</option>
         </select>
       </div>
+      <form class="custom-input" id="customForm">
+        <h2>Play with your own input</h2>
+        <div class="input-fields">
+          <label for="customNums">Integer list, comma-separated
+            <input id="customNums" name="nums" type="text" value="5, 1, 4, 2, 8" autocomplete="off" spellcheck="false" aria-describedby="inputHelp inputStatus">
+          </label>
+          <label class="check-field" for="customDescending">
+            <input id="customDescending" name="descending" type="checkbox" aria-describedby="inputHelp inputStatus"> Sort descending
+          </label>
+          <button type="submit">Run my input</button>
+        </div>
+        <p class="input-help" id="inputHelp">Enter 0–10 integers from −100 to 100. Empty list is allowed.</p>
+        <p class="input-status" id="inputStatus" role="status" aria-live="polite"></p>
+      </form>
     </div>
     <div id="code" role="region" aria-label="Python source code"></div>
   </div>
@@ -195,6 +217,7 @@ function simulate(nums, descending){
 const $ = function(id){ return document.getElementById(id); };
 const $cv = $('cv'), $stage = $('stage'), $cap = $('caption'), $tag = $('tag'), $err = $('err'), $code = $('code');
 const $back = $('bBack'), $play = $('bPlay'), $next = $('bNext'), $reset = $('bReset'), $preset = $('preset'), $speed = $('speed');
+const $customForm = $('customForm'), $customNums = $('customNums'), $customDescending = $('customDescending'), $inputStatus = $('inputStatus');
 const RM = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches:false };
 
 const rows = SRC.map(function(txt, i){
@@ -515,13 +538,18 @@ function step(d){
   show(j, true);
 }
 function reset(){ pause(); show(0, false); }
-function loadPreset(i){
+function loadInput(nums, descending, name){
   pause();
-  const p = PRESETS[i];
-  S.cfg = { name:p.name, nums:p.args[0], descending:p.args[1] };
-  S.frames = simulate.apply(null, p.args).frames; S.shown = -1; S.idx = 0;
+  S.cfg = { name:name, nums:nums, descending:descending };
+  S.frames = simulate(nums, descending).frames; S.shown = -1; S.idx = 0;
+  $customNums.value = nums.join(', ');
+  $customDescending.checked = descending;
   build(S.cfg);
   show(0, false);
+}
+function loadPreset(i){
+  const p = PRESETS[i];
+  loadInput(p.args[0], p.args[1], p.name);
 }
 
 $back.addEventListener('click', function(){ step(-1); });
@@ -529,6 +557,21 @@ $next.addEventListener('click', function(){ step(1); });
 $play.addEventListener('click', play);
 $reset.addEventListener('click', reset);
 $preset.addEventListener('change', function(){ loadPreset(Number($preset.value)); });
+$customForm.addEventListener('submit', function(e){
+  e.preventDefault();
+  const raw = $customNums.value.trim();
+  if (raw !== '' && raw.split(',').some(function(value){ return value.trim() === ''; })){
+    $inputStatus.textContent = 'Separate integers with commas; remove any empty entries.'; $customNums.focus(); return;
+  }
+  const nums = raw === '' ? [] : raw.split(',').map(function(value){ return Number(value.trim()); });
+  if (nums.length > 10){ $inputStatus.textContent = 'Use no more than 10 integers.'; $customNums.focus(); return; }
+  if (nums.some(function(value){ return !Number.isSafeInteger(value) || value < -100 || value > 100; })){
+    $inputStatus.textContent = 'Every item must be a whole number from −100 to 100.'; $customNums.focus(); return;
+  }
+  const descending = $customDescending.checked;
+  $inputStatus.textContent = 'Running your ' + (descending ? 'descending' : 'ascending') + ' sort for [' + nums.join(', ') + '].';
+  loadInput(nums, descending, 'Your input');
+});
 $speed.addEventListener('change', function(){
   S.speed = Number($speed.value);
   if (S.state === 'playing') schedule();
