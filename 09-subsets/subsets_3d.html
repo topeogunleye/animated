@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Recursive subsets in 3D: step by step</title>
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --ink:#18212b; --muted:#5b6876; --line:#d5dbe3;
+  --hl-bg:#fff3bf; --hl-bar:#d99a00; --stage:#eef1f5;
+  --plate:#c3ccd7; --accent:#e8a900;
+  --btn:#ffffff; --btnHover:#eef1f5;
+  color-scheme:light;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1318; --panel:#171c23; --ink:#e8edf3; --muted:#9aa7b6; --line:#2c3440;
+    --hl-bg:#4a3d0a; --hl-bar:#ffc400; --stage:#141a21;
+    --plate:#3a4452; --accent:#ffc400;
+    --btn:#1d2430; --btnHover:#27303b; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1318; --panel:#171c23; --ink:#e8edf3; --muted:#9aa7b6; --line:#2c3440;
+  --hl-bg:#4a3d0a; --hl-bar:#ffc400; --stage:#141a21;
+  --plate:#3a4452; --accent:#ffc400;
+  --btn:#1d2430; --btnHover:#27303b; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+main{max-width:1120px;margin:0 auto;padding:12px 14px 22px}
+h1{font-size:1.15rem;margin:4px 0 12px;font-weight:650}
+.wrap{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:760px){.wrap{grid-template-columns:minmax(0,1fr)}}
+.stagebox{position:relative;background:var(--stage);border:1px solid var(--line);border-radius:12px;overflow:hidden;aspect-ratio:4/3;min-height:260px;max-height:64vh;width:100%}
+#cv{display:block;width:100%;height:100%;touch-action:pan-y;cursor:grab}
+#cv:active{cursor:grabbing}
+.hint{position:absolute;right:10px;bottom:8px;font-size:11px;color:var(--muted);pointer-events:none}
+.tag{position:absolute;top:8px;left:10px;right:10px;width:max-content;max-width:calc(100% - 20px);font:600 12px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--panel);border:1px solid var(--line);padding:2px 9px;border-radius:999px}
+.err{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;color:var(--ink);background:var(--stage)}
+.err[hidden]{display:none}
+#caption{margin:12px 2px 10px;min-height:3em;font-size:1rem}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button,select{font:inherit;font-size:.9rem;color:var(--ink);background:var(--btn);border:1px solid var(--line);border-radius:8px;padding:6px 12px;min-height:36px}
+button{cursor:pointer;min-width:64px}
+button:hover:not(:disabled){background:var(--btnHover)}
+button:disabled{opacity:.45;cursor:default}
+button:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+#code{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 0;overflow:auto;max-height:70vh;font:13px/1.7 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+@media (max-width:420px){#code{font-size:12px}}
+.row{display:flex;min-width:max-content;white-space:pre;padding-right:12px;border-left:4px solid transparent}
+.ln{flex:0 0 2.4em;text-align:right;padding-right:12px;color:var(--muted);user-select:none}
+.row.active{background:var(--hl-bg);border-left-color:var(--hl-bar)}
+.counts{margin-top:24px;padding:18px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+.counts h2{margin:0 0 8px;font-size:1.1rem}
+.counts p{margin:0 0 12px;color:var(--muted)}
+.counts table{width:100%;border-collapse:collapse;text-align:left}
+.counts th,.counts td{padding:7px 10px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+.counts th{font-weight:650}
+.counts tr:last-child td{border-bottom:0}
+.counts a{color:var(--ink)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Recursive subsets (power set) in 3D, step by step</h1>
+  <div class="wrap">
+    <div>
+      <div class="stagebox" id="stage">
+        <canvas id="cv" role="img" aria-label="3D items with recursion blocks for subsets"></canvas>
+        <div class="tag" id="tag"></div>
+        <div class="hint">drag to rotate · double-click to reset</div>
+        <div class="err" id="err" hidden></div>
+      </div>
+      <p id="caption" role="status" aria-live="polite"></p>
+      <div class="controls" role="group" aria-label="Playback controls">
+        <button id="bBack" type="button">Back</button>
+        <button id="bPlay" type="button">Play</button>
+        <button id="bNext" type="button">Next</button>
+        <button id="bReset" type="button">Reset</button>
+        <label class="sr" for="preset">Input</label>
+        <select id="preset"></select>
+        <label class="sr" for="speed">Speed</label>
+        <select id="speed">
+          <option value="1300">Slow</option>
+          <option value="850">Normal</option>
+          <option value="450">Fast</option>
+          <option value="220">Very fast</option>
+        </select>
+      </div>
+    </div>
+    <div id="code" role="region" aria-label="Python source code">    </div>
+  </div>
+  <section class="counts" aria-labelledby="counts-heading">
+    <h2 id="counts-heading">Question 9 count exercise: n = 0–8</h2>
+    <p>Each row counts the recursive leaves for subsets and permutations. Compare the results with the patterns 2<sup>n</sup> and n!. This focused page covers subsets; see the <a href="../09-subsets-and-permutations/Subsets%20and%20permutations%20in%203D-bonus.html">full Question 9 walkthrough</a> for permutations and the subset-sum bonus.</p>
+    <table>
+      <thead><tr><th scope="col">n</th><th scope="col">Subsets (2<sup>n</sup>)</th><th scope="col">Permutations (n!)</th></tr></thead>
+      <tbody id="countRows"></tbody>
+    </table>
+  </section>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+
+/* SOURCE:BEGIN */
+const SRC = [
+  'def subsets(items):',                          // 0
+  '    return build(0, [], items)',                // 1
+  '',                                             // 2
+  'def build(index, current, items):',             // 3
+  '    if index == len(items):',                  // 4
+  '        return [list(current)]',               // 5
+  '    result = build(index + 1, current, items)  # skip this item', // 6
+  '    current.append(items[index])',             // 7
+  '    result += build(index + 1, current, items)  # include this item', // 8
+  '    current.pop()',                            // 9
+  '    return result',                            // 10
+];
+/* SOURCE:END */
+
+/* PRESETS:BEGIN */
+const PRESETS = [
+  { name:'[1, 2, 3]',         args:[[1, 2, 3]] },
+  { name:'[1, 2]',            args:[[1, 2]] },
+  { name:'Empty list',        args:[[]] },
+  { name:'Single [5]',        args:[[5]] },
+  { name:'[1, 2, 3, 4]',      args:[[1, 2, 3, 4]] }
+];
+/* PRESETS:END */
+
+/* SIMULATE:BEGIN */
+function simulate(items){
+  var frames = [];
+  var n = items.length;
+  var foundSubsets = [];
+  var callStack = [];
+
+  function snap(lines, wait, msg, kind, hold, state){
+    frames.push({
+      lines: lines.slice(),
+      wait: wait.slice(),
+      msg: msg,
+      kind: kind,
+      hold: hold,
+      items: items.slice(),
+      depth: state.depth,
+      currentIdx: state.currentIdx,
+      included: state.included.slice(),
+      decided: state.decided.slice(),
+      foundCount: state.foundCount,
+      callStack: JSON.parse(JSON.stringify(state.callStack)),
+      phase: state.phase
+    });
+  }
+
+  function makeState(d, idx, inc, dec, fc, cs, ph){
+    return { depth:d, currentIdx:idx, included:inc.slice(), decided:dec.slice(), foundCount:fc, callStack:cs.map(function(c){return{depth:c.depth,idx:c.idx,included:c.included.slice()};}), phase:ph };
+  }
+
+  snap([], [], 'Key idea: recurse once while skipping the current item, then recurse again while including it. Each leaf saves a fresh copy of the current subset.', 'start', 1,
+    makeState(0, -1, [], [], 0, [], 'intro'));
+
+  function recurse(idx, included, decided, d, waitLines){
+    var st;
+    if (idx === n){
+      st = makeState(d, idx, included, decided, foundSubsets.length, callStack.slice(), 'base');
+      snap([4, 5], waitLines, 'Depth ' + d + ': every item has a choice. Return a fresh copy of current = ' + JSON.stringify(included.map(function(i){return items[i];})) + '.', 'ret', 1.2, st);
+      foundSubsets.push(included.slice());
+      st = makeState(d, idx, included, decided, foundSubsets.length, callStack.slice(), 'base');
+      return;
+    }
+
+    callStack.push({ depth:d, idx:idx, included:included.slice() });
+
+    st = makeState(d, idx, included, decided, foundSubsets.length, callStack.slice(), 'enter');
+    snap([3, 4], waitLines, 'Depth ' + d + ': build at index ' + idx + '. The current item is ' + items[idx] + '.', 'enter', 1, st);
+
+    var branchDecided = decided.slice();
+    branchDecided[idx] = true;
+    st = makeState(d, idx, included, branchDecided, foundSubsets.length, callStack.slice(), 'skip');
+    snap([6], waitLines, 'Skip branch: recurse without adding ' + items[idx] + ' to current.', 'step', 1.1, st);
+    recurse(idx + 1, included, branchDecided, d + 1, waitLines.concat([6]));
+
+    var incWith = included.slice();
+    incWith.push(idx);
+    st = makeState(d, idx, incWith, branchDecided, foundSubsets.length, callStack.slice(), 'include');
+    snap([7, 8], waitLines, 'Include branch: add ' + items[idx] + ' to current, then recurse.', 'step', 1.1, st);
+    recurse(idx + 1, incWith, branchDecided, d + 1, waitLines.concat([8]));
+
+    st = makeState(d, idx, incWith, branchDecided, foundSubsets.length, callStack.slice(), 'include');
+    snap([9], waitLines, 'Both branches returned. Pop ' + items[idx] + ' to restore current before returning.', 'step', 1, st);
+    st = makeState(d, idx, included, decided, foundSubsets.length, callStack.slice(), 'return');
+    snap([10], waitLines, 'Return the subsets collected from the skip and include branches.', 'ret', 1.1, st);
+
+    callStack.pop();
+  }
+
+  recurse(0, [], Array(n).fill(false), 0, []);
+  var allSubsets = foundSubsets.map(function(indices){
+    return indices.map(function(index){ return items[index]; });
+  });
+  snap([1], [], 'Done! subsets(' + JSON.stringify(items) + ') returns ' + allSubsets.length + ' subsets (2^' + n + ' = ' + Math.pow(2, n) + ').', 'end', 1.4,
+    makeState(0, -1, [], Array(n).fill(true), allSubsets.length, [], 'done'));
+
+  return { frames:frames, result:allSubsets };
+}
+/* SIMULATE:END */
+
+function countSubsetLeaves(n){
+  function visit(index){
+    if (index === n) return 1;
+    return visit(index + 1) + visit(index + 1);
+  }
+  return visit(0);
+}
+function countPermutationLeaves(n){
+  if (n === 0) return 1;
+  var total = 0;
+  for (var i = 0; i < n; i++) total += countPermutationLeaves(n - 1);
+  return total;
+}
+var $countRows = document.getElementById('countRows');
+for (var countN = 0; countN <= 8; countN++){
+  var tr = document.createElement('tr');
+  [countN, countSubsetLeaves(countN).toLocaleString(), countPermutationLeaves(countN).toLocaleString()].forEach(function(value){
+    var td = document.createElement('td');
+    td.textContent = String(value);
+    tr.appendChild(td);
+  });
+  $countRows.appendChild(tr);
+}
+
+/* ---------- DOM ---------- */
+var $ = function(id){ return document.getElementById(id); };
+var $cv = $('cv'), $stage = $('stage'), $cap = $('caption'), $tag = $('tag'), $err = $('err'), $code = $('code');
+var $back = $('bBack'), $play = $('bPlay'), $next = $('bNext'), $reset = $('bReset'), $preset = $('preset'), $speed = $('speed');
+var RM = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches:false };
+
+var rows = SRC.map(function(txt, i){
+  var r = document.createElement('div'); r.className = 'row';
+  var ln = document.createElement('span'); ln.className = 'ln'; ln.textContent = String(i + 1);
+  var c = document.createElement('span'); c.textContent = txt;
+  r.appendChild(ln); r.appendChild(c); $code.appendChild(r);
+  return r;
+});
+PRESETS.forEach(function(p, i){
+  var o = document.createElement('option'); o.value = String(i); o.textContent = p.name; $preset.appendChild(o);
+});
+
+/* ---------- three.js scene (perspective 3D) ---------- */
+var SP = 1.0, BAR_W = 0.78, BAR_COL = '#3b82c4', RES_COL = '#2e9e5b', INCL_COL = '#2e9e5b';
+var SKIP_COL = '#8b95a3', ACTIVE_COL = '#e8a900';
+var FLOOR_Z0 = -0.8, FLOOR_Z1 = 2.9, FOCUS_Z = (FLOOR_Z0 + FLOOR_Z1) / 2;
+var YAW0 = -0.22, PITCH0 = 0.46, YAW_MAX = 0.55, FOV = 32;
+var gl = false, renderer = null, scene = null, camera = null;
+var world = null, bars = [], vals = [], idxLabels = [], slab = null, emptyLabel = null;
+var stackBlocks = [];
+var dims = { halfW:7, halfY:3, ty:2, maxTop:3, scale:1 };
+var view = { yaw:YAW0, pitch:PITCH0, dist:20 };
+var C = {};
+var texCache = new Map();
+var tweens = [];
+var raf = 0, drag = null;
+
+function showError(msg){ $err.hidden = false; $err.textContent = msg; }
+function readTheme(){
+  var cs = getComputedStyle(document.documentElement);
+  ['ink','muted','plate','accent'].forEach(function(k){ C[k] = cs.getPropertyValue('--' + k).trim() || '#888888'; });
+}
+try {
+  if (typeof THREE === 'undefined') throw new Error('three.js did not load');
+  renderer = new THREE.WebGLRenderer({ canvas:$cv, antialias:true, alpha:true });
+  renderer.setClearColor(0x000000, 0);
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(FOV, 4 / 3, 0.1, 200);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.58));
+  var dl = new THREE.DirectionalLight(0xffffff, 0.85); dl.position.set(-5, 10, 8); scene.add(dl);
+  gl = true;
+} catch (e) {
+  showError('The 3D view could not start (' + (e && e.message ? e.message : 'WebGL unavailable') + '). Check your connection or browser WebGL support. The code panel and captions still step through the trace.');
+}
+
+function textTex(text, style){
+  var key = text + '|' + style.color + '|' + style.font;
+  var t = texCache.get(key);
+  if (t) return t;
+  var cv = document.createElement('canvas'), ctx = cv.getContext('2d');
+  ctx.font = style.font;
+  var w = Math.max(24, Math.ceil(ctx.measureText(text).width) + 16), h = 64;
+  cv.width = w; cv.height = h;
+  ctx.font = style.font; ctx.fillStyle = style.color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, w / 2, h / 2 + 2);
+  var tex = new THREE.CanvasTexture(cv);
+  tex.minFilter = THREE.LinearFilter; tex.generateMipmaps = false;
+  t = { tex:tex, aspect:w / h };
+  texCache.set(key, t);
+  return t;
+}
+function clearTexCache(){ texCache.forEach(function(t){ t.tex.dispose(); }); texCache.clear(); }
+function makeSprite(){
+  var s = new THREE.Sprite(new THREE.SpriteMaterial({ transparent:true, depthTest:false }));
+  s.renderOrder = 10; s.visible = false; return s;
+}
+function setText(s, text, style, worldH, x){
+  if (!text){ s.visible = false; return; }
+  var t = textTex(text, style);
+  s.material.map = t.tex; s.material.needsUpdate = true;
+  s.scale.set(worldH * t.aspect, worldH, 1);
+  if (x !== undefined) s.position.x = x;
+  s.visible = true;
+}
+var SANS = '700 48px system-ui, -apple-system, "Segoe UI", sans-serif';
+function slotX(i, n){ return (i - (n - 1) / 2) * SP; }
+function barH(v){ return Math.max(Math.abs(v) * dims.scale, 0.12); }
+
+function clearWorld(){
+  tweens.length = 0;
+  if (!world) return;
+  world.traverse(function(o){
+    if (o.geometry) o.geometry.dispose();
+    if (o.material) o.material.dispose();
+  });
+  scene.remove(world); world = null; bars = []; vals = []; idxLabels = []; slab = null; emptyLabel = null; stackBlocks = [];
+}
+
+function build(cfg, keepView){
+  if (!gl) return;
+  clearWorld(); readTheme();
+  world = new THREE.Group(); scene.add(world);
+  var items = cfg.items, n = items.length;
+  var maxAbs = 1; items.forEach(function(v){ maxAbs = Math.max(maxAbs, Math.abs(v)); });
+  dims.scale = 3 / maxAbs;
+  var maxTop = 0; items.forEach(function(v){ maxTop = Math.max(maxTop, barH(v)); });
+  dims.maxTop = maxTop; dims.halfW = (n + 2) * SP / 2 + 0.7; dims.halfY = (maxTop + 2.6) / 2; dims.ty = (maxTop + 2.2) / 2;
+
+  if (n > 0){
+    var floor = new THREE.Mesh(new THREE.BoxGeometry(n * SP + 0.9, 0.14, FLOOR_Z1 - FLOOR_Z0), new THREE.MeshLambertMaterial({ color:C.plate }));
+    floor.position.set(0, -0.07, FOCUS_Z); world.add(floor);
+  } else {
+    emptyLabel = makeSprite(); emptyLabel.position.set(0, 1.0, 0.5); world.add(emptyLabel);
+    setText(emptyLabel, 'empty list', { font:SANS, color:C.muted }, 0.6, 0);
+  }
+
+  items.forEach(function(v, i){
+    var h = barH(v), x = slotX(i, n);
+    var body = new THREE.Mesh(new THREE.BoxGeometry(BAR_W, h, BAR_W), new THREE.MeshLambertMaterial({ color:BAR_COL, transparent:true }));
+    var outline = new THREE.Mesh(new THREE.BoxGeometry(BAR_W + 0.14, h + 0.14, BAR_W + 0.14), new THREE.MeshBasicMaterial({ color:C.accent, side:THREE.BackSide }));
+    body.position.set(x, h / 2, 0); outline.position.set(x, h / 2, 0); outline.visible = false;
+    world.add(outline); world.add(body);
+    bars.push({ body:body, outline:outline });
+    var val = makeSprite(); val.position.set(x, h + 0.32, 0);
+    setText(val, String(v), { font:SANS, color:C.ink }, 0.5, x); world.add(val); vals.push(val);
+    var idx = makeSprite(); idx.position.set(x, 0.3, 0.98);
+    setText(idx, String(i), { font:SANS, color:C.muted }, 0.34, x); world.add(idx); idxLabels.push(idx);
+  });
+
+  /* Slab for active range */
+  slab = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color:BAR_COL, transparent:true, opacity:0.12, depthWrite:false }));
+  slab.add(new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1)), new THREE.LineBasicMaterial({ color:C.accent })));
+  slab.visible = false; world.add(slab);
+
+  /* Recursion depth blocks (up to n+1 depth levels, receding in z) */
+  stackBlocks = [];
+  for (var d = 0; d <= n; d++){
+    var blockW = 0.5, blockH = 0.3;
+    var mat = new THREE.MeshLambertMaterial({ color:BAR_COL, transparent:true, opacity:0.8 });
+    var block = new THREE.Mesh(new THREE.BoxGeometry(blockW, blockH, blockW), mat);
+    var outMat = new THREE.MeshBasicMaterial({ color:C.accent, side:THREE.BackSide, transparent:true });
+    var outl = new THREE.Mesh(new THREE.BoxGeometry(blockW + 0.08, blockH + 0.08, blockW + 0.08), outMat);
+    outl.visible = false;
+    var grp = new THREE.Group();
+    grp.add(block); grp.add(outl);
+    var depthZ = 1.2 + d * 0.7;
+    grp.position.set(slotX(n - 1, n) + SP * 1.5, blockH / 2, depthZ);
+    grp.visible = false;
+    world.add(grp);
+    var lab = makeSprite();
+    lab.position.set(0, blockH + 0.2, 0);
+    grp.add(lab);
+    stackBlocks.push({ group:grp, body:block, outline:outl, label:lab, mat:mat, outMat:outMat });
+  }
+
+  if (!keepView){ view.yaw = YAW0; view.pitch = PITCH0; }
+  fitCamera();
+}
+
+function updateCamera(){
+  if (!gl) return;
+  var cp = Math.cos(view.pitch), sp = Math.sin(view.pitch);
+  camera.position.set(Math.sin(view.yaw) * cp * view.dist, dims.ty + sp * view.dist, FOCUS_Z + Math.cos(view.yaw) * cp * view.dist);
+  camera.lookAt(0, dims.ty, FOCUS_Z);
+  requestRender();
+}
+function fitCamera(){
+  if (!gl) return;
+  var w = $stage.clientWidth, h = $stage.clientHeight;
+  if (!w || !h) return;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(w, h, false);
+  var aspect = w / h, t = Math.tan(FOV * Math.PI / 360), halfZ = (FLOOR_Z1 - FLOOR_Z0) / 2;
+  camera.aspect = aspect; camera.updateProjectionMatrix();
+  var vExt = dims.halfY * Math.cos(PITCH0) + halfZ * Math.sin(PITCH0);
+  var hExt = dims.halfW * Math.cos(YAW_MAX) + halfZ * Math.sin(YAW_MAX);
+  view.dist = Math.max(vExt / t, hExt / (t * aspect)) * 1.2;
+  updateCamera();
+}
+
+/* ---------- tweens and render loop ---------- */
+function settle(){ tweens.splice(0).forEach(function(tw){ tw.upd(1); }); }
+function requestRender(){ if (gl && !raf) raf = requestAnimationFrame(loop); }
+function loop(){
+  raf = 0;
+  var now = performance.now();
+  for (var i = tweens.length - 1; i >= 0; i--){
+    var tw = tweens[i];
+    var u = Math.max(0, Math.min(1, (now - tw.t0) / tw.dur));
+    tw.upd(u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2);
+    if (u >= 1) tweens.splice(i, 1);
+  }
+  renderer.render(scene, camera);
+  if (tweens.length) requestRender();
+}
+
+/* drag to rotate */
+if (gl){
+  $cv.addEventListener('pointerdown', function(e){
+    drag = { x:e.clientX, yaw:view.yaw };
+    try { $cv.setPointerCapture(e.pointerId); } catch (err) {}
+  });
+  $cv.addEventListener('pointermove', function(e){
+    if (!drag) return;
+    view.yaw = Math.max(-YAW_MAX, Math.min(YAW_MAX, drag.yaw + (e.clientX - drag.x) * 0.008));
+    updateCamera();
+  });
+  ['pointerup', 'pointercancel'].forEach(function(t){ $cv.addEventListener(t, function(){ drag = null; }); });
+  $cv.addEventListener('dblclick', function(){ view.yaw = YAW0; view.pitch = PITCH0; updateCamera(); });
+}
+
+/* ---------- playback state ---------- */
+var S = { cfg:null, frames:[], idx:0, state:'paused', timer:0, speed:1300, shown:-1 };
+
+function tweenDur(f){ return S.state === 'playing' ? Math.max(120, Math.min(600, S.speed * f.hold * 0.5)) : 450; }
+function easeProp(get, set, to, animate, f){
+  var from = get();
+  if (animate && !RM.matches && Math.abs(from - to) > 1e-6){
+    tweens.push({ t0:performance.now(), dur:tweenDur(f), upd:function(e){ set(from + (to - from) * e); } });
+  } else {
+    set(to);
+  }
+}
+
+function applyScene(f, animate){
+  if (!gl || !world) return;
+  var items = S.cfg.items, n = items.length;
+
+  /* Update pillars: current item gets gold outline, included items green, decided-and-skipped items fade */
+  bars.forEach(function(b, i){
+    var isCurrentItem = (f.currentIdx === i);
+    var isIncluded = f.included.indexOf(i) >= 0;
+    var isDecided = f.decided[i] === true;
+    var inRange = (f.currentIdx >= 0 && i >= f.currentIdx);
+
+    var opacity = 1;
+    if (f.phase === 'done'){
+      opacity = 1;
+      b.body.material.color.set(INCL_COL);
+    } else if (isCurrentItem){
+      b.body.material.color.set(BAR_COL);
+      b.body.material.emissive.set('#5a4300');
+    } else if (isIncluded){
+      b.body.material.color.set(INCL_COL);
+      b.body.material.emissive.set('#000000');
+    } else if (isDecided && !isIncluded){
+      b.body.material.color.set(BAR_COL);
+      b.body.material.emissive.set('#000000');
+      opacity = 0.25;
+    } else {
+      b.body.material.color.set(BAR_COL);
+      b.body.material.emissive.set('#000000');
+    }
+
+    if (!isCurrentItem) b.body.material.emissive.set('#000000');
+    b.body.material.opacity = opacity;
+    vals[i].material.opacity = opacity;
+    b.outline.visible = isCurrentItem || isIncluded;
+    if (isCurrentItem){
+      b.outline.material.color.set(C.accent);
+    } else if (isIncluded){
+      b.outline.material.color.set(RES_COL);
+    }
+  });
+
+  /* Slab covering remaining items [currentIdx..n-1] */
+  var showSlab = f.currentIdx >= 0 && f.currentIdx < n;
+  if (showSlab){
+    var x0 = slotX(f.currentIdx, n), x1 = slotX(n - 1, n), cx = (x0 + x1) / 2, w = (n - f.currentIdx) * SP + 0.08;
+    var y0 = -0.05, y1 = dims.maxTop + 0.55;
+    var was = slab.visible;
+    slab.visible = true; slab.scale.y = y1 - y0; slab.scale.z = 1.5; slab.position.y = (y0 + y1) / 2;
+    if (!was){ slab.position.x = cx; slab.scale.x = w; }
+    easeProp(function(){ return slab.position.x; }, function(v){ slab.position.x = v; }, cx, animate && was, f);
+    easeProp(function(){ return slab.scale.x; }, function(v){ slab.scale.x = v; }, w, animate && was, f);
+  } else {
+    slab.visible = false;
+  }
+
+  /* Recursion depth stack blocks */
+  var csLen = f.callStack.length;
+  stackBlocks.forEach(function(sb, d){
+    if (d < csLen){
+      sb.group.visible = true;
+      var isTop = (d === csLen - 1);
+      sb.mat.color.set(isTop ? ACTIVE_COL : BAR_COL);
+      sb.mat.opacity = isTop ? 1.0 : 0.5;
+      sb.outline.visible = isTop;
+      setText(sb.label, 'd=' + d, { font:SANS, color:isTop ? C.accent : C.muted }, 0.28, 0);
+    } else {
+      sb.group.visible = false;
+    }
+  });
+
+  requestRender();
+}
+
+function renderCode(f){
+  var firstActive = -1;
+  rows.forEach(function(r, i){
+    var a = f.lines.indexOf(i) >= 0;
+    var w = f.wait && f.wait.indexOf(i) >= 0;
+    r.classList.toggle('active', a);
+    if (w && !a) r.style.borderLeftColor = 'var(--muted)';
+    else r.style.borderLeftColor = '';
+    if (a && firstActive < 0) firstActive = i;
+  });
+  if (firstActive >= 0){
+    var r = rows[firstActive];
+    if (r.offsetTop < $code.scrollTop) $code.scrollTop = r.offsetTop;
+    else if (r.offsetTop + r.offsetHeight > $code.scrollTop + $code.clientHeight) $code.scrollTop = r.offsetTop + r.offsetHeight - $code.clientHeight;
+  }
+}
+
+function describe(f){
+  var items = S.cfg.items;
+  return 'Items [' + items.join(', ') + ']. ' +
+    'Depth ' + f.depth + '. ' +
+    (f.currentIdx >= 0 ? 'Current item index ' + f.currentIdx + '. ' : '') +
+    'Found ' + f.foundCount + ' subsets so far.';
+}
+
+function updateButtons(){
+  var last = S.frames.length - 1;
+  $back.disabled = S.idx <= 0;
+  $next.disabled = S.idx >= last;
+  $play.textContent = S.state === 'playing' ? 'Pause' : (S.idx >= last ? 'Replay' : 'Play');
+}
+function show(i, animate){
+  var f = S.frames[i]; if (!f) return;
+  settle();
+  S.idx = i;
+  $cap.textContent = f.msg;
+  var incItems = f.included.map(function(idx){ return f.items[idx]; });
+  $tag.textContent = 'depth ' + f.depth + ' \u00b7 included [' + incItems.join(', ') + '] \u00b7 found ' + f.foundCount + ' subsets';
+  $cv.setAttribute('aria-label', describe(f));
+  renderCode(f);
+  applyScene(f, animate && Math.abs(i - S.shown) === 1);
+  S.shown = i;
+  updateButtons();
+}
+
+function clearTimer(){ if (S.timer){ clearTimeout(S.timer); S.timer = 0; } }
+function schedule2(){
+  clearTimer();
+  if (S.state !== 'playing') return;
+  S.timer = setTimeout(tick, S.speed * S.frames[S.idx].hold);
+}
+function tick(){
+  S.timer = 0;
+  if (S.state !== 'playing') return;
+  if (S.idx >= S.frames.length - 1){ S.state = 'ended'; updateButtons(); return; }
+  show(S.idx + 1, true);
+  if (S.idx >= S.frames.length - 1){ S.state = 'ended'; updateButtons(); return; }
+  schedule2();
+}
+function pause(){ clearTimer(); settle(); if (S.state === 'playing' || S.state === 'ended') S.state = 'paused'; updateButtons(); }
+function play(){
+  if (S.state === 'playing'){ pause(); return; }
+  if (S.idx >= S.frames.length - 1) show(0, false);
+  S.state = 'playing'; updateButtons(); schedule2();
+}
+function step(d){
+  pause();
+  var j = S.idx + d;
+  if (j < 0 || j >= S.frames.length) return;
+  show(j, true);
+}
+function reset(){ pause(); show(0, false); }
+function loadPreset(i){
+  pause();
+  var p = PRESETS[i];
+  S.cfg = { name:p.name, items:p.args[0] };
+  S.frames = simulate.apply(null, p.args).frames; S.shown = -1; S.idx = 0;
+  build(S.cfg);
+  show(0, false);
+}
+
+$back.addEventListener('click', function(){ step(-1); });
+$next.addEventListener('click', function(){ step(1); });
+$play.addEventListener('click', play);
+$reset.addEventListener('click', reset);
+$preset.addEventListener('change', function(){ loadPreset(Number($preset.value)); });
+$speed.addEventListener('change', function(){
+  S.speed = Number($speed.value);
+  if (S.state === 'playing') schedule2();
+});
+document.addEventListener('keydown', function(e){
+  var t = e.target && e.target.tagName;
+  if (t === 'BUTTON' || t === 'SELECT' || t === 'INPUT' || t === 'TEXTAREA') return;
+  if (e.key === ' '){ e.preventDefault(); play(); }
+  else if (e.key === 'ArrowRight'){ step(1); }
+  else if (e.key === 'ArrowLeft'){ step(-1); }
+});
+document.addEventListener('visibilitychange', function(){ if (document.hidden && S.state === 'playing') pause(); });
+
+if (typeof ResizeObserver !== 'undefined') new ResizeObserver(fitCamera).observe($stage);
+else window.addEventListener('resize', fitCamera);
+
+function retheme(){
+  if (!gl) return;
+  clearTexCache(); readTheme(); build(S.cfg, true); S.shown = -1; show(S.idx, false);
+}
+try {
+  if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', retheme);
+} catch (e) {}
+new MutationObserver(retheme).observe(document.documentElement, { attributes:true, attributeFilter:['data-theme'] });
+
+loadPreset(0);
+})();
+</script>
+</body>
+</html>
