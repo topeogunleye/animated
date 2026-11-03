@@ -1,0 +1,31 @@
+fib 10 naive calls 177 memo calls 19
+fib 20 naive calls 21891 memo calls 39
+fib 25 naive calls 242785 memo calls 49
+fib 35 = 9227465 misses 36
+fib 90 = 2880067194370816120 misses 91
+Naive coin result: 292 calls 38901
+Memo coin result: 292 hits 310 misses 691 calls 1001
+FIFO: 1 1 size 1 new miss 1
+FIFO: 2 4 size 2 new miss 1
+FIFO: 3 9 size 3 new miss 1
+FIFO: 4 16 size 3 new miss 1
+FIFO: 5 25 size 3 new miss 1
+FIFO: 1 1 size 3 new miss 1
+FIFO hits 1 misses 5
+LRU hits 2 misses 4
+Bottom-up amount 10000: 6794128501
+function name                | time complexity          | space complexity
+normalize_coins              | O(c)                     | O(c)
+memoize / decorate           | O(1) setup               | O(1) setup
+wrapper                      | hit O(k); miss O(k)+f    | O(M*k)+values
+count_ways / ways            | O(2^(A/d+c)) bound       | O(A/d+c)
+count_ways_with_calls / ways | O(2^(A/d+c)) bound       | O(A/d+c)
+count_ways_memo / ways       | O(A*c+c), unlimited      | O(A*c+A/d+c)
+longest_consecutive          | O(n) expected            | O(n)
+count_pairs                  | O(n) expected            | O(n)
+fib_naive / fib              | O(2^n) bound             | O(n)
+make_fib                     | O(1)                     | O(1)
+memoized fib                 | O(n), fresh cache        | O(n)
+count_ways_bottom_up         | O(A*c+c)                 | O(A+c)
+square                       | O(1)                     | O(1)
+main                         | fixed demonstrations     | fixed demonstrations
