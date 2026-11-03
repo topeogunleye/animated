@@ -43,11 +43,20 @@ h1{font-size:1.15rem;margin:4px 0 12px;font-weight:650}
 .err[hidden]{display:none}
 #caption{margin:12px 2px 10px;min-height:3em;font-size:1rem}
 .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-button,select{font:inherit;font-size:.9rem;color:var(--ink);background:var(--btn);border:1px solid var(--line);border-radius:8px;padding:6px 12px;min-height:36px}
+button,select,input{font:inherit;font-size:.9rem;color:var(--ink);background:var(--btn);border:1px solid var(--line);border-radius:8px;padding:6px 12px;min-height:36px}
 button{cursor:pointer;min-width:64px}
 button:hover:not(:disabled){background:var(--btnHover)}
 button:disabled{opacity:.45;cursor:default}
-button:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.custom-input{margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.custom-input h2{font-size:1rem;margin:0 0 8px}
+.input-fields{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
+.input-fields label{display:grid;gap:4px;color:var(--muted);font-size:.85rem}
+.input-fields label[hidden]{display:none}
+.input-fields input[type="text"]{width:min(100%,24rem);min-height:36px;background:var(--bg)}
+.input-fields input[type="number"]{width:min(100%,9rem);min-height:36px;background:var(--bg)}
+.input-help,.input-status{margin:7px 0 0;color:var(--muted);font-size:.82rem}
+.input-status:not(:empty){min-height:1.2em}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 #code{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 0;overflow:auto;max-height:70vh;font:13px/1.7 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
 @media (max-width:420px){#code{font-size:12px}}
@@ -83,6 +92,27 @@ button:focus-visible,select:focus-visible{outline:3px solid var(--accent);outlin
           <option value="220">Very fast</option>
         </select>
       </div>
+      <form class="custom-input" id="customForm">
+        <h2>Play with your own input</h2>
+        <div class="input-fields">
+          <label for="customMode">Algorithm
+            <select id="customMode" name="mode" aria-describedby="inputHelp inputStatus">
+              <option value="subsets">Subsets</option>
+              <option value="permutations">Permutations</option>
+              <option value="subsets_with_sum">Subset sum</option>
+            </select>
+          </label>
+          <label for="customItems">Integer list, comma-separated
+            <input id="customItems" name="items" type="text" value="1, 2, 3" autocomplete="off" spellcheck="false" aria-describedby="inputHelp inputStatus">
+          </label>
+          <label id="targetField" for="customTarget" hidden>Target sum
+            <input id="customTarget" name="target" type="number" value="5" step="1" required inputmode="numeric" aria-describedby="inputHelp inputStatus">
+          </label>
+          <button type="submit">Run my input</button>
+        </div>
+        <p class="input-help" id="inputHelp">Use at most 6 integers from −50 to 50. Permutations grow as n!, so the small limit keeps the walkthrough responsive.</p>
+        <p class="input-status" id="inputStatus" role="status" aria-live="polite"></p>
+      </form>
     </div>
     <div id="code" role="region" aria-label="Python source code"></div>
   </div>
@@ -232,6 +262,7 @@ function simulate(fn, items, target){
 const $ = function(id){ return document.getElementById(id); };
 const $cv = $('cv'), $stage = $('stage'), $cap = $('caption'), $tag = $('tag'), $err = $('err'), $code = $('code');
 const $back = $('bBack'), $play = $('bPlay'), $next = $('bNext'), $reset = $('bReset'), $preset = $('preset'), $speed = $('speed');
+const $customForm = $('customForm'), $customMode = $('customMode'), $customItems = $('customItems'), $customTarget = $('customTarget'), $targetField = $('targetField'), $inputStatus = $('inputStatus');
 const RM = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches:false };
 
 const rows = SRC.map(function(txt, i){
@@ -570,13 +601,25 @@ function step(d){
   show(j, true);
 }
 function reset(){ pause(); show(0, false); }
-function loadPreset(i){
+function updateTargetVisibility(){
+  const needed = $customMode.value === 'subsets_with_sum';
+  $targetField.hidden = !needed;
+  $customTarget.disabled = !needed;
+}
+function loadInput(fn, nums, target, name){
   pause();
-  const p = PRESETS[i];
-  S.cfg = { name:p.name, fn:p.args[0], nums:p.args[1], target:p.args[2] };
-  S.frames = simulate.apply(null, p.args).frames; S.shown = -1; S.idx = 0;
+  S.cfg = { name:name, fn:fn, nums:nums, target:target };
+  S.frames = simulate(fn, nums, target).frames; S.shown = -1; S.idx = 0;
+  $customMode.value = fn;
+  $customItems.value = nums.join(', ');
+  if (target !== undefined) $customTarget.value = String(target);
+  updateTargetVisibility();
   build(S.cfg);
   show(0, false);
+}
+function loadPreset(i){
+  const p = PRESETS[i];
+  loadInput(p.args[0], p.args[1], p.args[2], p.name);
 }
 
 $back.addEventListener('click', function(){ step(-1); });
@@ -584,6 +627,30 @@ $next.addEventListener('click', function(){ step(1); });
 $play.addEventListener('click', play);
 $reset.addEventListener('click', reset);
 $preset.addEventListener('change', function(){ loadPreset(Number($preset.value)); });
+$customMode.addEventListener('change', updateTargetVisibility);
+$customForm.addEventListener('submit', function(e){
+  e.preventDefault();
+  const fn = $customMode.value;
+  const raw = $customItems.value.trim();
+  if (raw !== '' && raw.split(',').some(function(value){ return value.trim() === ''; })){
+    $inputStatus.textContent = 'Separate integers with commas; remove any empty entries.'; $customItems.focus(); return;
+  }
+  const nums = raw === '' ? [] : raw.split(',').map(function(value){ return Number(value.trim()); });
+  if (nums.length > 6){ $inputStatus.textContent = 'Use no more than 6 integers.'; $customItems.focus(); return; }
+  if (nums.some(function(value){ return !Number.isSafeInteger(value) || value < -50 || value > 50; })){
+    $inputStatus.textContent = 'Every item must be a whole number from −50 to 50.'; $customItems.focus(); return;
+  }
+  let target;
+  if (fn === 'subsets_with_sum'){
+    target = Number($customTarget.value);
+    if (!Number.isSafeInteger(target) || target < -300 || target > 300){
+      $inputStatus.textContent = 'Target sum must be a whole number from −300 to 300.'; $customTarget.focus(); return;
+    }
+  }
+  const label = fn === 'subsets' ? 'subsets' : fn === 'permutations' ? 'permutations' : 'subsets with sum';
+  $inputStatus.textContent = 'Running ' + label + ' for [' + nums.join(', ') + ']' + (target === undefined ? '.' : ' with target ' + target + '.');
+  loadInput(fn, nums, target, 'Your input');
+});
 $speed.addEventListener('change', function(){
   S.speed = Number($speed.value);
   if (S.state === 'playing') schedule();
