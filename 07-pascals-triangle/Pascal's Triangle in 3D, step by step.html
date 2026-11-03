@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pascal's Triangle in 3D: step by step</title>
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --ink:#18212b; --muted:#5b6876; --line:#d5dbe3;
+  --hl-bg:#fff3bf; --hl-bar:#d99a00; --stage:#eef1f5;
+  --plate:#c3ccd7; --accent:#e8a900;
+  --btn:#ffffff; --btnHover:#eef1f5;
+  color-scheme:light;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1318; --panel:#171c23; --ink:#e8edf3; --muted:#9aa7b6; --line:#2c3440;
+    --hl-bg:#4a3d0a; --hl-bar:#ffc400; --stage:#141a21;
+    --plate:#3a4452; --accent:#ffc400;
+    --btn:#1d2430; --btnHover:#27303b; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1318; --panel:#171c23; --ink:#e8edf3; --muted:#9aa7b6; --line:#2c3440;
+  --hl-bg:#4a3d0a; --hl-bar:#ffc400; --stage:#141a21;
+  --plate:#3a4452; --accent:#ffc400;
+  --btn:#1d2430; --btnHover:#27303b; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+main{max-width:1120px;margin:0 auto;padding:12px 14px 22px}
+h1{font-size:1.15rem;margin:4px 0 12px;font-weight:650}
+.wrap{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:760px){.wrap{grid-template-columns:minmax(0,1fr)}}
+.stagebox{position:relative;background:var(--stage);border:1px solid var(--line);border-radius:12px;overflow:hidden;aspect-ratio:4/3;min-height:260px;max-height:64vh;width:100%}
+#cv{display:block;width:100%;height:100%;touch-action:pan-y;cursor:grab}
+#cv:active{cursor:grabbing}
+.hint{position:absolute;right:10px;bottom:8px;font-size:11px;color:var(--muted);pointer-events:none}
+.tag{position:absolute;top:8px;left:10px;right:10px;width:max-content;max-width:calc(100% - 20px);font:600 12px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--panel);border:1px solid var(--line);padding:2px 9px;border-radius:999px}
+.err{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;color:var(--ink);background:var(--stage)}
+.err[hidden]{display:none}
+#caption{margin:12px 2px 10px;min-height:3em;font-size:1rem}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button,select{font:inherit;font-size:.9rem;color:var(--ink);background:var(--btn);border:1px solid var(--line);border-radius:8px;padding:6px 12px;min-height:36px}
+button{cursor:pointer;min-width:64px}
+button:hover:not(:disabled){background:var(--btnHover)}
+button:disabled{opacity:.45;cursor:default}
+button:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+#code{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 0;overflow:auto;max-height:70vh;font:13px/1.7 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+@media (max-width:420px){#code{font-size:12px}}
+.row{display:flex;min-width:max-content;white-space:pre;padding-right:12px;border-left:4px solid transparent}
+.ln{flex:0 0 2.4em;text-align:right;padding-right:12px;color:var(--muted);user-select:none}
+.row.active{background:var(--hl-bg);border-left-color:var(--hl-bar)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Pascal's Triangle in 3D, step by step</h1>
+  <div class="wrap">
+    <div>
+      <div class="stagebox" id="stage">
+        <canvas id="cv" role="img" aria-label="3D Pascal triangle built row by row"></canvas>
+        <div class="tag" id="tag"></div>
+        <div class="hint">drag to rotate · double-click to reset</div>
+        <div class="err" id="err" hidden></div>
+      </div>
+      <p id="caption" role="status" aria-live="polite"></p>
+      <div class="controls" role="group" aria-label="Playback controls">
+        <button id="bBack" type="button">Back</button>
+        <button id="bPlay" type="button">Play</button>
+        <button id="bNext" type="button">Next</button>
+        <button id="bReset" type="button">Reset</button>
+        <label class="sr" for="preset">Input</label>
+        <select id="preset"></select>
+        <label class="sr" for="speed">Speed</label>
+        <select id="speed">
+          <option value="1300">Slow</option>
+          <option value="850">Normal</option>
+          <option value="450">Fast</option>
+          <option value="220">Very fast</option>
+        </select>
+      </div>
+    </div>
+    <div id="code" role="region" aria-label="Python source code"></div>
+  </div>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+
+/* SOURCE:BEGIN */
+const SRC = [
+  'def pascal_rows(n):',
+  '    rows = []',
+  '    for r in range(n):',
+  '        row = []',
+  '        for c in range(r + 1):',
+  '            if c == 0 or c == r:',
+  '                row.append(1)',
+  '            else:',
+  '                row.append(rows[r - 1][c - 1] + rows[r - 1][c])',
+  '        rows.append(row)',
+  '    return rows'
+];
+/* SOURCE:END */
+
+/* PRESETS:BEGIN */
+const PRESETS = [
+  { name:'n = 5 (example)', args:[5] },
+  { name:'n = 1',           args:[1] },
+  { name:'n = 0 (empty)',   args:[0] },
+  { name:'n = 8',           args:[8] }
+];
+/* PRESETS:END */
+
+/* SIMULATE:BEGIN */
+function simulate(n){
+  const rows = [], frames = [];
+  let cur = [], r = null, c = null, src = [], w = null, cells = 0;
+  const copy = function(x){ return x.slice(); };
+  function snap(lines, msg, kind, hold){
+    frames.push({ lines: lines.slice(), msg: msg, kind: kind, hold: hold, rows: rows.map(copy), cur: cur.slice(),
+      r: r, c: c, src: src.map(copy), w: w ? w.slice() : null, cells: cells, n: n });
+  }
+  const s = function(k, word){ return k + ' ' + word + (k === 1 ? '' : 's'); };
+  snap([], 'Key idea: every cell is the sum of the two cells above it, and the edges are always 1.', 'start', 1);
+  snap([1], n === 0 ? 'n = 0, so rows starts empty and range(0) builds nothing.' : 'rows starts empty. We will build ' + s(n, 'row') + ', one cell at a time.', 'init', 1);
+  for (let i = 0; i < n; i++){
+    r = i; c = null; cur = []; src = []; w = null;
+    snap([2, 3], 'Row ' + i + ' starts as an empty list. It will hold ' + s(i + 1, 'cell') + '.', 'enter', 1);
+    for (let j = 0; j <= i; j++){
+      c = j; w = [i, j];
+      if (j === 0 || j === i){
+        cur.push(1); cells += 1; src = [];
+        snap([4, 5, 6], 'Cell (' + i + ', ' + j + ') is an edge, so append 1.', 'step', 1);
+      } else {
+        const a = rows[i - 1][j - 1], b = rows[i - 1][j];
+        src = [[i - 1, j - 1], [i - 1, j]]; cur.push(a + b); cells += 1;
+        snap([4, 5, 7, 8], 'Cell (' + i + ', ' + j + '): ' + a + ' + ' + b + ' from the row above = ' + (a + b) + '.', 'step', 1.3);
+      }
+    }
+    rows.push(cur.slice()); cur = []; c = null; src = []; w = null;
+    snap([9], 'Row ' + i + ' is complete: append [' + rows[i].join(', ') + '] to rows.', 'move', 1.3);
+  }
+  r = null; c = null; src = []; w = null; cur = [];
+  snap([2], n === 0 ? 'range(0) is empty, so the loop never runs.' : 'range(n) is used up: all ' + s(n, 'row') + ' built.', 'step', 1);
+  snap([10], n === 0 ? 'Return [].' : 'Return rows: ' + s(n, 'row') + ', the last is [' + rows[n - 1].join(', ') + '].', 'end', 1);
+  return { frames: frames, result: rows.map(copy) };
+}
+/* SIMULATE:END */
+
+/* ---------- DOM ---------- */
+const $ = function(id){ return document.getElementById(id); };
+const $cv = $('cv'), $stage = $('stage'), $cap = $('caption'), $tag = $('tag'), $err = $('err'), $code = $('code');
+const $back = $('bBack'), $play = $('bPlay'), $next = $('bNext'), $reset = $('bReset'), $preset = $('preset'), $speed = $('speed');
+const RM = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches:false };
+
+const rows = SRC.map(function(txt, i){
+  const r = document.createElement('div'); r.className = 'row';
+  const n = document.createElement('span'); n.className = 'ln'; n.textContent = String(i + 1);
+  const c = document.createElement('span'); c.textContent = txt;
+  r.appendChild(n); r.appendChild(c); $code.appendChild(r);
+  return r;
+});
+PRESETS.forEach(function(p, i){
+  const o = document.createElement('option'); o.value = String(i); o.textContent = p.name; $preset.appendChild(o);
+});
+
+/* ---------- three.js scene (perspective 3D) ---------- */
+const SP = 1.0, BAR_W = 0.78, BAR_COL = '#3b82c4', RES_COL = '#2e9e5b', RES_DARK = '#16683a';
+const LOW_COL = '#2563a8', HIGH_COL = '#c46a14', MID_COL = '#e8a900';
+let FLOOR_Z0 = -0.8, FLOOR_Z1 = 2.9, FOCUS_Z = 0;
+const YAW0 = -0.22, PITCH0 = 0.46, YAW_MAX = 0.55, FOV = 32;
+let gl = false, renderer = null, scene = null, camera = null;
+let world = null, bars = [], vals = [], ptr = {}, slab = null, resLabel = null, emptyLabel = null;
+let dims = { halfW:7, halfY:3, ty:2, maxTop:3, scale:1 };
+const view = { yaw:YAW0, pitch:PITCH0, dist:20 };
+const C = {};
+const texCache = new Map();
+const tweens = [];
+let raf = 0, drag = null;
+
+function showError(msg){ $err.hidden = false; $err.textContent = msg; }
+function readTheme(){
+  const cs = getComputedStyle(document.documentElement);
+  ['ink','muted','plate','accent'].forEach(function(k){ C[k] = cs.getPropertyValue('--' + k).trim() || '#888888'; });
+}
+try {
+  if (typeof THREE === 'undefined') throw new Error('three.js did not load');
+  renderer = new THREE.WebGLRenderer({ canvas:$cv, antialias:true, alpha:true });
+  renderer.setClearColor(0x000000, 0);
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(FOV, 4 / 3, 0.1, 200);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.58));
+  const dl = new THREE.DirectionalLight(0xffffff, 0.85); dl.position.set(-5, 10, 8); scene.add(dl);
+  gl = true;
+} catch (e) {
+  showError('The 3D view could not start (' + (e && e.message ? e.message : 'WebGL unavailable') + '). Check your connection or browser WebGL support. The code panel and captions still step through the trace.');
+}
+
+function textTex(text, style){
+  const key = text + '|' + style.color + '|' + style.font;
+  let t = texCache.get(key);
+  if (t) return t;
+  const cv = document.createElement('canvas'), ctx = cv.getContext('2d');
+  ctx.font = style.font;
+  const w = Math.max(24, Math.ceil(ctx.measureText(text).width) + 16), h = 64;
+  cv.width = w; cv.height = h;
+  ctx.font = style.font; ctx.fillStyle = style.color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, w / 2, h / 2 + 2);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.minFilter = THREE.LinearFilter; tex.generateMipmaps = false;
+  t = { tex:tex, aspect:w / h };
+  texCache.set(key, t);
+  return t;
+}
+function clearTexCache(){ texCache.forEach(function(t){ t.tex.dispose(); }); texCache.clear(); }
+function makeSprite(){
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ transparent:true, depthTest:false }));
+  s.renderOrder = 10; s.visible = false; return s;
+}
+function setText(s, text, style, worldH, x){
+  if (!text){ s.visible = false; return; }
+  const t = textTex(text, style);
+  s.material.map = t.tex; s.material.needsUpdate = true;
+  s.scale.set(worldH * t.aspect, worldH, 1);
+  if (x !== undefined) s.position.x = x;
+  s.visible = true;
+}
+const SANS = '700 48px system-ui, -apple-system, "Segoe UI", sans-serif';
+function slotX(i, n){ return (i - (n - 1) / 2) * SP; }
+function barH(v){ return Math.max(v * dims.scale, 0.12); }
+
+function clearWorld(){
+  tweens.length = 0;
+  if (!world) return;
+  world.traverse(function(o){
+    if (o.geometry) o.geometry.dispose();
+    if (o.material) o.material.dispose();
+  });
+  scene.remove(world); world = null; bars = []; vals = []; ptr = {}; slab = null; resLabel = null; emptyLabel = null;
+}
+
+function makePointer(name, color, up, coneY, labelY, z){
+  const g = new THREE.Group();
+  const cone = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.5, 20), new THREE.MeshLambertMaterial({ color:color }));
+  cone.position.y = coneY;
+  if (!up) cone.rotation.z = Math.PI;
+  const lab = makeSprite(); lab.position.y = labelY;
+  setText(lab, name, { font:SANS, color:color }, 0.4, 0);
+  g.add(cone); g.add(lab); g.position.z = z; g.visible = false;
+  return g;
+}
+
+function cellX(r, c){ return (c - r / 2) * SP; }
+function cellZ(r, n){ return (r - (n - 1) / 2) * SP; }
+function build(cfg, keepView){
+  if (!gl) return;
+  clearWorld(); readTheme();
+  world = new THREE.Group(); scene.add(world);
+  const n = cfg.n;
+  let maxV = 1; cfg.rows.forEach(function(row){ row.forEach(function(v){ maxV = Math.max(maxV, v); }); });
+  dims.scale = 1.4 / maxV; dims.maxTop = barH(maxV);
+  const depth = n * SP + 0.9;
+  FLOOR_Z0 = -depth / 2; FLOOR_Z1 = depth / 2; FOCUS_Z = 0;
+  dims.halfW = (n + 1) * SP / 2 + 0.7; dims.halfY = (dims.maxTop + 1.4) / 2; dims.ty = (dims.maxTop + 1.0) / 2;
+  if (n > 0){
+    const floor = new THREE.Mesh(new THREE.BoxGeometry(n * SP + 0.9, 0.14, depth), new THREE.MeshLambertMaterial({ color:C.plate }));
+    floor.position.set(0, -0.07, 0); world.add(floor);
+  } else {
+    emptyLabel = makeSprite(); emptyLabel.position.set(0, 1.0, 0); world.add(emptyLabel);
+    setText(emptyLabel, 'empty', { font:SANS, color:C.muted }, 0.6, 0);
+  }
+  cfg.rows.forEach(function(row, r){
+    row.forEach(function(v, c){
+      const h = barH(v), x = cellX(r, c), z = cellZ(r, n);
+      const body = new THREE.Mesh(new THREE.BoxGeometry(BAR_W, h, BAR_W), new THREE.MeshLambertMaterial({ color:BAR_COL }));
+      const outline = new THREE.Mesh(new THREE.BoxGeometry(BAR_W + 0.14, h + 0.14, BAR_W + 0.14), new THREE.MeshBasicMaterial({ color:C.accent, side:THREE.BackSide }));
+      body.position.set(x, h / 2, z); outline.position.set(x, h / 2, z); outline.visible = false; body.visible = false;
+      world.add(outline); world.add(body);
+      bars.push({ body:body, outline:outline });
+      const val = makeSprite(); val.position.set(x, h + 0.32, z);
+      setText(val, String(v), { font:SANS, color:C.ink }, 0.5, x); val.visible = false; world.add(val); vals.push(val);
+    });
+  });
+  slab = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color:BAR_COL, transparent:true, opacity:0.12, depthWrite:false }));
+  slab.add(new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1)), new THREE.LineBasicMaterial({ color:C.accent })));
+  slab.visible = false; world.add(slab);
+  if (!keepView){ view.yaw = YAW0; view.pitch = PITCH0; }
+  fitCamera();
+}
+
+function updateCamera(){
+  if (!gl) return;
+  const cp = Math.cos(view.pitch), sp = Math.sin(view.pitch);
+  camera.position.set(Math.sin(view.yaw) * cp * view.dist, dims.ty + sp * view.dist, FOCUS_Z + Math.cos(view.yaw) * cp * view.dist);
+  camera.lookAt(0, dims.ty, FOCUS_Z);
+  requestRender();
+}
+function fitCamera(){
+  if (!gl) return;
+  const w = $stage.clientWidth, h = $stage.clientHeight;
+  if (!w || !h) return;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(w, h, false);
+  const aspect = w / h, t = Math.tan(FOV * Math.PI / 360), halfZ = (FLOOR_Z1 - FLOOR_Z0) / 2;
+  camera.aspect = aspect; camera.updateProjectionMatrix();
+  const vExt = dims.halfY * Math.cos(PITCH0) + halfZ * Math.sin(PITCH0);
+  const hExt = dims.halfW * Math.cos(YAW_MAX) + halfZ * Math.sin(YAW_MAX);
+  view.dist = Math.max(vExt / t, hExt / (t * aspect)) * 1.2;
+  updateCamera();
+}
+
+/* ---------- tweens and render loop ---------- */
+function settle(){ tweens.splice(0).forEach(function(tw){ tw.upd(1); }); }
+function requestRender(){ if (gl && !raf) raf = requestAnimationFrame(loop); }
+function loop(){
+  raf = 0;
+  const now = performance.now();
+  for (let i = tweens.length - 1; i >= 0; i--){
+    const tw = tweens[i];
+    const u = Math.max(0, Math.min(1, (now - tw.t0) / tw.dur));
+    tw.upd(u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2);
+    if (u >= 1) tweens.splice(i, 1);
+  }
+  renderer.render(scene, camera);
+  if (tweens.length) requestRender();
+}
+
+/* drag left or right to turn the scene; double-click resets the view */
+if (gl){
+  $cv.addEventListener('pointerdown', function(e){
+    drag = { x:e.clientX, yaw:view.yaw };
+    try { $cv.setPointerCapture(e.pointerId); } catch (err) { /* not needed for the drag to work */ }
+  });
+  $cv.addEventListener('pointermove', function(e){
+    if (!drag) return;
+    view.yaw = Math.max(-YAW_MAX, Math.min(YAW_MAX, drag.yaw + (e.clientX - drag.x) * 0.008));
+    updateCamera();
+  });
+  ['pointerup', 'pointercancel'].forEach(function(t){ $cv.addEventListener(t, function(){ drag = null; }); });
+  $cv.addEventListener('dblclick', function(){ view.yaw = YAW0; view.pitch = PITCH0; updateCamera(); });
+}
+
+/* ---------- playback state ---------- */
+const S = { cfg:null, frames:[], idx:0, state:'paused', timer:0, speed:1300, shown:-1 };
+
+function tweenDur(f){ return S.state === 'playing' ? Math.max(120, Math.min(600, S.speed * f.hold * 0.5)) : 450; }
+function easeProp(get, set, to, animate, f){
+  const from = get();
+  if (animate && !RM.matches && Math.abs(from - to) > 1e-6){
+    tweens.push({ t0:performance.now(), dur:tweenDur(f), upd:function(e){ set(from + (to - from) * e); } });
+  } else {
+    set(to);
+  }
+}
+function applyScene(f, animate){
+  if (!gl || !world) return;
+  const n = S.cfg.n;
+  if (n > 0 && f.r !== null){
+    const z = cellZ(f.r, n), w = (f.r + 1) * SP + 0.08, y0 = -0.05, y1 = dims.maxTop + 0.55, was = slab.visible;
+    slab.visible = true; slab.scale.y = y1 - y0; slab.scale.z = 1.3; slab.position.y = (y0 + y1) / 2; slab.position.x = 0;
+    if (!was){ slab.position.z = z; slab.scale.x = w; }
+    easeProp(function(){ return slab.position.z; }, function(v){ slab.position.z = v; }, z, animate && was, f);
+    easeProp(function(){ return slab.scale.x; }, function(v){ slab.scale.x = v; }, w, animate && was, f);
+  } else {
+    slab.visible = false;
+  }
+  for (let r = 0; r < n; r++){
+    for (let c = 0; c <= r; c++){
+      const k = r * (r + 1) / 2 + c, b = bars[k];
+      let v = null;
+      if (r < f.rows.length) v = f.rows[r][c]; else if (r === f.r && c < f.cur.length) v = f.cur[c];
+      const known = v !== null;
+      const isW = f.w !== null && f.w[0] === r && f.w[1] === c;
+      const isSrc = f.src.some(function(p){ return p[0] === r && p[1] === c; });
+      b.body.visible = known; vals[k].visible = known;
+      b.body.material.color.set(isW ? RES_COL : BAR_COL);
+      b.body.material.emissive.set(isSrc ? '#5a4300' : '#000000');
+      b.outline.visible = known && (isW || isSrc);
+      b.outline.material.color.set(isSrc ? C.accent : RES_DARK);
+    }
+  }
+  requestRender();
+}
+
+function renderCode(f){
+  let firstActive = -1;
+  rows.forEach(function(r, i){
+    const a = f.lines.indexOf(i) >= 0;
+    r.classList.toggle('active', a);
+    if (a && firstActive < 0) firstActive = i;
+  });
+  if (firstActive >= 0){
+    const r = rows[firstActive];
+    if (r.offsetTop < $code.scrollTop) $code.scrollTop = r.offsetTop;
+    else if (r.offsetTop + r.offsetHeight > $code.scrollTop + $code.clientHeight) $code.scrollTop = r.offsetTop + r.offsetHeight - $code.clientHeight;
+  }
+}
+function describe(f){
+  return "Pascal's triangle for n = " + f.n + ': ' + f.rows.length + ' rows built, ' + f.cells + ' cells filled.';
+}
+function updateButtons(){
+  const last = S.frames.length - 1;
+  $back.disabled = S.idx <= 0;
+  $next.disabled = S.idx >= last;
+  $play.textContent = S.state === 'playing' ? 'Pause' : (S.idx >= last ? 'Replay' : 'Play');
+}
+function show(i, animate){
+  const f = S.frames[i]; if (!f) return;
+  settle();
+  S.idx = i;
+  $cap.textContent = f.msg;
+  $tag.textContent = 'n = ' + f.n + ' \u00b7 cells ' + f.cells + '/' + (f.n * (f.n + 1) / 2);
+  $cv.setAttribute('aria-label', describe(f));
+  renderCode(f);
+  applyScene(f, animate && Math.abs(i - S.shown) === 1);
+  S.shown = i;
+  updateButtons();
+}
+
+function clearTimer(){ if (S.timer){ clearTimeout(S.timer); S.timer = 0; } }
+function schedule(){
+  clearTimer();
+  if (S.state !== 'playing') return;
+  S.timer = setTimeout(tick, S.speed * S.frames[S.idx].hold);
+}
+function tick(){
+  S.timer = 0;
+  if (S.state !== 'playing') return;
+  if (S.idx >= S.frames.length - 1){ S.state = 'ended'; updateButtons(); return; }
+  show(S.idx + 1, true);
+  if (S.idx >= S.frames.length - 1){ S.state = 'ended'; updateButtons(); return; }
+  schedule();
+}
+function pause(){ clearTimer(); settle(); if (S.state === 'playing' || S.state === 'ended') S.state = 'paused'; updateButtons(); }
+function play(){
+  if (S.state === 'playing'){ pause(); return; }
+  if (S.idx >= S.frames.length - 1) show(0, false);
+  S.state = 'playing'; updateButtons(); schedule();
+}
+function step(d){
+  pause();
+  const j = S.idx + d;
+  if (j < 0 || j >= S.frames.length) return;
+  show(j, true);
+}
+function reset(){ pause(); show(0, false); }
+function loadPreset(i){
+  pause();
+  const p = PRESETS[i];
+  const sim = simulate.apply(null, p.args);
+  S.cfg = { name:p.name, n:p.args[0], rows:sim.result };
+  S.frames = sim.frames; S.shown = -1; S.idx = 0;
+  build(S.cfg);
+  show(0, false);
+}
+
+$back.addEventListener('click', function(){ step(-1); });
+$next.addEventListener('click', function(){ step(1); });
+$play.addEventListener('click', play);
+$reset.addEventListener('click', reset);
+$preset.addEventListener('change', function(){ loadPreset(Number($preset.value)); });
+$speed.addEventListener('change', function(){
+  S.speed = Number($speed.value);
+  if (S.state === 'playing') schedule();
+});
+document.addEventListener('keydown', function(e){
+  const t = e.target && e.target.tagName;
+  if (t === 'BUTTON' || t === 'SELECT' || t === 'INPUT' || t === 'TEXTAREA') return;
+  if (e.key === ' '){ e.preventDefault(); play(); }
+  else if (e.key === 'ArrowRight'){ step(1); }
+  else if (e.key === 'ArrowLeft'){ step(-1); }
+});
+document.addEventListener('visibilitychange', function(){ if (document.hidden && S.state === 'playing') pause(); });
+
+if (typeof ResizeObserver !== 'undefined') new ResizeObserver(fitCamera).observe($stage);
+else window.addEventListener('resize', fitCamera);
+
+function retheme(){
+  if (!gl) return;
+  clearTexCache(); readTheme(); build(S.cfg, true); S.shown = -1; show(S.idx, false);
+}
+try {
+  if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', retheme);
+} catch (e) { /* older browsers: theme refresh on reload */ }
+new MutationObserver(retheme).observe(document.documentElement, { attributes:true, attributeFilter:['data-theme'] });
+
+loadPreset(0);
+})();
+</script>
+</body>
+</html>

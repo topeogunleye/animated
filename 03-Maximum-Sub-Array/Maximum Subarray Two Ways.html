@@ -1,0 +1,623 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Maximum Subarray Two Ways</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: title, then a 3D stage with caption and controls on the left and the stepping code on the right. */
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --ink:#18212b; --muted:#5b6876; --line:#d5dbe3;
+  --hl-bg:#fff3bf; --hl-bar:#d99a00; --stage:#eef1f5;
+  --plate:#c3ccd7; --accent:#e8a900;
+  --btn:#ffffff; --btnHover:#eef1f5;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1318; --panel:#171c23; --ink:#e8edf3; --muted:#9aa7b6; --line:#2c3440;
+    --hl-bg:#4a3d0a; --hl-bar:#ffc400; --stage:#141a21;
+    --plate:#3a4452; --accent:#ffc400;
+    --btn:#1d2430; --btnHover:#27303b; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1318; --panel:#171c23; --ink:#e8edf3; --muted:#9aa7b6; --line:#2c3440;
+  --hl-bg:#4a3d0a; --hl-bar:#ffc400; --stage:#141a21;
+  --plate:#3a4452; --accent:#ffc400;
+  --btn:#1d2430; --btnHover:#27303b; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+main{max-width:1120px;margin:0 auto;padding-block:12px 22px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font-size:1.15rem;margin:4px 0 12px;font-weight:650;text-wrap:balance}
+.wrap{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:760px){.wrap{grid-template-columns:minmax(0,1fr)}}
+.stagebox{position:relative;background:var(--stage);border:1px solid var(--line);border-radius:12px;overflow:hidden;aspect-ratio:4/3;min-height:260px;max-height:64vh;width:100%;max-width:100%}
+#cv{display:block;width:100%;height:100%;touch-action:pan-y;cursor:grab}
+#cv:active{cursor:grabbing}
+.hint{position:absolute;right:10px;bottom:8px;font-size:11px;color:var(--muted);pointer-events:none}
+.tag{position:absolute;top:8px;left:10px;right:10px;width:max-content;max-width:calc(100% - 20px);font:600 12px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--panel);border:1px solid var(--line);padding:2px 9px;border-radius:999px;overflow-wrap:anywhere}
+.err{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;color:var(--ink);background:var(--stage)}
+#caption{margin:12px 2px 10px;min-height:3em;font-size:1rem}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button,select{font:inherit;font-size:.9rem;color:var(--ink);background:var(--btn);border:1px solid var(--line);border-radius:8px;padding:6px 12px;min-height:36px}
+button{cursor:pointer;min-width:64px}
+button:hover:not(:disabled){background:var(--btnHover)}
+button:disabled{opacity:.45;cursor:default}
+button:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+#code{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 0;overflow:auto;max-height:70vh;min-width:0;font:13px/1.7 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+@media (max-width:420px){#code{font-size:12px}}
+.row{display:flex;min-width:max-content;white-space:pre;padding-right:12px;border-left:4px solid transparent}
+.ln{flex:0 0 2.4em;text-align:right;padding-right:12px;color:var(--muted);user-select:none}
+.row.active{background:var(--hl-bg);border-left-color:var(--hl-bar)}
+</style>
+<main>
+  <h1>Maximum subarray in 3D, step by step</h1>
+  <div class="wrap">
+    <div>
+      <div class="stagebox" id="stage">
+        <canvas id="cv" role="img" aria-label="3D list of positive and negative numbers with the current slice and the best slice"></canvas>
+        <div class="tag" id="tag"></div>
+        <div class="hint">drag to rotate · double-click to reset</div>
+        <div class="err" id="err" hidden></div>
+      </div>
+      <p id="caption" role="status" aria-live="polite"></p>
+      <div class="controls" role="group" aria-label="Playback controls">
+        <button id="bBack" type="button">Back</button>
+        <button id="bPlay" type="button">Play</button>
+        <button id="bNext" type="button">Next</button>
+        <button id="bReset" type="button">Reset</button>
+        <label class="sr" for="preset">Input</label>
+        <select id="preset"></select>
+        <label class="sr" for="speed">Speed</label>
+        <select id="speed">
+          <option value="1300">Slow</option>
+          <option value="850">Normal</option>
+          <option value="450">Fast</option>
+          <option value="220">Very fast</option>
+        </select>
+      </div>
+    </div>
+    <div id="code" role="region" aria-label="Python source code"></div>
+  </div>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+
+/* SOURCE:BEGIN */
+const SRC = [
+  'def max_subarray_brute(nums):',                                              // 0
+  '    if len(nums) == 0:',                                                     // 1
+  '        return 0, -1, -1',                                                   // 2
+  '    best = nums[0]',                                                         // 3
+  '    best_start = 0',                                                         // 4
+  '    best_end = 0',                                                           // 5
+  '    for i in range(len(nums)):',                                             // 6
+  '        total = 0',                                                          // 7
+  '        for j in range(i, len(nums)):',                                      // 8
+  '            total += nums[j]',                                               // 9
+  '            if total > best:',                                               // 10
+  '                best = total',                                               // 11
+  '                best_start = i',                                             // 12
+  '                best_end = j',                                               // 13
+  '    return best, best_start, best_end',                                      // 14
+  'def max_subarray_fast(nums):',                                               // 15
+  '    if len(nums) == 0:',                                                     // 16
+  '        return 0, -1, -1',                                                   // 17
+  '    best = nums[0]',                                                         // 18
+  '    best_start = 0',                                                         // 19
+  '    best_end = 0',                                                           // 20
+  '    current = nums[0]',                                                      // 21
+  '    current_start = 0',                                                      // 22
+  '    for i in range(1, len(nums)):',                                          // 23
+  '        if current < 0:',                                                    // 24
+  '            current = nums[i]',                                              // 25
+  '            current_start = i',                                              // 26
+  '        else:',                                                              // 27
+  '            current += nums[i]',                                             // 28
+  '        if current > best:',                                                 // 29
+  '            best = current',                                                 // 30
+  '            best_start = current_start',                                     // 31
+  '            best_end = i',                                                   // 32
+  '    return best, best_start, best_end',                                      // 33
+  'tests = [[-2, 1, -3, 4, -1, 2, 1, -5, 4], [5], [-3, -1, -2], [], [1, -1, 1]]', // 34
+  'for nums in tests:',                                                         // 35
+  '    a = max_subarray_brute(nums)',                                           // 36
+  '    b = max_subarray_fast(nums)',                                            // 37
+  '    print(nums, a, b, "Match" if a == b else "Mismatch")'                    // 38
+];
+
+/* SOURCE:END */
+
+/* PRESETS:BEGIN */
+const PRESETS = [
+  { name:'Mixed list (the classic)', args:[[-2, 1, -3, 4, -1, 2, 1, -5, 4]] },
+  { name:'Single element',           args:[[5]] },
+  { name:'All negative',             args:[[-3, -1, -2]] },
+  { name:'Empty list',               args:[[]] },
+  { name:'Tie: 1, -1, 1',            args:[[1, -1, 1]] }
+];
+/* PRESETS:END */
+
+/* SIMULATE:BEGIN */
+function simulate(nums){
+  const n = nums.length;
+  const frames = [];
+  const list = '[' + nums.join(', ') + ']';
+  const trip = function(t){ return '(' + t.join(', ') + ')'; };
+  const paren = function(v){ return v < 0 ? '(' + v + ')' : String(v); };
+  let low = null, high = null, cur = null, run = null, best = null;
+  let lowName = 'i', highName = 'j', tag = '';
+
+  function snap(lines, msg, kind, hold){
+    frames.push({ lines: lines.slice(), msg: msg, kind: kind, hold: hold,
+      low: low, high: high, cur: cur, run: run ? run.slice() : null, best: best ? best.slice() : null,
+      lowName: lowName, highName: highName, tag: tag });
+  }
+
+  tag = 'brute force vs single pass';
+  snap([], 'Key idea: brute force tries every slice, while the single pass keeps one running sum and drops it as soon as it goes negative.', 'start', 1);
+
+  /* ---- brute force ---- */
+  let a = null;
+  tag = 'brute · starting';
+  snap([35, 36, 0], 'Run both versions on ' + list + '. Brute force goes first.', 'init', 1);
+  if (n === 0){
+    a = [0, -1, -1];
+    tag = 'empty list · brute ' + trip(a);
+    snap([1, 2], 'The list is empty, so brute force returns ' + trip(a) + ' because there is no slice to pick.', 'ret', 1);
+  } else {
+    let bestSum = nums[0], bs = 0, be = 0;
+    best = [0, 0];
+    tag = 'brute · best ' + bestSum + ' at ' + trip([bs, be]);
+    snap([3, 4, 5], 'Start with best = nums[0] = ' + bestSum + ', best_start = 0 and best_end = 0.', 'init', 1);
+    for (let i = 0; i < n; i++){
+      let total = 0;
+      low = i; high = null; cur = null; run = null;
+      tag = 'brute · total 0 · best ' + bestSum + ' at ' + trip([bs, be]);
+      snap([6, 7], 'i = ' + i + ': start a new slice at index ' + i + ' with total = 0.', 'pick', 1);
+      for (let j = i; j < n; j++){
+        total += nums[j]; high = j; cur = j; run = [i, j];
+        if (total > bestSum){
+          const prev = bestSum;
+          bestSum = total; bs = i; be = j; best = [i, j];
+          tag = 'brute · total ' + total + ' · best ' + bestSum + ' at ' + trip([bs, be]);
+          snap([8, 9, 10, 11, 12, 13], 'Add nums[' + j + '] = ' + nums[j] + ', so total = ' + total + '. That is above best ' + prev + ', so best = ' + total + ' at ' + trip([i, j]) + '.', 'step', 1.6);
+        } else {
+          tag = 'brute · total ' + total + ' · best ' + bestSum + ' at ' + trip([bs, be]);
+          snap([8, 9, 10], 'Add nums[' + j + '] = ' + nums[j] + ', so total = ' + total + '. That is not above best ' + bestSum + '.', 'step', 1);
+        }
+      }
+    }
+    a = [bestSum, bs, be];
+    low = null; high = null; cur = null; run = null;
+    tag = 'brute · done · best ' + bestSum + ' at ' + trip([bs, be]);
+    snap([14], 'All ' + (n * (n + 1) / 2) + ' slices are checked. Return ' + trip(a) + '.', 'ret', 1);
+  }
+
+  /* ---- single pass ---- */
+  let b = null;
+  best = null; low = null; high = null; cur = null; run = null;
+  lowName = 'start'; highName = 'i';
+  tag = 'single pass · starting';
+  snap([37, 15], 'Now the single pass on the same list.', 'init', 1);
+  if (n === 0){
+    b = [0, -1, -1];
+    tag = 'empty list · fast ' + trip(b);
+    snap([16, 17], 'The list is empty, so the single pass also returns ' + trip(b) + '.', 'ret', 1);
+  } else {
+    let bestF = nums[0], bsF = 0, beF = 0, current = nums[0], cstart = 0;
+    best = [0, 0]; low = 0; high = 0; cur = 0; run = [0, 0];
+    tag = 'fast · current ' + current + ' · best ' + bestF + ' at ' + trip([bsF, beF]);
+    snap([16, 18, 19, 20, 21, 22], 'Start with best = current = nums[0] = ' + nums[0] + ', and both starts at index 0.', 'init', 1);
+    for (let i = 1; i < n; i++){
+      const before = current;
+      let lines, msg;
+      if (current < 0){
+        current = nums[i]; cstart = i;
+        lines = [23, 24, 25, 26];
+        msg = 'i = ' + i + ': current ' + before + ' is negative, so drop it and restart at index ' + i + ': current = ' + current + '.';
+      } else {
+        current = before + nums[i];
+        lines = [23, 24, 27, 28];
+        msg = 'i = ' + i + ': current ' + before + ' is not negative, so keep extending: current = ' + before + ' + ' + paren(nums[i]) + ' = ' + current + '.';
+      }
+      low = cstart; high = i; cur = i; run = [cstart, i];
+      tag = 'fast · current ' + current + ' · best ' + bestF + ' at ' + trip([bsF, beF]);
+      snap(lines, msg, 'step', 1);
+      if (current > bestF){
+        const prev = bestF;
+        bestF = current; bsF = cstart; beF = i; best = [cstart, i];
+        tag = 'fast · current ' + current + ' · best ' + bestF + ' at ' + trip([bsF, beF]);
+        snap([29, 30, 31, 32], 'current ' + current + ' is above best ' + prev + ', so best = ' + current + ' at ' + trip([cstart, i]) + '.', 'step', 1.6);
+      } else {
+        snap([29], 'current ' + current + ' is not above best ' + bestF + ', so best stays at ' + trip([bsF, beF]) + '.', 'step', 1);
+      }
+    }
+    b = [bestF, bsF, beF];
+    low = null; high = null; cur = null; run = null;
+    tag = 'fast · done · best ' + bestF + ' at ' + trip([bsF, beF]);
+    snap([33], 'One pass is enough. Return ' + trip(b) + '.', 'ret', 1);
+  }
+
+  /* ---- compare ---- */
+  const ok = a[0] === b[0] && a[1] === b[1] && a[2] === b[2];
+  const printed = list + ' ' + trip(a) + ' ' + trip(b) + ' ' + (ok ? 'Match' : 'Mismatch');
+  best = n > 0 ? [a[1], a[2]] : null;
+  low = null; high = null; cur = null; run = null;
+  tag = ok ? 'Match' : 'Mismatch';
+  snap([38], ok
+    ? 'Both return ' + trip(a) + ', so the loop prints Match: ' + printed
+    : 'Brute returns ' + trip(a) + ' but fast returns ' + trip(b) + ', so the loop prints Mismatch: ' + printed, 'end', 1.6);
+  return { frames: frames, result: [a, b, ok, printed] };
+}
+/* SIMULATE:END */
+
+/* ---------- DOM ---------- */
+const $ = function(id){ return document.getElementById(id); };
+const $cv = $('cv'), $stage = $('stage'), $cap = $('caption'), $tag = $('tag'), $err = $('err'), $code = $('code');
+const $back = $('bBack'), $play = $('bPlay'), $next = $('bNext'), $reset = $('bReset'), $preset = $('preset'), $speed = $('speed');
+const RM = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches:false };
+
+const rows = SRC.map(function(txt, i){
+  const r = document.createElement('div'); r.className = 'row';
+  const n = document.createElement('span'); n.className = 'ln'; n.textContent = String(i + 1);
+  const c = document.createElement('span'); c.textContent = txt;
+  r.appendChild(n); r.appendChild(c); $code.appendChild(r);
+  return r;
+});
+PRESETS.forEach(function(p, i){
+  const o = document.createElement('option'); o.value = String(i); o.textContent = p.name; $preset.appendChild(o);
+});
+
+/* ---------- three.js scene (perspective 3D) ---------- */
+const SP = 1.0, BAR_W = 0.78, NEG_W = 0.5;
+const BAR_COL = '#3b82c4', NEG_COL = '#b8527f', RES_COL = '#2e9e5b', RES_DARK = '#16683a';
+const LOW_COL = '#2563a8', HIGH_COL = '#c46a14';
+const LOW_Z = 1.2, HIGH_Z = 2.2, FLOOR_Z0 = -0.8, FLOOR_Z1 = 2.9, FOCUS_Z = (FLOOR_Z0 + FLOOR_Z1) / 2;
+const YAW0 = -0.22, PITCH0 = 0.46, YAW_MAX = 0.55, FOV = 32;
+let gl = false, renderer = null, scene = null, camera = null;
+let world = null, bars = [], vals = [], ptr = {}, slab = null, resLabel = null, emptyLabel = null;
+let dims = { halfW:7, halfY:3, ty:2, maxTop:3, scale:1 };
+const view = { yaw:YAW0, pitch:PITCH0, dist:20 };
+const C = {};
+const texCache = new Map();
+const tweens = [];
+let raf = 0, drag = null;
+
+function showError(msg){ $err.hidden = false; $err.textContent = msg; }
+function readTheme(){
+  const cs = getComputedStyle(document.documentElement);
+  ['ink','muted','plate','accent'].forEach(function(k){ C[k] = cs.getPropertyValue('--' + k).trim() || '#888888'; });
+}
+try {
+  if (typeof THREE === 'undefined') throw new Error('three.js did not load');
+  renderer = new THREE.WebGLRenderer({ canvas:$cv, antialias:true, alpha:true });
+  renderer.setClearColor(0x000000, 0);
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(FOV, 4 / 3, 0.1, 200);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.58));
+  const dl = new THREE.DirectionalLight(0xffffff, 0.85); dl.position.set(-5, 10, 8); scene.add(dl);
+  gl = true;
+} catch (e) {
+  showError('The 3D view could not start (' + (e && e.message ? e.message : 'WebGL unavailable') + '). Check your connection or browser WebGL support. The code panel and captions still step through the trace.');
+}
+
+function textTex(text, style){
+  const key = text + '|' + style.color + '|' + style.font;
+  let t = texCache.get(key);
+  if (t) return t;
+  const cv = document.createElement('canvas'), ctx = cv.getContext('2d');
+  ctx.font = style.font;
+  const w = Math.max(24, Math.ceil(ctx.measureText(text).width) + 16), h = 64;
+  cv.width = w; cv.height = h;
+  ctx.font = style.font; ctx.fillStyle = style.color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, w / 2, h / 2 + 2);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.minFilter = THREE.LinearFilter; tex.generateMipmaps = false;
+  t = { tex:tex, aspect:w / h };
+  texCache.set(key, t);
+  return t;
+}
+function clearTexCache(){ texCache.forEach(function(t){ t.tex.dispose(); }); texCache.clear(); }
+function makeSprite(){
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ transparent:true, depthTest:false }));
+  s.renderOrder = 10; s.visible = false; return s;
+}
+function setText(s, text, style, worldH, x){
+  if (!text){ s.visible = false; return; }
+  const t = textTex(text, style);
+  s.material.map = t.tex; s.material.needsUpdate = true;
+  s.scale.set(worldH * t.aspect, worldH, 1);
+  if (x !== undefined) s.position.x = x;
+  s.visible = true;
+}
+const SANS = '700 48px system-ui, -apple-system, "Segoe UI", sans-serif';
+function slotX(i, n){ return (i - (n - 1) / 2) * SP; }
+function barH(v){ return Math.max(Math.abs(v) * dims.scale, 0.12); }
+
+function clearWorld(){
+  tweens.length = 0;
+  if (!world) return;
+  world.traverse(function(o){
+    if (o.geometry) o.geometry.dispose();
+    if (o.material) o.material.dispose();
+  });
+  scene.remove(world); world = null; bars = []; vals = []; ptr = {}; slab = null; resLabel = null; emptyLabel = null;
+}
+
+function makePointer(color, coneY, labelY, z){
+  const g = new THREE.Group();
+  const cone = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.5, 20), new THREE.MeshLambertMaterial({ color:color }));
+  cone.position.y = coneY;
+  const lab = makeSprite(); lab.position.y = labelY;
+  g.add(cone); g.add(lab); g.position.z = z; g.visible = false;
+  g.userData.lab = lab;
+  return g;
+}
+
+function build(cfg, keepView){
+  if (!gl) return;
+  clearWorld(); readTheme();
+  world = new THREE.Group(); scene.add(world);
+  const nums = cfg.nums, n = nums.length;
+  let maxAbs = 1; nums.forEach(function(v){ maxAbs = Math.max(maxAbs, Math.abs(v)); });
+  dims.scale = 3 / maxAbs;
+  let maxTop = 0; nums.forEach(function(v){ maxTop = Math.max(maxTop, barH(v)); });
+  if (n === 0) maxTop = 1.2;
+  dims.maxTop = maxTop; dims.halfW = (n + 2) * SP / 2 + 0.7; dims.halfY = (maxTop + 2.6) / 2; dims.ty = (maxTop + 2.2) / 2;
+
+  if (n > 0){
+    const floor = new THREE.Mesh(new THREE.BoxGeometry(n * SP + 0.9, 0.14, FLOOR_Z1 - FLOOR_Z0), new THREE.MeshLambertMaterial({ color:C.plate }));
+    floor.position.set(0, -0.07, FOCUS_Z); world.add(floor);
+  } else {
+    emptyLabel = makeSprite(); emptyLabel.position.set(0, 1.0, 0.5); world.add(emptyLabel);
+    setText(emptyLabel, 'empty', { font:SANS, color:C.muted }, 0.6, 0);
+  }
+  nums.forEach(function(v, i){
+    const h = barH(v), x = slotX(i, n), w = v < 0 ? NEG_W : BAR_W;
+    const body = new THREE.Mesh(new THREE.BoxGeometry(w, h, w), new THREE.MeshLambertMaterial({ color:v < 0 ? NEG_COL : BAR_COL, transparent:true }));
+    const outline = new THREE.Mesh(new THREE.BoxGeometry(w + 0.14, h + 0.14, w + 0.14), new THREE.MeshBasicMaterial({ color:C.accent, side:THREE.BackSide }));
+    body.position.set(x, h / 2, 0); outline.position.set(x, h / 2, 0); outline.visible = false;
+    world.add(outline); world.add(body);
+    bars.push({ body:body, outline:outline });
+    const val = makeSprite(); val.position.set(x, h + 0.32, 0);
+    setText(val, String(v), { font:SANS, color:C.ink }, 0.5, x); world.add(val); vals.push(val);
+    const idx = makeSprite(); idx.position.set(x, 0.3, 0.98);
+    setText(idx, String(i), { font:SANS, color:C.muted }, 0.34, x); world.add(idx);
+  });
+  ptr.low = makePointer(LOW_COL, 0.28, 0.95, LOW_Z);
+  ptr.high = makePointer(HIGH_COL, 0.28, 0.95, HIGH_Z);
+  [ptr.low, ptr.high].forEach(function(g){ world.add(g); });
+  slab = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color:BAR_COL, transparent:true, opacity:0.12, depthWrite:false }));
+  slab.add(new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1)), new THREE.LineBasicMaterial({ color:C.accent })));
+  slab.visible = false; world.add(slab);
+  resLabel = makeSprite(); world.add(resLabel);
+  if (!keepView){ view.yaw = YAW0; view.pitch = PITCH0; }
+  fitCamera();
+}
+
+function updateCamera(){
+  if (!gl) return;
+  const cp = Math.cos(view.pitch), sp = Math.sin(view.pitch);
+  camera.position.set(Math.sin(view.yaw) * cp * view.dist, dims.ty + sp * view.dist, FOCUS_Z + Math.cos(view.yaw) * cp * view.dist);
+  camera.lookAt(0, dims.ty, FOCUS_Z);
+  requestRender();
+}
+function fitCamera(){
+  if (!gl) return;
+  const w = $stage.clientWidth, h = $stage.clientHeight;
+  if (!w || !h) return;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(w, h, false);
+  const aspect = w / h, t = Math.tan(FOV * Math.PI / 360), halfZ = (FLOOR_Z1 - FLOOR_Z0) / 2;
+  camera.aspect = aspect; camera.updateProjectionMatrix();
+  const vExt = dims.halfY * Math.cos(PITCH0) + halfZ * Math.sin(PITCH0);
+  const hExt = dims.halfW * Math.cos(YAW_MAX) + halfZ * Math.sin(YAW_MAX);
+  view.dist = Math.max(vExt / t, hExt / (t * aspect)) * 1.2;
+  updateCamera();
+}
+
+/* ---------- tweens and render loop ---------- */
+function settle(){ tweens.splice(0).forEach(function(tw){ tw.upd(1); }); }
+function requestRender(){ if (gl && !raf) raf = requestAnimationFrame(loop); }
+function loop(){
+  raf = 0;
+  const now = performance.now();
+  for (let i = tweens.length - 1; i >= 0; i--){
+    const tw = tweens[i];
+    const u = Math.max(0, Math.min(1, (now - tw.t0) / tw.dur));
+    tw.upd(u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2);
+    if (u >= 1) tweens.splice(i, 1);
+  }
+  renderer.render(scene, camera);
+  if (tweens.length) requestRender();
+}
+
+/* drag left or right to turn the scene; double-click resets the view */
+if (gl){
+  $cv.addEventListener('pointerdown', function(e){
+    drag = { x:e.clientX, yaw:view.yaw };
+    try { $cv.setPointerCapture(e.pointerId); } catch (err) { /* not needed for the drag to work */ }
+  });
+  $cv.addEventListener('pointermove', function(e){
+    if (!drag) return;
+    view.yaw = Math.max(-YAW_MAX, Math.min(YAW_MAX, drag.yaw + (e.clientX - drag.x) * 0.008));
+    updateCamera();
+  });
+  ['pointerup', 'pointercancel'].forEach(function(t){ $cv.addEventListener(t, function(){ drag = null; }); });
+  $cv.addEventListener('dblclick', function(){ view.yaw = YAW0; view.pitch = PITCH0; updateCamera(); });
+}
+
+/* ---------- playback state ---------- */
+const S = { cfg:null, frames:[], idx:0, state:'paused', timer:0, speed:1300, shown:-1 };
+
+function tweenDur(f){ return S.state === 'playing' ? Math.max(120, Math.min(600, S.speed * f.hold * 0.5)) : 450; }
+function easeProp(get, set, to, animate, f){
+  const from = get();
+  if (animate && !RM.matches && Math.abs(from - to) > 1e-6){
+    tweens.push({ t0:performance.now(), dur:tweenDur(f), upd:function(e){ set(from + (to - from) * e); } });
+  } else {
+    set(to);
+  }
+}
+function applyScene(f, animate){
+  if (!gl || !world) return;
+  const n = S.cfg.nums.length;
+  const wasVisible = { low:ptr.low.visible, high:ptr.high.visible };
+  const same = f.low !== null && f.low === f.high;
+  setText(ptr.low.userData.lab, f.lowName, { font:SANS, color:LOW_COL }, 0.4, 0);
+  setText(ptr.high.userData.lab, f.highName, { font:SANS, color:HIGH_COL }, 0.4, 0);
+  [['low', f.low, same ? -0.23 : 0], ['high', f.high, same ? 0.23 : 0]].forEach(function(p){
+    const g = ptr[p[0]];
+    if (p[1] === null || n === 0){ g.visible = false; return; }
+    const x = slotX(p[1], n) + p[2];
+    if (!wasVisible[p[0]]) g.position.x = x;
+    g.visible = true;
+    easeProp(function(){ return g.position.x; }, function(v){ g.position.x = v; }, x, animate && wasVisible[p[0]], f);
+  });
+  const showSlab = f.run !== null && n > 0;
+  if (showSlab){
+    const x0 = slotX(f.run[0], n), x1 = slotX(f.run[1], n), cx = (x0 + x1) / 2, w = (f.run[1] - f.run[0] + 1) * SP + 0.08;
+    const y0 = -0.05, y1 = dims.maxTop + 0.55;
+    const was = slab.visible;
+    slab.visible = true; slab.scale.y = y1 - y0; slab.scale.z = 1.5; slab.position.y = (y0 + y1) / 2;
+    if (!was){ slab.position.x = cx; slab.scale.x = w; }
+    easeProp(function(){ return slab.position.x; }, function(v){ slab.position.x = v; }, cx, animate && was, f);
+    easeProp(function(){ return slab.scale.x; }, function(v){ slab.scale.x = v; }, w, animate && was, f);
+  } else {
+    slab.visible = false;
+  }
+  bars.forEach(function(b, i){
+    const inBest = f.best !== null && i >= f.best[0] && i <= f.best[1];
+    const inRun = f.run !== null && i >= f.run[0] && i <= f.run[1];
+    const isCur = f.cur === i;
+    const a = (f.run === null || inRun || inBest) ? 1 : 0.25;
+    b.body.material.opacity = a; vals[i].material.opacity = a;
+    b.body.material.color.set(inBest ? RES_COL : (S.cfg.nums[i] < 0 ? NEG_COL : BAR_COL));
+    b.body.material.emissive.set(isCur ? '#5a4300' : '#000000');
+    b.outline.visible = isCur || inBest;
+    b.outline.material.color.set(isCur ? C.accent : RES_DARK);
+  });
+  if (f.best !== null && n > 0){
+    const cx = (slotX(f.best[0], n) + slotX(f.best[1], n)) / 2;
+    resLabel.position.set(cx, dims.maxTop + 1.0, 0);
+    setText(resLabel, 'best', { font:SANS, color:RES_COL }, 0.38, cx);
+  } else {
+    resLabel.visible = false;
+  }
+  requestRender();
+}
+
+function renderCode(f){
+  let firstActive = -1;
+  rows.forEach(function(r, i){
+    const a = f.lines.indexOf(i) >= 0;
+    r.classList.toggle('active', a);
+    if (a && firstActive < 0) firstActive = i;
+  });
+  if (firstActive >= 0){
+    const r = rows[firstActive];
+    if (r.offsetTop < $code.scrollTop) $code.scrollTop = r.offsetTop;
+    else if (r.offsetTop + r.offsetHeight > $code.scrollTop + $code.clientHeight) $code.scrollTop = r.offsetTop + r.offsetHeight - $code.clientHeight;
+  }
+}
+function describe(f){
+  const nums = S.cfg.nums;
+  return 'List [' + nums.join(', ') + ']. ' + f.tag + '.' +
+    (f.low !== null ? ' ' + f.lowName + ' at index ' + f.low + '.' : '') +
+    (f.high !== null ? ' ' + f.highName + ' at index ' + f.high + '.' : '') +
+    (f.best !== null ? ' Best slice is indexes ' + f.best[0] + ' to ' + f.best[1] + '.' : '');
+}
+function updateButtons(){
+  const last = S.frames.length - 1;
+  $back.disabled = S.idx <= 0;
+  $next.disabled = S.idx >= last;
+  $play.textContent = S.state === 'playing' ? 'Pause' : (S.idx >= last ? 'Replay' : 'Play');
+}
+function show(i, animate){
+  const f = S.frames[i]; if (!f) return;
+  settle();
+  S.idx = i;
+  $cap.textContent = f.msg;
+  $tag.textContent = f.tag;
+  $cv.setAttribute('aria-label', describe(f));
+  renderCode(f);
+  applyScene(f, animate && Math.abs(i - S.shown) === 1);
+  S.shown = i;
+  updateButtons();
+}
+
+function clearTimer(){ if (S.timer){ clearTimeout(S.timer); S.timer = 0; } }
+function schedule(){
+  clearTimer();
+  if (S.state !== 'playing') return;
+  S.timer = setTimeout(tick, S.speed * S.frames[S.idx].hold);
+}
+function tick(){
+  S.timer = 0;
+  if (S.state !== 'playing') return;
+  if (S.idx >= S.frames.length - 1){ S.state = 'ended'; updateButtons(); return; }
+  show(S.idx + 1, true);
+  if (S.idx >= S.frames.length - 1){ S.state = 'ended'; updateButtons(); return; }
+  schedule();
+}
+function pause(){ clearTimer(); settle(); if (S.state === 'playing' || S.state === 'ended') S.state = 'paused'; updateButtons(); }
+function play(){
+  if (S.state === 'playing'){ pause(); return; }
+  if (S.idx >= S.frames.length - 1) show(0, false);
+  S.state = 'playing'; updateButtons(); schedule();
+}
+function step(d){
+  pause();
+  const j = S.idx + d;
+  if (j < 0 || j >= S.frames.length) return;
+  show(j, true);
+}
+function reset(){ pause(); show(0, false); }
+function loadPreset(i){
+  pause();
+  const p = PRESETS[i];
+  S.cfg = { name:p.name, nums:p.args[0] };
+  S.frames = simulate.apply(null, p.args).frames; S.shown = -1; S.idx = 0;
+  build(S.cfg);
+  show(0, false);
+}
+
+$back.addEventListener('click', function(){ step(-1); });
+$next.addEventListener('click', function(){ step(1); });
+$play.addEventListener('click', play);
+$reset.addEventListener('click', reset);
+$preset.addEventListener('change', function(){ loadPreset(Number($preset.value)); });
+$speed.addEventListener('change', function(){
+  S.speed = Number($speed.value);
+  if (S.state === 'playing') schedule();
+});
+document.addEventListener('keydown', function(e){
+  const t = e.target && e.target.tagName;
+  if (t === 'BUTTON' || t === 'SELECT' || t === 'INPUT' || t === 'TEXTAREA') return;
+  if (e.key === ' '){ e.preventDefault(); play(); }
+  else if (e.key === 'ArrowRight'){ step(1); }
+  else if (e.key === 'ArrowLeft'){ step(-1); }
+});
+document.addEventListener('visibilitychange', function(){ if (document.hidden && S.state === 'playing') pause(); });
+
+if (typeof ResizeObserver !== 'undefined') new ResizeObserver(fitCamera).observe($stage);
+else window.addEventListener('resize', fitCamera);
+
+function retheme(){
+  if (!gl) return;
+  clearTexCache(); readTheme(); build(S.cfg, true); S.shown = -1; show(S.idx, false);
+}
+try {
+  if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', retheme);
+} catch (e) { /* older browsers: theme refresh on reload */ }
+new MutationObserver(retheme).observe(document.documentElement, { attributes:true, attributeFilter:['data-theme'] });
+
+loadPreset(0);
+})();
+</script>
+
+</body></html>

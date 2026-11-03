@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tower of Hanoi in 3D: step by step</title>
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --ink:#18212b; --muted:#5b6876; --line:#d5dbe3;
+  --hl-bg:#fff3bf; --hl-bar:#d99a00; --stage:#eef1f5;
+  --plate:#c3ccd7; --accent:#e8a900;
+  --btn:#ffffff; --btnHover:#eef1f5;
+  color-scheme:light;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1318; --panel:#171c23; --ink:#e8edf3; --muted:#9aa7b6; --line:#2c3440;
+    --hl-bg:#4a3d0a; --hl-bar:#ffc400; --stage:#141a21;
+    --plate:#3a4452; --accent:#ffc400;
+    --btn:#1d2430; --btnHover:#27303b; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1318; --panel:#171c23; --ink:#e8edf3; --muted:#9aa7b6; --line:#2c3440;
+  --hl-bg:#4a3d0a; --hl-bar:#ffc400; --stage:#141a21;
+  --plate:#3a4452; --accent:#ffc400;
+  --btn:#1d2430; --btnHover:#27303b; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+main{max-width:1120px;margin:0 auto;padding:12px 14px 22px}
+h1{font-size:1.15rem;margin:4px 0 12px;font-weight:650}
+.wrap{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:760px){.wrap{grid-template-columns:minmax(0,1fr)}}
+.stagebox{position:relative;background:var(--stage);border:1px solid var(--line);border-radius:12px;overflow:hidden;aspect-ratio:4/3;min-height:260px;max-height:64vh;width:100%}
+#cv{display:block;width:100%;height:100%;touch-action:pan-y;cursor:grab}
+#cv:active{cursor:grabbing}
+.hint{position:absolute;right:10px;bottom:8px;font-size:11px;color:var(--muted);pointer-events:none}
+.tag{position:absolute;top:8px;left:10px;right:10px;width:max-content;max-width:calc(100% - 20px);font:600 12px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--panel);border:1px solid var(--line);padding:2px 9px;border-radius:999px}
+.err{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;color:var(--ink);background:var(--stage)}
+.err[hidden]{display:none}
+#caption{margin:12px 2px 10px;min-height:3em;font-size:1rem}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button,select{font:inherit;font-size:.9rem;color:var(--ink);background:var(--btn);border:1px solid var(--line);border-radius:8px;padding:6px 12px;min-height:36px}
+button{cursor:pointer;min-width:64px}
+button:hover:not(:disabled){background:var(--btnHover)}
+button:disabled{opacity:.45;cursor:default}
+button:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+#code{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 0;overflow:auto;max-height:70vh;font:13px/1.7 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+@media (max-width:420px){#code{font-size:12px}}
+.row{display:flex;min-width:max-content;white-space:pre;padding-right:12px;border-left:4px solid transparent}
+.ln{flex:0 0 2.4em;text-align:right;padding-right:12px;color:var(--muted);user-select:none}
+.row.active{background:var(--hl-bg);border-left-color:var(--hl-bar)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Tower of Hanoi in 3D, step by step</h1>
+  <div class="wrap">
+    <div>
+      <div class="stagebox" id="stage">
+        <canvas id="cv" role="img" aria-label="3D Tower of Hanoi with three pegs, disks and the recursive call stack"></canvas>
+        <div class="tag" id="tag"></div>
+        <div class="hint">drag to rotate · double-click to reset</div>
+        <div class="err" id="err" hidden></div>
+      </div>
+      <p id="caption" role="status" aria-live="polite"></p>
+      <div class="controls" role="group" aria-label="Playback controls">
+        <button id="bBack" type="button">Back</button>
+        <button id="bPlay" type="button">Play</button>
+        <button id="bNext" type="button">Next</button>
+        <button id="bReset" type="button">Reset</button>
+        <label class="sr" for="preset">Input</label>
+        <select id="preset"></select>
+        <label class="sr" for="speed">Speed</label>
+        <select id="speed">
+          <option value="1300">Slow</option>
+          <option value="850">Normal</option>
+          <option value="450">Fast</option>
+          <option value="220">Very fast</option>
+        </select>
+      </div>
+    </div>
+    <div id="code" role="region" aria-label="Python source code"></div>
+  </div>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+
+/* SOURCE:BEGIN */
+/* Displayed code: comments and blank lines stripped, indentation kept. Index = 0-based line used by frames. */
+const SRC = [
+  'def hanoi(n, source, target, helper):',                    // 0
+  '    if n == 0:',                                           // 1
+  '        return []',                                        // 2
+  '    moves = hanoi(n - 1, source, helper, target)',         // 3
+  '    moves.append((source, target))',                       // 4
+  '    moves += hanoi(n - 1, helper, target, source)',        // 5
+  '    return moves'                                          // 6
+];
+
+/* SOURCE:END */
+
+/* PRESETS:BEGIN */
+const PRESETS = [
+  { name:'n = 1',                args:[1, 'A', 'C', 'B'] },
+  { name:'n = 3',                args:[3, 'A', 'C', 'B'] },
+  { name:'n = 4',                args:[4, 'A', 'C', 'B'] },
+  { name:'n = 5',                args:[5, 'A', 'C', 'B'] },
+  { name:'n = 0 (no disks)',     args:[0, 'A', 'C', 'B'] }
+];
+/* PRESETS:END */
+
+/* SIMULATE:BEGIN */
+/* Pure function: no DOM, no three.js. Every frame is an independent snapshot of plain values. */
+const NAMES = ['A', 'B', 'C'];
+function simulate(n, source, target, helper){
+  const frames = [], moves = [];
+  const pegs = [[], [], []], stack = [];
+  let count = 0, moved = 0;
+  const pi = function(name){ return NAMES.indexOf(name); };
+  for (let k = n; k >= 1; k--) pegs[pi(source)].push(k);
+
+  function snap(lines, msg, kind, hold){
+    frames.push({ lines: lines.slice(), msg: msg, kind: kind, hold: hold, n: n,
+      pegs: pegs.map(function(p){ return p.slice(); }),
+      stack: stack.map(function(c){ return c.slice(); }),
+      count: count, moved: moved });
+  }
+  const label = function(m, s, t, h){ return 'hanoi(' + m + ', ' + s + ', ' + t + ', ' + h + ')'; };
+
+  function call(m, s, t, h, site){
+    const root = site === null, pre = root ? [] : [site], me = label(m, s, t, h);
+    stack.push([m, s, t, h]);
+    if (m === 0){
+      snap(pre.concat([0, 1, 2]), root
+        ? me + ': n is 0, so return []. Zero moves, which is 2^0 \u2212 1.'
+        : me + ': n is 0, so return [] and nothing moves.', root ? 'end' : 'ret', 1);
+      stack.pop();
+      return;
+    }
+    snap(pre.concat([0, 1]), m === 1
+      ? me + ': n is 1, not 0, so recurse on the 0 disks above it first.'
+      : me + ': n is ' + m + ', not 0, so first recurse to park ' + (m - 1) + ' disk' + (m === 2 ? '' : 's') + ' on ' + h + '.', 'enter', 1);
+    call(m - 1, s, h, t, 3);
+    const from = pegs[pi(s)], to = pegs[pi(t)], disk = from.pop();
+    if (disk !== m || (to.length && to[to.length - 1] < disk)) throw new Error('illegal move in ' + me);
+    to.push(disk); moves.push([s, t]); count += 1; moved = disk;
+    snap([3, 4], m === 1
+      ? 'Back in ' + me + ': nothing sits above disk 1. Move disk 1 from ' + s + ' to ' + t + ' (move ' + count + ').'
+      : 'Back in ' + me + ': the top ' + (m - 1) + ' are parked on ' + h + '. Move disk ' + m + ' from ' + s + ' to ' + t + ' (move ' + count + ').', 'move', 1.7);
+    moved = 0;
+    call(m - 1, h, t, s, 5);
+    const c = Math.pow(2, m) - 1;
+    snap([5, 6], root
+      ? me + ' returns ' + c + ' move' + (c === 1 ? '' : 's') + ', which is 2^' + m + ' \u2212 1. All ' + m + ' disk' + (m === 1 ? ' is' : 's are') + ' now on ' + t + '.'
+      : 'Second half done. ' + me + ' returns ' + c + ' move' + (c === 1 ? '' : 's') + ', which is 2^' + m + ' \u2212 1.', root ? 'end' : 'ret', 1);
+    stack.pop();
+  }
+
+  snap([], 'Key idea: to move n disks, park n-1 on the helper, move the biggest to the target, then stack the n-1 back on top.', 'start', 1);
+  call(n, source, target, helper, null);
+  return { frames: frames, result: moves };
+}
+/* SIMULATE:END */
+
+/* ---------- DOM ---------- */
+const $ = function(id){ return document.getElementById(id); };
+const $cv = $('cv'), $stage = $('stage'), $cap = $('caption'), $tag = $('tag'), $err = $('err'), $code = $('code');
+const $back = $('bBack'), $play = $('bPlay'), $next = $('bNext'), $reset = $('bReset'), $preset = $('preset'), $speed = $('speed');
+const RM = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches:false };
+
+const rows = SRC.map(function(txt, i){
+  const r = document.createElement('div'); r.className = 'row';
+  const n = document.createElement('span'); n.className = 'ln'; n.textContent = String(i + 1);
+  const c = document.createElement('span'); c.textContent = txt;
+  r.appendChild(n); r.appendChild(c); $code.appendChild(r);
+  return r;
+});
+PRESETS.forEach(function(p, i){
+  const o = document.createElement('option'); o.value = String(i); o.textContent = p.name; $preset.appendChild(o);
+});
+
+/* ---------- three.js scene (perspective 3D) ---------- */
+const SP = 2.6, BAR_COL = '#3b82c4', RES_COL = '#2e9e5b', RES_DARK = '#16683a', PEG_COL = '#8a96a6';
+const DISK_H = 0.32, DISK_STEP = 0.34, BLK_H = 0.4, BLK_STEP = 0.46, RACK_X = 3.9, LABEL_Z = 1.55;
+const FROM_COL = '#2563a8', TO_COL = '#c46a14';
+const FROM_Z = 1.9, TO_Z = 2.8, FLOOR_Z0 = -1.5, FLOOR_Z1 = 3.6, FOCUS_Z = (FLOOR_Z0 + FLOOR_Z1) / 2;
+const YAW0 = -0.22, PITCH0 = 0.46, YAW_MAX = 0.55, FOV = 32;
+let gl = false, renderer = null, scene = null, camera = null;
+let world = null, disks = [], blocks = [], ptr = {}, slab = null, resLabel = null, emptyLabel = null;
+let dims = { halfW:7, halfY:3, ty:2, maxTop:3, pegH:1 };
+const view = { yaw:YAW0, pitch:PITCH0, dist:20 };
+const C = {};
+const texCache = new Map();
+const tweens = [];
+let raf = 0, drag = null;
+
+function showError(msg){ $err.hidden = false; $err.textContent = msg; }
+function readTheme(){
+  const cs = getComputedStyle(document.documentElement);
+  ['ink','muted','plate','accent'].forEach(function(k){ C[k] = cs.getPropertyValue('--' + k).trim() || '#888888'; });
+}
+try {
+  if (typeof THREE === 'undefined') throw new Error('three.js did not load');
+  renderer = new THREE.WebGLRenderer({ canvas:$cv, antialias:true, alpha:true });
+  renderer.setClearColor(0x000000, 0);
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(FOV, 4 / 3, 0.1, 200);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.58));
+  const dl = new THREE.DirectionalLight(0xffffff, 0.85); dl.position.set(-5, 10, 8); scene.add(dl);
+  gl = true;
+} catch (e) {
+  showError('The 3D view could not start (' + (e && e.message ? e.message : 'WebGL unavailable') + '). Check your connection or browser WebGL support. The code panel and captions still step through the trace.');
+}
+
+function textTex(text, style){
+  const key = text + '|' + style.color + '|' + style.font;
+  let t = texCache.get(key);
+  if (t) return t;
+  const cv = document.createElement('canvas'), ctx = cv.getContext('2d');
+  ctx.font = style.font;
+  const w = Math.max(24, Math.ceil(ctx.measureText(text).width) + 16), h = 64;
+  cv.width = w; cv.height = h;
+  ctx.font = style.font; ctx.fillStyle = style.color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, w / 2, h / 2 + 2);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.minFilter = THREE.LinearFilter; tex.generateMipmaps = false;
+  t = { tex:tex, aspect:w / h };
+  texCache.set(key, t);
+  return t;
+}
+function clearTexCache(){ texCache.forEach(function(t){ t.tex.dispose(); }); texCache.clear(); }
+function makeSprite(){
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ transparent:true, depthTest:false }));
+  s.renderOrder = 10; s.visible = false; return s;
+}
+function setText(s, text, style, worldH, x){
+  if (!text){ s.visible = false; return; }
+  const t = textTex(text, style);
+  s.material.map = t.tex; s.material.needsUpdate = true;
+  s.scale.set(worldH * t.aspect, worldH, 1);
+  if (x !== undefined) s.position.x = x;
+  s.visible = true;
+}
+const SANS = '700 48px system-ui, -apple-system, "Segoe UI", sans-serif';
+function pegX(i){ return (i - 1.5) * SP; }
+
+function clearWorld(){
+  tweens.length = 0;
+  if (!world) return;
+  world.traverse(function(o){
+    if (o.geometry) o.geometry.dispose();
+    if (o.material) o.material.dispose();
+  });
+  scene.remove(world); world = null; disks = []; blocks = []; ptr = {}; slab = null; resLabel = null; emptyLabel = null;
+}
+
+function makePointer(name, color, z){
+  const g = new THREE.Group();
+  const cone = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.5, 20), new THREE.MeshLambertMaterial({ color:color }));
+  cone.position.y = 0.28;
+  const lab = makeSprite(); lab.position.set(0, 0.12, 0.55);
+  setText(lab, name, { font:SANS, color:C.ink }, 0.4, 0);
+  g.add(cone); g.add(lab); g.position.z = z; g.visible = false;
+  return g;
+}
+
+function build(cfg, keepView){
+  if (!gl) return;
+  clearWorld(); readTheme();
+  world = new THREE.Group(); scene.add(world);
+  const n = cfg.n;
+  dims.pegH = n * DISK_STEP + 0.7;
+  const rackTop = (n + 1) * BLK_STEP + 0.2;
+  dims.maxTop = Math.max(dims.pegH + 1.5, rackTop + 0.5);
+  dims.halfW = 5.45; dims.halfY = dims.maxTop / 2 + 0.3; dims.ty = dims.maxTop / 2;
+
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(10.6, 0.14, FLOOR_Z1 - FLOOR_Z0), new THREE.MeshLambertMaterial({ color:C.plate }));
+  floor.position.set(0, -0.07, FOCUS_Z); world.add(floor);
+  NAMES.forEach(function(nm, i){
+    const peg = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, dims.pegH, 16), new THREE.MeshLambertMaterial({ color:PEG_COL }));
+    peg.position.set(pegX(i), dims.pegH / 2, 0); world.add(peg);
+    const lab = makeSprite(); lab.position.set(pegX(i), dims.pegH + 0.4, 0);
+    setText(lab, nm, { font:SANS, color:C.ink }, 0.5, pegX(i)); world.add(lab);
+  });
+  const calls = makeSprite(); calls.position.set(RACK_X, 0.3, LABEL_Z);
+  setText(calls, 'calls', { font:SANS, color:C.muted }, 0.4, RACK_X); world.add(calls);
+  if (n === 0){
+    emptyLabel = makeSprite(); emptyLabel.position.set(0, 0.35, 1.0); world.add(emptyLabel);
+    setText(emptyLabel, 'empty', { font:SANS, color:C.muted }, 0.6, 0);
+  }
+
+  for (let k = 1; k <= n; k++){
+    const r = 0.4 + 0.15 * (k - 1);
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(r, r, DISK_H, 32), new THREE.MeshLambertMaterial({ color:BAR_COL }));
+    const outline = new THREE.Mesh(new THREE.CylinderGeometry(r + 0.07, r + 0.07, DISK_H + 0.08, 32), new THREE.MeshBasicMaterial({ color:C.accent, side:THREE.BackSide }));
+    outline.visible = false;
+    const lab = makeSprite(); lab.position.z = r + 0.05;
+    setText(lab, String(k), { font:SANS, color:'#ffffff' }, 0.3, 0);
+    g.add(outline); g.add(body); g.add(lab); g.position.set(pegX(0), DISK_H / 2, 0);
+    world.add(g);
+    disks.push({ k:k, g:g, body:body, outline:outline, peg:-1 });
+  }
+  for (let j = 0; j <= n; j++){
+    const y = BLK_H / 2 + j * BLK_STEP;
+    const body = new THREE.Mesh(new THREE.BoxGeometry(2.0, BLK_H, 0.9), new THREE.MeshLambertMaterial({ color:BAR_COL }));
+    const outline = new THREE.Mesh(new THREE.BoxGeometry(2.14, BLK_H + 0.14, 1.04), new THREE.MeshBasicMaterial({ color:C.accent, side:THREE.BackSide }));
+    body.position.set(RACK_X, y, 0); outline.position.set(RACK_X, y, 0);
+    body.visible = false; outline.visible = false;
+    const lab = makeSprite(); lab.position.set(RACK_X, y, 0.5);
+    world.add(outline); world.add(body); world.add(lab);
+    blocks.push({ body:body, outline:outline, lab:lab });
+  }
+
+  ptr.from = makePointer('from', FROM_COL, FROM_Z);
+  ptr.to = makePointer('to', TO_COL, TO_Z);
+  world.add(ptr.from); world.add(ptr.to);
+  slab = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color:BAR_COL, transparent:true, opacity:0.12, depthWrite:false }));
+  slab.add(new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1)), new THREE.LineBasicMaterial({ color:C.accent })));
+  slab.visible = false; world.add(slab);
+  resLabel = makeSprite(); world.add(resLabel);
+  if (!keepView){ view.yaw = YAW0; view.pitch = PITCH0; }
+  fitCamera();
+}
+
+function updateCamera(){
+  if (!gl) return;
+  const cp = Math.cos(view.pitch), sp = Math.sin(view.pitch);
+  camera.position.set(Math.sin(view.yaw) * cp * view.dist, dims.ty + sp * view.dist, FOCUS_Z + Math.cos(view.yaw) * cp * view.dist);
+  camera.lookAt(0, dims.ty, FOCUS_Z);
+  requestRender();
+}
+function fitCamera(){
+  if (!gl) return;
+  const w = $stage.clientWidth, h = $stage.clientHeight;
+  if (!w || !h) return;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(w, h, false);
+  const aspect = w / h, t = Math.tan(FOV * Math.PI / 360), halfZ = (FLOOR_Z1 - FLOOR_Z0) / 2;
+  camera.aspect = aspect; camera.updateProjectionMatrix();
+  const vExt = dims.halfY * Math.cos(PITCH0) + halfZ * Math.sin(PITCH0);
+  const hExt = dims.halfW * Math.cos(YAW_MAX) + halfZ * Math.sin(YAW_MAX);
+  view.dist = Math.max(vExt / t, hExt / (t * aspect)) * 1.2;
+  updateCamera();
+}
+
+/* ---------- tweens and render loop ---------- */
+function settle(){ tweens.splice(0).forEach(function(tw){ tw.upd(1); }); }
+function requestRender(){ if (gl && !raf) raf = requestAnimationFrame(loop); }
+function loop(){
+  raf = 0;
+  const now = performance.now();
+  for (let i = tweens.length - 1; i >= 0; i--){
+    const tw = tweens[i];
+    const u = Math.max(0, Math.min(1, (now - tw.t0) / tw.dur));
+    tw.upd(u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2);
+    if (u >= 1) tweens.splice(i, 1);
+  }
+  renderer.render(scene, camera);
+  if (tweens.length) requestRender();
+}
+
+/* drag left or right to turn the scene; double-click resets the view */
+if (gl){
+  $cv.addEventListener('pointerdown', function(e){
+    drag = { x:e.clientX, yaw:view.yaw };
+    try { $cv.setPointerCapture(e.pointerId); } catch (err) { /* not needed for the drag to work */ }
+  });
+  $cv.addEventListener('pointermove', function(e){
+    if (!drag) return;
+    view.yaw = Math.max(-YAW_MAX, Math.min(YAW_MAX, drag.yaw + (e.clientX - drag.x) * 0.008));
+    updateCamera();
+  });
+  ['pointerup', 'pointercancel'].forEach(function(t){ $cv.addEventListener(t, function(){ drag = null; }); });
+  $cv.addEventListener('dblclick', function(){ view.yaw = YAW0; view.pitch = PITCH0; updateCamera(); });
+}
+
+/* ---------- playback state ---------- */
+const S = { cfg:null, frames:[], idx:0, state:'paused', timer:0, speed:1300, shown:-1 };
+
+function tweenDur(f){ return S.state === 'playing' ? Math.max(120, Math.min(600, S.speed * f.hold * 0.5)) : 450; }
+function easeProp(get, set, to, animate, f){
+  const from = get();
+  if (animate && !RM.matches && Math.abs(from - to) > 1e-6){
+    tweens.push({ t0:performance.now(), dur:tweenDur(f), upd:function(e){ set(from + (to - from) * e); } });
+  } else {
+    set(to);
+  }
+}
+function applyScene(f, animate){
+  if (!gl || !world) return;
+  const fin = f.kind === 'end';
+  const where = {};
+  f.pegs.forEach(function(p, pi){ p.forEach(function(d, lvl){ where[d] = { peg:pi, lvl:lvl }; }); });
+  disks.forEach(function(dk){
+    const w = where[dk.k], x = pegX(w.peg), y = DISK_H / 2 + w.lvl * DISK_STEP;
+    const isMoved = f.moved === dk.k;
+    dk.body.material.color.set(fin ? RES_COL : BAR_COL);
+    dk.body.material.emissive.set(isMoved ? '#5a4300' : '#000000');
+    dk.outline.visible = isMoved || fin;
+    dk.outline.material.color.set(isMoved ? C.accent : RES_DARK);
+    if (animate && !RM.matches && dk.peg >= 0 && dk.peg !== w.peg){
+      const from = dk.g.position.clone(), lift = dims.pegH + 1.0;
+      tweens.push({ t0:performance.now(), dur:tweenDur(f) * 1.3, upd:function(e){
+        let px, py;
+        if (e < 0.3){ px = from.x; py = from.y + (lift - from.y) * (e / 0.3); }
+        else if (e < 0.7){ px = from.x + (x - from.x) * ((e - 0.3) / 0.4); py = lift; }
+        else { px = x; py = lift + (y - lift) * ((e - 0.7) / 0.3); }
+        dk.g.position.set(px, py, 0);
+      } });
+    } else {
+      dk.g.position.set(x, y, 0);
+    }
+    dk.peg = w.peg;
+  });
+
+  const top = f.stack.length ? f.stack[f.stack.length - 1] : null;
+  if (!top){
+    ptr.from.visible = false; ptr.to.visible = false; slab.visible = false;
+  } else {
+    const xs = pegX(NAMES.indexOf(top[1])), xt = pegX(NAMES.indexOf(top[2]));
+    [[ptr.from, xs], [ptr.to, xt]].forEach(function(p){
+      const g = p[0], x = p[1], was = g.visible;
+      if (!was) g.position.x = x;
+      g.visible = true;
+      easeProp(function(){ return g.position.x; }, function(v){ g.position.x = v; }, x, animate && was, f);
+    });
+    const cx = (xs + xt) / 2, w = Math.abs(xs - xt) + 2.6, y0 = -0.05, y1 = dims.pegH + 0.8;
+    const was = slab.visible;
+    slab.visible = true; slab.scale.y = y1 - y0; slab.scale.z = 2.6; slab.position.y = (y0 + y1) / 2;
+    if (!was){ slab.position.x = cx; slab.scale.x = w; }
+    easeProp(function(){ return slab.position.x; }, function(v){ slab.position.x = v; }, cx, animate && was, f);
+    easeProp(function(){ return slab.scale.x; }, function(v){ slab.scale.x = v; }, w, animate && was, f);
+  }
+
+  blocks.forEach(function(b, j){
+    const on = j < f.stack.length;
+    b.body.visible = on;
+    if (!on){ b.outline.visible = false; b.lab.visible = false; return; }
+    const c = f.stack[j], isTop = j === f.stack.length - 1;
+    setText(b.lab, 'n=' + c[0] + ' ' + c[1] + '\u2192' + c[2], { font:SANS, color:'#ffffff' }, 0.36, RACK_X);
+    b.body.material.emissive.set(isTop ? '#5a4300' : '#000000');
+    b.outline.visible = isTop;
+  });
+
+  if (fin){
+    const tx = pegX(NAMES.indexOf(f.stack[0][2]));
+    resLabel.position.set(tx, dims.pegH + 1.0, 0);
+    setText(resLabel, 'result', { font:SANS, color:RES_COL }, 0.42, tx);
+  } else {
+    resLabel.visible = false;
+  }
+  requestRender();
+}
+
+function renderCode(f){
+  let firstActive = -1;
+  rows.forEach(function(r, i){
+    const a = f.lines.indexOf(i) >= 0;
+    r.classList.toggle('active', a);
+    if (a && firstActive < 0) firstActive = i;
+  });
+  if (firstActive >= 0){
+    const r = rows[firstActive];
+    if (r.offsetTop < $code.scrollTop) $code.scrollTop = r.offsetTop;
+    else if (r.offsetTop + r.offsetHeight > $code.scrollTop + $code.clientHeight) $code.scrollTop = r.offsetTop + r.offsetHeight - $code.clientHeight;
+  }
+}
+function describe(f){
+  const holds = NAMES.map(function(nm, i){
+    return 'peg ' + nm + ' holds ' + (f.pegs[i].length ? f.pegs[i].slice().reverse().join(', ') + ' from the top' : 'no disks');
+  }).join('; ');
+  const top = f.stack.length ? f.stack[f.stack.length - 1] : null;
+  return 'Tower of Hanoi with ' + f.n + ' disks. ' + holds + '. ' +
+    (top ? 'Current call moves ' + top[0] + ' disks from ' + top[1] + ' to ' + top[2] + '. ' : '') + f.count + ' moves so far.';
+}
+function updateButtons(){
+  const last = S.frames.length - 1;
+  $back.disabled = S.idx <= 0;
+  $next.disabled = S.idx >= last;
+  $play.textContent = S.state === 'playing' ? 'Pause' : (S.idx >= last ? 'Replay' : 'Play');
+}
+function show(i, animate){
+  const f = S.frames[i]; if (!f) return;
+  settle();
+  S.idx = i;
+  $cap.textContent = f.msg;
+  $tag.textContent = 'n ' + f.n + ' \u00b7 moves ' + f.count;
+  $cv.setAttribute('aria-label', describe(f));
+  renderCode(f);
+  applyScene(f, animate && Math.abs(i - S.shown) === 1);
+  S.shown = i;
+  updateButtons();
+}
+
+function clearTimer(){ if (S.timer){ clearTimeout(S.timer); S.timer = 0; } }
+function schedule(){
+  clearTimer();
+  if (S.state !== 'playing') return;
+  S.timer = setTimeout(tick, S.speed * S.frames[S.idx].hold);
+}
+function tick(){
+  S.timer = 0;
+  if (S.state !== 'playing') return;
+  if (S.idx >= S.frames.length - 1){ S.state = 'ended'; updateButtons(); return; }
+  show(S.idx + 1, true);
+  if (S.idx >= S.frames.length - 1){ S.state = 'ended'; updateButtons(); return; }
+  schedule();
+}
+function pause(){ clearTimer(); settle(); if (S.state === 'playing' || S.state === 'ended') S.state = 'paused'; updateButtons(); }
+function play(){
+  if (S.state === 'playing'){ pause(); return; }
+  if (S.idx >= S.frames.length - 1) show(0, false);
+  S.state = 'playing'; updateButtons(); schedule();
+}
+function step(d){
+  pause();
+  const j = S.idx + d;
+  if (j < 0 || j >= S.frames.length) return;
+  show(j, true);
+}
+function reset(){ pause(); show(0, false); }
+function loadPreset(i){
+  pause();
+  const p = PRESETS[i];
+  S.frames = simulate.apply(null, p.args).frames;
+  S.cfg = { name:p.name, n:p.args[0] };
+  S.shown = -1; S.idx = 0;
+  build(S.cfg);
+  show(0, false);
+}
+
+$back.addEventListener('click', function(){ step(-1); });
+$next.addEventListener('click', function(){ step(1); });
+$play.addEventListener('click', play);
+$reset.addEventListener('click', reset);
+$preset.addEventListener('change', function(){ loadPreset(Number($preset.value)); });
+$speed.addEventListener('change', function(){
+  S.speed = Number($speed.value);
+  if (S.state === 'playing') schedule();
+});
+document.addEventListener('keydown', function(e){
+  const t = e.target && e.target.tagName;
+  if (t === 'BUTTON' || t === 'SELECT' || t === 'INPUT' || t === 'TEXTAREA') return;
+  if (e.key === ' '){ e.preventDefault(); play(); }
+  else if (e.key === 'ArrowRight'){ step(1); }
+  else if (e.key === 'ArrowLeft'){ step(-1); }
+});
+document.addEventListener('visibilitychange', function(){ if (document.hidden && S.state === 'playing') pause(); });
+
+if (typeof ResizeObserver !== 'undefined') new ResizeObserver(fitCamera).observe($stage);
+else window.addEventListener('resize', fitCamera);
+
+function retheme(){
+  if (!gl) return;
+  clearTexCache(); readTheme(); build(S.cfg, true); S.shown = -1; show(S.idx, false);
+}
+try {
+  if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', retheme);
+} catch (e) { /* older browsers: theme refresh on reload */ }
+new MutationObserver(retheme).observe(document.documentElement, { attributes:true, attributeFilter:['data-theme'] });
+
+loadPreset(0);
+})();
+</script>
+</body>
+</html>
