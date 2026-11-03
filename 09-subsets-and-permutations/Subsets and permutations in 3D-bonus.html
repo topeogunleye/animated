@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Subsets and permutations in 3D: step by step</title>
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --ink:#18212b; --muted:#5b6876; --line:#d5dbe3;
+  --hl-bg:#fff3bf; --hl-bar:#d99a00; --stage:#eef1f5;
+  --plate:#c3ccd7; --accent:#e8a900;
+  --btn:#ffffff; --btnHover:#eef1f5;
+  color-scheme:light;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1318; --panel:#171c23; --ink:#e8edf3; --muted:#9aa7b6; --line:#2c3440;
+    --hl-bg:#4a3d0a; --hl-bar:#ffc400; --stage:#141a21;
+    --plate:#3a4452; --accent:#ffc400;
+    --btn:#1d2430; --btnHover:#27303b; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1318; --panel:#171c23; --ink:#e8edf3; --muted:#9aa7b6; --line:#2c3440;
+  --hl-bg:#4a3d0a; --hl-bar:#ffc400; --stage:#141a21;
+  --plate:#3a4452; --accent:#ffc400;
+  --btn:#1d2430; --btnHover:#27303b; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+main{max-width:1120px;margin:0 auto;padding:12px 14px 22px}
+h1{font-size:1.15rem;margin:4px 0 12px;font-weight:650}
+.wrap{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:760px){.wrap{grid-template-columns:minmax(0,1fr)}}
+.stagebox{position:relative;background:var(--stage);border:1px solid var(--line);border-radius:12px;overflow:hidden;aspect-ratio:4/3;min-height:260px;max-height:64vh;width:100%}
+#cv{display:block;width:100%;height:100%;touch-action:pan-y;cursor:grab}
+#cv:active{cursor:grabbing}
+.hint{position:absolute;right:10px;bottom:8px;font-size:11px;color:var(--muted);pointer-events:none}
+.tag{position:absolute;top:8px;left:10px;right:10px;width:max-content;max-width:calc(100% - 20px);font:600 12px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--panel);border:1px solid var(--line);padding:2px 9px;border-radius:999px}
+.err{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;color:var(--ink);background:var(--stage)}
+.err[hidden]{display:none}
+#caption{margin:12px 2px 10px;min-height:3em;font-size:1rem}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button,select{font:inherit;font-size:.9rem;color:var(--ink);background:var(--btn);border:1px solid var(--line);border-radius:8px;padding:6px 12px;min-height:36px}
+button{cursor:pointer;min-width:64px}
+button:hover:not(:disabled){background:var(--btnHover)}
+button:disabled{opacity:.45;cursor:default}
+button:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+#code{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 0;overflow:auto;max-height:70vh;font:13px/1.7 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+@media (max-width:420px){#code{font-size:12px}}
+.row{display:flex;min-width:max-content;white-space:pre;padding-right:12px;border-left:4px solid transparent}
+.ln{flex:0 0 2.4em;text-align:right;padding-right:12px;color:var(--muted);user-select:none}
+.row.active{background:var(--hl-bg);border-left-color:var(--hl-bar)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Subsets and permutations in 3D, step by step</h1>
+  <div class="wrap">
+    <div>
+      <div class="stagebox" id="stage">
+        <canvas id="cv" role="img" aria-label="3D row of items and the list being built"></canvas>
+        <div class="tag" id="tag"></div>
+        <div class="hint">drag to rotate · double-click to reset</div>
+        <div class="err" id="err" hidden></div>
+      </div>
+      <p id="caption" role="status" aria-live="polite"></p>
+      <div class="controls" role="group" aria-label="Playback controls">
+        <button id="bBack" type="button">Back</button>
+        <button id="bPlay" type="button">Play</button>
+        <button id="bNext" type="button">Next</button>
+        <button id="bReset" type="button">Reset</button>
+        <label class="sr" for="preset">Input</label>
+        <select id="preset"></select>
+        <label class="sr" for="speed">Speed</label>
+        <select id="speed">
+          <option value="1300">Slow</option>
+          <option value="850">Normal</option>
+          <option value="450">Fast</option>
+          <option value="220">Very fast</option>
+        </select>
+      </div>
+    </div>
+    <div id="code" role="region" aria-label="Python source code"></div>
+  </div>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+
+/* SOURCE:BEGIN */
+const SRC = [
+  'def subsets(items):',                                                     // 0
+  '    result = []',                                                         // 1
+  '    def walk(i, chosen):',                                                // 2
+  '        if i == len(items):',                                             // 3
+  '            result.append(chosen[:])',                                    // 4
+  '            return',                                                      // 5
+  '        walk(i + 1, chosen)',                                             // 6
+  '        walk(i + 1, chosen + [items[i]])',                                // 7
+  '    walk(0, [])',                                                         // 8
+  '    return result',                                                       // 9
+  'def permutations(items):',                                                // 10
+  '    result = []',                                                         // 11
+  '    def build(prefix, remaining):',                                       // 12
+  '        if not remaining:',                                               // 13
+  '            result.append(prefix)',                                       // 14
+  '            return',                                                      // 15
+  '        for i in range(len(remaining)):',                                 // 16
+  '            build(prefix + [remaining[i]], remaining[:i] + remaining[i + 1:])', // 17
+  '    build([], items)',                                                    // 18
+  '    return result',                                                       // 19
+  'def subsets_with_sum(items, target):',                                    // 20
+  '    result = []',                                                         // 21
+  '    def walk(i, chosen, total):',                                         // 22
+  '        if total > target and all(item >= 0 for item in items[i:]):',    // 23
+  '            return',                                                      // 24
+  '        if i == len(items):',                                             // 25
+  '            if total == target:',                                         // 26
+  '                result.append(chosen[:])',                                // 27
+  '            return',                                                      // 28
+  '        walk(i + 1, chosen, total)',                                      // 29
+  '        walk(i + 1, chosen + [items[i]], total + items[i])',              // 30
+  '    walk(0, [], 0)',                                                      // 31
+  '    return result'                                                        // 32
+];
+
+/* SOURCE:END */
+
+/* PRESETS:BEGIN */
+const PRESETS = [
+  { name:'subsets([1, 2, 3])',              args:['subsets', [1,2,3]] },
+  { name:'permutations([1, 2, 3])',         args:['permutations', [1,2,3]] },
+  { name:'subsets_with_sum([1, 2, 3, 4], 5)', args:['subsets_with_sum', [1,2,3,4], 5] },
+  { name:'subsets_with_sum([2, 4], 5): no match', args:['subsets_with_sum', [2,4], 5] },
+  { name:'subsets_with_sum([-2, 1, 3], 1)', args:['subsets_with_sum', [-2,1,3], 1] },
+  { name:'subsets([]) edge case',           args:['subsets', []] },
+  { name:'permutations([]) edge case',      args:['permutations', []] },
+  { name:'subsets_with_sum([], 0) edge case', args:['subsets_with_sum', [], 0] }
+];
+/* PRESETS:END */
+
+/* SIMULATE:BEGIN */
+function simulate(fn, items, target){
+  const n = items.length;
+  const frames = [], out = [];
+  let depth = 0, slots = [], st = [], lo = -1, hi = -1, cur = -1, front = [], saved = 0, rec = false, sum = 0, prune = false;
+  for (let j = 0; j < n; j++){ slots.push(j); st.push(0); }
+  function fact(k){ let r = 1; for (let q = 2; q <= k; q++) r *= q; return r; }
+  const total = fn === 'subsets' ? Math.pow(2, n) : fn === 'permutations' ? fact(n) : 0;
+  function txt(a){ return '[' + a.map(function(j){ return items[j]; }).join(', ') + ']'; }
+  function snap(lines, msg, kind, hold){
+    frames.push({ lines: lines.slice(), msg: msg, kind: kind, hold: hold, fn: fn, depth: depth,
+      slots: slots.slice(), st: st.slice(), lo: lo, hi: hi, cur: cur, front: front.slice(),
+      saved: saved, total: total, rec: rec, prune: prune, sum: sum, target: target === undefined ? null : target, listText: txt(front) });
+  }
+
+  if (fn === 'subsets' || fn === 'subsets_with_sum'){
+    const isSum = fn === 'subsets_with_sum';
+    const callL = isSum ? [29, 30] : [6, 7];
+    snap([], isSum ? 'Key idea: the same skip-or-take walk, plus a running total. Prune an over-target branch only when all remaining items are nonnegative.'
+                   : 'Key idea: every item is either skipped or taken, so n items give 2 \u00d7 2 \u00d7 \u2026 \u00d7 2 = 2^n subsets.', 'start', 1);
+    snap(isSum ? [20, 21, 31] : [0, 1, 8], isSum ? 'result starts empty, then walk(0, [], 0) begins with total 0 and target ' + target + '.'
+                   : 'result starts empty, then walk(0, []) begins with an empty list and ' + n + ' undecided items.', 'init', 1);
+    const walk = function(i, chosen, via, s){
+      depth += 1; sum = s;
+      front = chosen.slice(); lo = i < n ? i : -1; hi = n - 1; cur = i < n ? i : -1;
+      const head = via === 0 ? '' : (via === 1 ? 'Skip ' : 'Take ') + items[i - 1] + ': walk(' + i + ', ' + txt(chosen) + (isSum ? ', ' + s : '') + '). ';
+      const call = via === 0 ? [] : [callL[via - 1]];
+      if (isSum && s > target && items.slice(i).every(function(value){ return value >= 0; })){
+        prune = true;
+        snap(call.concat([22, 23, 24]), head + 'Total ' + s + ' is over ' + target + ' and all remaining items are nonnegative, so stop.', 'ret', 1.3);
+        prune = false;
+      } else if (i === n){
+        const hit = !isSum || s === target;
+        if (hit){ saved += 1; rec = true; out.push(chosen.map(function(j){ return items[j]; })); }
+        const lines = isSum ? call.concat([22, 23, 25, 26], hit ? [27, 28] : [28]) : call.concat([2, 3, 4, 5]);
+        const tail = !isSum ? 'No items left, so ' + txt(chosen) + ' is complete. Save a copy (' + saved + ' of ' + total + ').'
+                   : hit ? 'No items left and total ' + s + ' = ' + target + ', so save a copy (' + saved + ' saved).'
+                         : 'No items left, but total ' + s + ' is not ' + target + ', so drop it.';
+        snap(lines, head + tail, 'ret', hit ? 1.5 : 1.1);
+        rec = false;
+      } else {
+        snap(call.concat(isSum ? [22, 23, 25] : [2, 3]), head + 'Next is items[' + i + '] = ' + items[i] + ': skip it first, then take it.', 'enter', 1);
+        st[i] = 2; walk(i + 1, chosen, 1, s);
+        st[i] = 1; walk(i + 1, chosen.concat([i]), 2, s + items[i]);
+        st[i] = 0;
+      }
+      depth -= 1;
+    };
+    walk(0, [], 0, 0);
+    front = []; lo = -1; hi = -1; cur = -1; sum = 0;
+    snap(isSum ? [32] : [9], isSum ? 'walk(0, [], 0) is done. Return ' + saved + ' subsets that add up to ' + target + ', each a fresh list.'
+                          : 'walk(0, []) is done. Return ' + saved + ' subsets: 2^' + n + ' = ' + total + ', each a fresh list.', 'end', 1);
+  } else {
+    snap([], 'Key idea: pick one item to go first, then permute what remains: n \u00d7 (n\u22121) \u00d7 \u2026 \u00d7 1 = n! orderings.', 'start', 1);
+    lo = n > 0 ? 0 : -1; hi = n - 1;
+    snap([10, 11, 18], 'result starts empty, then build([], items) begins with nothing placed and ' + n + ' items remaining.', 'init', 1);
+    const build = function(prefix, remaining, placed){
+      depth += 1;
+      slots = remaining.slice(); front = prefix.slice(); lo = remaining.length ? 0 : -1; hi = remaining.length - 1; cur = -1;
+      const lead = placed >= 0 ? [17] : [];
+      const head = placed >= 0 ? 'Place ' + items[placed] + ': build(' + txt(prefix) + ', ' + txt(remaining) + '). ' : 'build([], ' + txt(remaining) + '). ';
+      if (remaining.length === 0){
+        saved += 1; rec = true;
+        out.push(prefix.map(function(j){ return items[j]; }));
+        snap(lead.concat([12, 13, 14, 15]), head + 'Nothing remains, so ' + txt(prefix) + ' is a full ordering. Save it (' + saved + ' of ' + total + ').', 'ret', 1.5);
+        rec = false;
+      } else {
+        snap(lead.concat([12, 13]), head + remaining.length + ' left to place: pick one to go next.', 'enter', 1);
+        for (let i = 0; i < remaining.length; i++){
+          slots = remaining.slice(); front = prefix.slice(); lo = 0; hi = remaining.length - 1; cur = i;
+          snap([16], 'i = ' + i + ': try ' + items[remaining[i]] + ' next.', 'pick', 1);
+          build(prefix.concat([remaining[i]]), remaining.slice(0, i).concat(remaining.slice(i + 1)), remaining[i]);
+        }
+      }
+      depth -= 1;
+    };
+    build([], slots.slice(), -1);
+    slots = []; front = []; lo = -1; hi = -1; cur = -1;
+    snap([19], 'build([], items) is done. Return ' + saved + ' orderings: ' + n + '! = ' + total + ', each a fresh list.', 'end', 1);
+  }
+  return { frames: frames, result: out };
+}
+/* SIMULATE:END */
+
+/* ---------- DOM ---------- */
+const $ = function(id){ return document.getElementById(id); };
+const $cv = $('cv'), $stage = $('stage'), $cap = $('caption'), $tag = $('tag'), $err = $('err'), $code = $('code');
+const $back = $('bBack'), $play = $('bPlay'), $next = $('bNext'), $reset = $('bReset'), $preset = $('preset'), $speed = $('speed');
+const RM = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches:false };
+
+const rows = SRC.map(function(txt, i){
+  const r = document.createElement('div'); r.className = 'row';
+  const n = document.createElement('span'); n.className = 'ln'; n.textContent = String(i + 1);
+  const c = document.createElement('span'); c.textContent = txt;
+  r.appendChild(n); r.appendChild(c); $code.appendChild(r);
+  return r;
+});
+PRESETS.forEach(function(p, i){
+  const o = document.createElement('option'); o.value = String(i); o.textContent = p.name; $preset.appendChild(o);
+});
+
+/* ---------- three.js scene (perspective 3D) ---------- */
+const SP = 1.0, BAR_W = 0.78, BAR_COL = '#3b82c4', RES_COL = '#2e9e5b', RES_DARK = '#16683a';
+const MID_COL = '#e8a900', PRUNE_COL = '#c46a14', PRUNE_DARK = '#7a3f0a';
+const FRONT_Z = 1.95, FRONT_S = 0.5, FLOOR_Z0 = -0.8, FLOOR_Z1 = 2.9, FOCUS_Z = (FLOOR_Z0 + FLOOR_Z1) / 2;
+const YAW0 = -0.22, PITCH0 = 0.46, YAW_MAX = 0.55, FOV = 32;
+let gl = false, renderer = null, scene = null, camera = null;
+let world = null, bars = [], vals = [], idxs = [], fb = [], fvals = [], ptr = {}, slab = null, resLabel = null, emptyLabel = null, listLabel = null;
+let dims = { halfW:7, halfY:3, ty:2, maxTop:3, scale:1 };
+const view = { yaw:YAW0, pitch:PITCH0, dist:20 };
+const C = {};
+const texCache = new Map();
+const tweens = [];
+let raf = 0, drag = null;
+
+function showError(msg){ $err.hidden = false; $err.textContent = msg; }
+function readTheme(){
+  const cs = getComputedStyle(document.documentElement);
+  ['ink','muted','plate','accent'].forEach(function(k){ C[k] = cs.getPropertyValue('--' + k).trim() || '#888888'; });
+}
+try {
+  if (typeof THREE === 'undefined') throw new Error('three.js did not load');
+  renderer = new THREE.WebGLRenderer({ canvas:$cv, antialias:true, alpha:true });
+  renderer.setClearColor(0x000000, 0);
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(FOV, 4 / 3, 0.1, 200);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.58));
+  const dl = new THREE.DirectionalLight(0xffffff, 0.85); dl.position.set(-5, 10, 8); scene.add(dl);
+  gl = true;
+} catch (e) {
+  showError('The 3D view could not start (' + (e && e.message ? e.message : 'WebGL unavailable') + '). Check your connection or browser WebGL support. The code panel and captions still step through the trace.');
+}
+
+function textTex(text, style){
+  const key = text + '|' + style.color + '|' + style.font;
+  let t = texCache.get(key);
+  if (t) return t;
+  const cv = document.createElement('canvas'), ctx = cv.getContext('2d');
+  ctx.font = style.font;
+  const w = Math.max(24, Math.ceil(ctx.measureText(text).width) + 16), h = 64;
+  cv.width = w; cv.height = h;
+  ctx.font = style.font; ctx.fillStyle = style.color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, w / 2, h / 2 + 2);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.minFilter = THREE.LinearFilter; tex.generateMipmaps = false;
+  t = { tex:tex, aspect:w / h };
+  texCache.set(key, t);
+  return t;
+}
+function clearTexCache(){ texCache.forEach(function(t){ t.tex.dispose(); }); texCache.clear(); }
+function makeSprite(){
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ transparent:true, depthTest:false }));
+  s.renderOrder = 10; s.visible = false; return s;
+}
+function setText(s, text, style, worldH, x){
+  if (!text){ s.visible = false; return; }
+  const t = textTex(text, style);
+  s.material.map = t.tex; s.material.needsUpdate = true;
+  s.scale.set(worldH * t.aspect, worldH, 1);
+  if (x !== undefined) s.position.x = x;
+  s.visible = true;
+}
+const SANS = '700 48px system-ui, -apple-system, "Segoe UI", sans-serif';
+function slotX(i, n){ return (i - (n - 1) / 2) * SP; }
+function barH(v){ return Math.max(v * dims.scale, 0.12); }
+
+function clearWorld(){
+  tweens.length = 0;
+  if (!world) return;
+  world.traverse(function(o){
+    if (o.geometry) o.geometry.dispose();
+    if (o.material) o.material.dispose();
+  });
+  scene.remove(world); world = null; bars = []; vals = []; idxs = []; fb = []; fvals = []; ptr = {}; slab = null; resLabel = null; emptyLabel = null; listLabel = null;
+}
+
+function makePointer(name, color, up, coneY, labelY, z){
+  const g = new THREE.Group();
+  const cone = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.5, 20), new THREE.MeshLambertMaterial({ color:color }));
+  cone.position.y = coneY;
+  if (!up) cone.rotation.z = Math.PI;
+  const lab = makeSprite(); lab.position.y = labelY;
+  setText(lab, name, { font:SANS, color:color }, 0.4, 0);
+  g.add(cone); g.add(lab); g.position.z = z; g.visible = false;
+  return g;
+}
+
+function build(cfg, keepView){
+  if (!gl) return;
+  clearWorld(); readTheme();
+  world = new THREE.Group(); scene.add(world);
+  const nums = cfg.nums, n = nums.length;
+  let maxAbs = 1; nums.forEach(function(v){ maxAbs = Math.max(maxAbs, Math.abs(v)); });
+  dims.scale = 3 / maxAbs;
+  let maxTop = 0; nums.forEach(function(v){ maxTop = Math.max(maxTop, barH(v)); });
+  dims.maxTop = maxTop; dims.halfW = (n + 2) * SP / 2 + 0.7; dims.halfY = (maxTop + 2.6) / 2; dims.ty = (maxTop + 2.2) / 2;
+
+  if (n > 0){
+    const floor = new THREE.Mesh(new THREE.BoxGeometry(n * SP + 0.9, 0.14, FLOOR_Z1 - FLOOR_Z0), new THREE.MeshLambertMaterial({ color:C.plate }));
+    floor.position.set(0, -0.07, FOCUS_Z); world.add(floor);
+  } else {
+    emptyLabel = makeSprite(); emptyLabel.position.set(0, 1.0, 0.5); world.add(emptyLabel);
+    setText(emptyLabel, 'empty', { font:SANS, color:C.muted }, 0.6, 0);
+  }
+  nums.forEach(function(v, i){
+    const h = barH(v), x = slotX(i, n);
+    const body = new THREE.Mesh(new THREE.BoxGeometry(BAR_W, h, BAR_W), new THREE.MeshLambertMaterial({ color:BAR_COL, transparent:true }));
+    const outline = new THREE.Mesh(new THREE.BoxGeometry(BAR_W + 0.14, h + 0.14, BAR_W + 0.14), new THREE.MeshBasicMaterial({ color:C.accent, side:THREE.BackSide }));
+    body.position.set(x, h / 2, 0); outline.position.set(x, h / 2, 0); outline.visible = false;
+    world.add(outline); world.add(body);
+    bars.push({ body:body, outline:outline, on:false });
+    const val = makeSprite(); val.position.set(x, h + 0.32, 0);
+    setText(val, String(v), { font:SANS, color:C.ink }, 0.5, x); world.add(val); vals.push(val);
+    const idx = makeSprite(); idx.position.set(x, 0.3, 0.98);
+    setText(idx, String(i), { font:SANS, color:C.muted }, 0.34, x); world.add(idx); idxs.push(idx);
+    const x2 = slotX(i, n);
+    const ghost = new THREE.Mesh(new THREE.BoxGeometry(BAR_W, 0.05, BAR_W), new THREE.MeshBasicMaterial({ color:C.muted, transparent:true, opacity:0.22 }));
+    ghost.position.set(x2, 0.025, FRONT_Z); world.add(ghost);
+    const fbody = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ color:RES_COL }));
+    const fout = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color:RES_DARK, side:THREE.BackSide }));
+    fbody.scale.set(BAR_W, 1, BAR_W); fbody.position.set(x2, 0.5, FRONT_Z); fbody.visible = false;
+    fout.position.set(x2, 0.5, FRONT_Z); fout.visible = false;
+    world.add(fout); world.add(fbody);
+    const fval = makeSprite(); fval.position.set(x2, 1, FRONT_Z); world.add(fval);
+    fb.push({ body:fbody, outline:fout }); fvals.push(fval);
+  });
+  ptr.cur = makePointer('i', MID_COL, false, maxTop + 1.4, maxTop + 2.0, 0);
+  world.add(ptr.cur);
+  slab = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color:BAR_COL, transparent:true, opacity:0.12, depthWrite:false }));
+  slab.add(new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1)), new THREE.LineBasicMaterial({ color:C.accent })));
+  slab.visible = false; world.add(slab);
+  resLabel = makeSprite(); world.add(resLabel);
+  listLabel = makeSprite(); listLabel.position.set(0, 0.12, n > 0 ? 2.86 : FRONT_Z); world.add(listLabel);
+  if (!keepView){ view.yaw = YAW0; view.pitch = PITCH0; }
+  fitCamera();
+}
+
+function updateCamera(){
+  if (!gl) return;
+  const cp = Math.cos(view.pitch), sp = Math.sin(view.pitch);
+  camera.position.set(Math.sin(view.yaw) * cp * view.dist, dims.ty + sp * view.dist, FOCUS_Z + Math.cos(view.yaw) * cp * view.dist);
+  camera.lookAt(0, dims.ty, FOCUS_Z);
+  requestRender();
+}
+function fitCamera(){
+  if (!gl) return;
+  const w = $stage.clientWidth, h = $stage.clientHeight;
+  if (!w || !h) return;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(w, h, false);
+  const aspect = w / h, t = Math.tan(FOV * Math.PI / 360), halfZ = (FLOOR_Z1 - FLOOR_Z0) / 2;
+  camera.aspect = aspect; camera.updateProjectionMatrix();
+  const vExt = dims.halfY * Math.cos(PITCH0) + halfZ * Math.sin(PITCH0);
+  const hExt = dims.halfW * Math.cos(YAW_MAX) + halfZ * Math.sin(YAW_MAX);
+  view.dist = Math.max(vExt / t, hExt / (t * aspect)) * 1.2;
+  updateCamera();
+}
+
+/* ---------- tweens and render loop ---------- */
+function settle(){ tweens.splice(0).forEach(function(tw){ tw.upd(1); }); }
+function requestRender(){ if (gl && !raf) raf = requestAnimationFrame(loop); }
+function loop(){
+  raf = 0;
+  const now = performance.now();
+  for (let i = tweens.length - 1; i >= 0; i--){
+    const tw = tweens[i];
+    const u = Math.max(0, Math.min(1, (now - tw.t0) / tw.dur));
+    tw.upd(u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2);
+    if (u >= 1) tweens.splice(i, 1);
+  }
+  renderer.render(scene, camera);
+  if (tweens.length) requestRender();
+}
+
+/* drag left or right to turn the scene; double-click resets the view */
+if (gl){
+  $cv.addEventListener('pointerdown', function(e){
+    drag = { x:e.clientX, yaw:view.yaw };
+    try { $cv.setPointerCapture(e.pointerId); } catch (err) { /* not needed for the drag to work */ }
+  });
+  $cv.addEventListener('pointermove', function(e){
+    if (!drag) return;
+    view.yaw = Math.max(-YAW_MAX, Math.min(YAW_MAX, drag.yaw + (e.clientX - drag.x) * 0.008));
+    updateCamera();
+  });
+  ['pointerup', 'pointercancel'].forEach(function(t){ $cv.addEventListener(t, function(){ drag = null; }); });
+  $cv.addEventListener('dblclick', function(){ view.yaw = YAW0; view.pitch = PITCH0; updateCamera(); });
+}
+
+/* ---------- playback state ---------- */
+const S = { cfg:null, frames:[], idx:0, state:'paused', timer:0, speed:1300, shown:-1 };
+
+function tweenDur(f){ return S.state === 'playing' ? Math.max(120, Math.min(600, S.speed * f.hold * 0.5)) : 450; }
+function easeProp(get, set, to, animate, f){
+  const from = get();
+  if (animate && !RM.matches && Math.abs(from - to) > 1e-6){
+    tweens.push({ t0:performance.now(), dur:tweenDur(f), upd:function(e){ set(from + (to - from) * e); } });
+  } else {
+    set(to);
+  }
+}
+function applyScene(f, animate){
+  if (!gl || !world) return;
+  const nums = S.cfg.nums, n = nums.length;
+  const wasCur = ptr.cur.visible;
+  if (f.cur < 0){
+    ptr.cur.visible = false;
+  } else {
+    const cx = slotX(f.cur, n);
+    if (!wasCur) ptr.cur.position.x = cx;
+    ptr.cur.visible = true;
+    easeProp(function(){ return ptr.cur.position.x; }, function(v){ ptr.cur.position.x = v; }, cx, animate && wasCur, f);
+  }
+  if (f.lo >= 0 && f.lo <= f.hi && n > 0){
+    const x0 = slotX(f.lo, n), x1 = slotX(f.hi, n), cx = (x0 + x1) / 2, w = (f.hi - f.lo + 1) * SP + 0.08;
+    const y0 = -0.05, y1 = dims.maxTop + 0.55;
+    const was = slab.visible;
+    slab.visible = true; slab.scale.y = y1 - y0; slab.scale.z = 1.5; slab.position.y = (y0 + y1) / 2;
+    if (!was){ slab.position.x = cx; slab.scale.x = w; }
+    easeProp(function(){ return slab.position.x; }, function(v){ slab.position.x = v; }, cx, animate && was, f);
+    easeProp(function(){ return slab.scale.x; }, function(v){ slab.scale.x = v; }, w, animate && was, f);
+  } else {
+    slab.visible = false;
+  }
+  bars.forEach(function(b, j){
+    const s = f.slots.indexOf(j);
+    if (s < 0){ b.on = false; b.body.visible = false; b.outline.visible = false; vals[j].visible = false; return; }
+    const x = slotX(s, n);
+    b.body.visible = true; vals[j].visible = true;
+    if (!b.on){ b.body.position.x = x; b.outline.position.x = x; vals[j].position.x = x; }
+    easeProp(function(){ return b.body.position.x; }, function(v){ b.body.position.x = v; b.outline.position.x = v; vals[j].position.x = v; }, x, animate && b.on, f);
+    b.on = true;
+    const taken = f.st[j] === 1, skipped = f.st[j] === 2, isCur = f.cur === s;
+    const a = skipped ? 0.25 : 1;
+    b.body.material.opacity = a; vals[j].material.opacity = a;
+    b.body.material.color.set(taken ? RES_COL : BAR_COL);
+    b.body.material.emissive.set(isCur ? '#5a4300' : '#000000');
+    b.outline.visible = isCur || taken;
+    b.outline.material.color.set(isCur ? C.accent : RES_DARK);
+  });
+  idxs.forEach(function(sp, s){ sp.visible = s < f.slots.length; });
+  fb.forEach(function(p, k){
+    const has = k < f.front.length;
+    p.body.visible = has; p.outline.visible = has && (f.rec || f.prune); fvals[k].visible = has;
+    p.body.material.color.set(f.prune ? PRUNE_COL : RES_COL); p.outline.material.color.set(f.prune ? PRUNE_DARK : RES_DARK);
+    if (!has) return;
+    const v = nums[f.front[k]], h = barH(v) * FRONT_S;
+    p.body.scale.y = h; p.body.position.y = h / 2;
+    p.outline.scale.set(BAR_W + 0.14, h + 0.14, BAR_W + 0.14); p.outline.position.y = h / 2;
+    fvals[k].position.y = h + 0.28;
+    setText(fvals[k], String(v), { font:SANS, color:C.ink }, 0.42, slotX(k, n));
+  });
+  if (f.rec || f.prune){
+    resLabel.position.set(0, dims.maxTop * FRONT_S + 0.95, FRONT_Z);
+    setText(resLabel, f.prune ? 'pruned' : 'saved #' + f.saved, { font:SANS, color: f.prune ? PRUNE_COL : RES_COL }, 0.38, 0);
+  } else {
+    resLabel.visible = false;
+  }
+  const sumTxt = f.target !== null && f.kind !== 'end' ? ' sum ' + f.sum : '';
+  setText(listLabel, f.kind === 'end' ? 'all ' + f.saved + ' saved' : (f.rec ? 'saved ' : 'list ') + f.listText + sumTxt,
+    { font:SANS, color: f.prune ? PRUNE_COL : (f.rec || f.kind === 'end' ? RES_COL : C.ink) }, 0.42, 0);
+  requestRender();
+}
+
+function renderCode(f){
+  let firstActive = -1;
+  rows.forEach(function(r, i){
+    const a = f.lines.indexOf(i) >= 0;
+    r.classList.toggle('active', a);
+    if (a && firstActive < 0) firstActive = i;
+  });
+  if (firstActive >= 0){
+    const r = rows[firstActive];
+    if (r.offsetTop < $code.scrollTop) $code.scrollTop = r.offsetTop;
+    else if (r.offsetTop + r.offsetHeight > $code.scrollTop + $code.clientHeight) $code.scrollTop = r.offsetTop + r.offsetHeight - $code.clientHeight;
+  }
+}
+function describe(f){
+  return f.fn + ' of [' + S.cfg.nums.join(', ') + ']' + (f.target !== null ? ', target ' + f.target + ', sum so far ' + f.sum : '') + '. Call depth ' + f.depth + '. List so far ' + f.listText + '. Saved ' + f.saved + (f.target === null ? ' of ' + f.total : '') + '.';
+}
+function updateButtons(){
+  const last = S.frames.length - 1;
+  $back.disabled = S.idx <= 0;
+  $next.disabled = S.idx >= last;
+  $play.textContent = S.state === 'playing' ? 'Pause' : (S.idx >= last ? 'Replay' : 'Play');
+}
+function show(i, animate){
+  const f = S.frames[i]; if (!f) return;
+  settle();
+  S.idx = i;
+  $cap.textContent = f.msg;
+  $tag.textContent = f.fn + (S.cfg.nums.length === 0 ? ' of empty list' : '') + ' \u00b7 depth ' + f.depth + (f.target !== null ? ' \u00b7 sum ' + f.sum + '/' + f.target + ' \u00b7 saved ' + f.saved : ' \u00b7 saved ' + f.saved + '/' + f.total);
+  $cv.setAttribute('aria-label', describe(f));
+  renderCode(f);
+  applyScene(f, animate && Math.abs(i - S.shown) === 1);
+  S.shown = i;
+  updateButtons();
+}
+
+function clearTimer(){ if (S.timer){ clearTimeout(S.timer); S.timer = 0; } }
+function schedule(){
+  clearTimer();
+  if (S.state !== 'playing') return;
+  S.timer = setTimeout(tick, S.speed * S.frames[S.idx].hold);
+}
+function tick(){
+  S.timer = 0;
+  if (S.state !== 'playing') return;
+  if (S.idx >= S.frames.length - 1){ S.state = 'ended'; updateButtons(); return; }
+  show(S.idx + 1, true);
+  if (S.idx >= S.frames.length - 1){ S.state = 'ended'; updateButtons(); return; }
+  schedule();
+}
+function pause(){ clearTimer(); settle(); if (S.state === 'playing' || S.state === 'ended') S.state = 'paused'; updateButtons(); }
+function play(){
+  if (S.state === 'playing'){ pause(); return; }
+  if (S.idx >= S.frames.length - 1) show(0, false);
+  S.state = 'playing'; updateButtons(); schedule();
+}
+function step(d){
+  pause();
+  const j = S.idx + d;
+  if (j < 0 || j >= S.frames.length) return;
+  show(j, true);
+}
+function reset(){ pause(); show(0, false); }
+function loadPreset(i){
+  pause();
+  const p = PRESETS[i];
+  S.cfg = { name:p.name, fn:p.args[0], nums:p.args[1], target:p.args[2] };
+  S.frames = simulate.apply(null, p.args).frames; S.shown = -1; S.idx = 0;
+  build(S.cfg);
+  show(0, false);
+}
+
+$back.addEventListener('click', function(){ step(-1); });
+$next.addEventListener('click', function(){ step(1); });
+$play.addEventListener('click', play);
+$reset.addEventListener('click', reset);
+$preset.addEventListener('change', function(){ loadPreset(Number($preset.value)); });
+$speed.addEventListener('change', function(){
+  S.speed = Number($speed.value);
+  if (S.state === 'playing') schedule();
+});
+document.addEventListener('keydown', function(e){
+  const t = e.target && e.target.tagName;
+  if (t === 'BUTTON' || t === 'SELECT' || t === 'INPUT' || t === 'TEXTAREA') return;
+  if (e.key === ' '){ e.preventDefault(); play(); }
+  else if (e.key === 'ArrowRight'){ step(1); }
+  else if (e.key === 'ArrowLeft'){ step(-1); }
+});
+document.addEventListener('visibilitychange', function(){ if (document.hidden && S.state === 'playing') pause(); });
+
+if (typeof ResizeObserver !== 'undefined') new ResizeObserver(fitCamera).observe($stage);
+else window.addEventListener('resize', fitCamera);
+
+function retheme(){
+  if (!gl) return;
+  clearTexCache(); readTheme(); build(S.cfg, true); S.shown = -1; show(S.idx, false);
+}
+try {
+  if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', retheme);
+} catch (e) { /* older browsers: theme refresh on reload */ }
+new MutationObserver(retheme).observe(document.documentElement, { attributes:true, attributeFilter:['data-theme'] });
+
+loadPreset(0);
+})();
+</script>
+</body>
+</html>
