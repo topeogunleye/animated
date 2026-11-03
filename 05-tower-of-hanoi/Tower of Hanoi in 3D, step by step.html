@@ -8,7 +8,7 @@
 :root{
   --bg:#f6f7f9; --panel:#ffffff; --ink:#18212b; --muted:#5b6876; --line:#d5dbe3;
   --hl-bg:#fff3bf; --hl-bar:#d99a00; --stage:#eef1f5;
-  --plate:#c3ccd7; --accent:#e8a900;
+  --plate:#c3ccd7; --accent:#e8a900; --error:#c4262e;
   --btn:#ffffff; --btnHover:#eef1f5;
   color-scheme:light;
   box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
@@ -17,14 +17,14 @@
   :root:not([data-theme="light"]){
     --bg:#0f1318; --panel:#171c23; --ink:#e8edf3; --muted:#9aa7b6; --line:#2c3440;
     --hl-bg:#4a3d0a; --hl-bar:#ffc400; --stage:#141a21;
-    --plate:#3a4452; --accent:#ffc400;
+    --plate:#3a4452; --accent:#ffc400; --error:#ff7b81;
     --btn:#1d2430; --btnHover:#27303b; color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
   --bg:#0f1318; --panel:#171c23; --ink:#e8edf3; --muted:#9aa7b6; --line:#2c3440;
   --hl-bg:#4a3d0a; --hl-bar:#ffc400; --stage:#141a21;
-  --plate:#3a4452; --accent:#ffc400;
+  --plate:#3a4452; --accent:#ffc400; --error:#ff7b81;
   --btn:#1d2430; --btnHover:#27303b; color-scheme:dark;
 }
 *{box-sizing:border-box}
@@ -42,6 +42,7 @@ h1{font-size:1.15rem;margin:4px 0 12px;font-weight:650}
 .err{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;color:var(--ink);background:var(--stage)}
 .err[hidden]{display:none}
 #caption{margin:12px 2px 10px;min-height:3em;font-size:1rem}
+#caption.caption-error{color:var(--error)}
 .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 button,select,input{font:inherit;font-size:.9rem;color:var(--ink);background:var(--btn);border:1px solid var(--line);border-radius:8px;padding:6px 12px;min-height:36px}
 button{cursor:pointer;min-width:64px}
@@ -80,6 +81,8 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
         <button id="bPlay" type="button">Play</button>
         <button id="bNext" type="button">Next</button>
         <button id="bReset" type="button">Reset</button>
+        <button id="bRecover" type="button" hidden>Return to 3-disk example</button>
+        <button id="bNarration" type="button" aria-pressed="false" aria-describedby="narrationStatus">Narration: Off</button>
         <label class="sr" for="preset">Input</label>
         <select id="preset"></select>
         <label class="sr" for="speed">Speed</label>
@@ -89,16 +92,21 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
           <option value="450">Fast</option>
           <option value="220">Very fast</option>
         </select>
+        <label for="voice">Voice</label>
+        <select id="voice" aria-label="Narration voice">
+          <option value="auto">Automatic (prefer natural English)</option>
+        </select>
       </div>
+      <p class="input-status" id="narrationStatus" role="status" aria-live="polite"></p>
       <form class="custom-input" id="customForm">
         <h2>Play with your own input</h2>
         <div class="input-fields">
           <label for="customDisks">Number of disks
-            <input id="customDisks" name="disks" type="number" value="3" min="0" max="7" step="1" required inputmode="numeric" aria-describedby="inputHelp inputStatus">
+            <input id="customDisks" name="disks" type="number" value="3" min="-1" max="7" step="1" required inputmode="numeric" aria-describedby="inputHelp inputStatus">
           </label>
           <button type="submit">Run my input</button>
         </div>
-        <p class="input-help" id="inputHelp">Choose 0–7 disks. The animation grows quickly: 7 disks require 127 moves.</p>
+        <p class="input-help" id="inputHelp">Choose 0–7 disks. Enter −1 to see the negative-input error branch. The animation grows quickly: 7 disks require 127 moves.</p>
         <p class="input-status" id="inputStatus" role="status" aria-live="polite"></p>
       </form>
     </div>
@@ -114,12 +122,14 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
 /* Displayed code: comments and blank lines stripped, indentation kept. Index = 0-based line used by frames. */
 const SRC = [
   'def hanoi(n, source, target, helper):',                    // 0
-  '    if n == 0:',                                           // 1
-  '        return []',                                        // 2
-  '    moves = hanoi(n - 1, source, helper, target)',         // 3
-  '    moves.append((source, target))',                       // 4
-  '    moves += hanoi(n - 1, helper, target, source)',        // 5
-  '    return moves'                                          // 6
+  '    if n < 0:',                                            // 1
+  '        raise ValueError("n must be non-negative")',       // 2
+  '    if n == 0:',                                           // 3
+  '        return []',                                        // 4
+  '    first_part = hanoi(n - 1, source, helper, target)',    // 5
+  '    middle_part = [(source, target)]',                     // 6
+  '    last_part = hanoi(n - 1, helper, target, source)',     // 7
+  '    return first_part + middle_part + last_part'           // 8
 ];
 
 /* SOURCE:END */
@@ -130,7 +140,8 @@ const PRESETS = [
   { name:'n = 3',                args:[3, 'A', 'C', 'B'] },
   { name:'n = 4',                args:[4, 'A', 'C', 'B'] },
   { name:'n = 5',                args:[5, 'A', 'C', 'B'] },
-  { name:'n = 0 (no disks)',     args:[0, 'A', 'C', 'B'] }
+  { name:'n = 0 (no disks)',     args:[0, 'A', 'C', 'B'] },
+  { name:'n = -1 (error branch)',args:[-1, 'A', 'C', 'B'] }
 ];
 /* PRESETS:END */
 
@@ -138,7 +149,7 @@ const PRESETS = [
 /* Pure function: no DOM, no three.js. Every frame is an independent snapshot of plain values. */
 const NAMES = ['A', 'B', 'C'];
 function simulate(n, source, target, helper){
-  const frames = [], moves = [];
+  const frames = [];
   const pegs = [[], [], []], stack = [];
   let count = 0, moved = 0;
   const pi = function(name){ return NAMES.indexOf(name); };
@@ -155,35 +166,45 @@ function simulate(n, source, target, helper){
   function call(m, s, t, h, site){
     const root = site === null, pre = root ? [] : [site], me = label(m, s, t, h);
     stack.push([m, s, t, h]);
+    if (m < 0){
+      snap(pre.concat([0, 1]), me + ': n is negative, so raise ValueError.', 'enter', 1);
+      snap([2], 'Raise ValueError("n must be non-negative").', 'raise', 1);
+      stack.pop();
+      snap([2], 'Uncaught ValueError propagates out of ' + me + ' to the caller. The program stops before print can return.', 'error', 1.7);
+      return null;
+    }
     if (m === 0){
-      snap(pre.concat([0, 1, 2]), root
+      snap(pre.concat([0, 3, 4]), root
         ? me + ': n is 0, so return []. Zero moves, which is 2^0 \u2212 1.'
         : me + ': n is 0, so return [] and nothing moves.', root ? 'end' : 'ret', 1);
       stack.pop();
-      return;
+      return [];
     }
-    snap(pre.concat([0, 1]), m === 1
+    snap(pre.concat([0, 3]), m === 1
       ? me + ': n is 1, not 0, so recurse on the 0 disks above it first.'
       : me + ': n is ' + m + ', not 0, so first recurse to park ' + (m - 1) + ' disk' + (m === 2 ? '' : 's') + ' on ' + h + '.', 'enter', 1);
-    call(m - 1, s, h, t, 3);
+    const firstPart = call(m - 1, s, h, t, 5);
     const from = pegs[pi(s)], to = pegs[pi(t)], disk = from.pop();
     if (disk !== m || (to.length && to[to.length - 1] < disk)) throw new Error('illegal move in ' + me);
-    to.push(disk); moves.push([s, t]); count += 1; moved = disk;
-    snap([3, 4], m === 1
+    to.push(disk); count += 1; moved = disk;
+    const middlePart = [[s, t]];
+    snap([6], m === 1
       ? 'Back in ' + me + ': nothing sits above disk 1. Move disk 1 from ' + s + ' to ' + t + ' (move ' + count + ').'
       : 'Back in ' + me + ': the top ' + (m - 1) + ' are parked on ' + h + '. Move disk ' + m + ' from ' + s + ' to ' + t + ' (move ' + count + ').', 'move', 1.7);
     moved = 0;
-    call(m - 1, h, t, s, 5);
-    const c = Math.pow(2, m) - 1;
-    snap([5, 6], root
-      ? me + ' returns ' + c + ' move' + (c === 1 ? '' : 's') + ', which is 2^' + m + ' \u2212 1. All ' + m + ' disk' + (m === 1 ? ' is' : 's are') + ' now on ' + t + '.'
-      : 'Second half done. ' + me + ' returns ' + c + ' move' + (c === 1 ? '' : 's') + ', which is 2^' + m + ' \u2212 1.', root ? 'end' : 'ret', 1);
+    const lastPart = call(m - 1, h, t, s, 7);
+    const result = firstPart.concat(middlePart, lastPart);
+    const c = result.length;
+    snap([8], root
+      ? me + ' returns first_part (' + firstPart.length + ') + middle_part (1) + last_part (' + lastPart.length + '): ' + c + ' moves. All ' + m + ' disks are now on ' + t + '.'
+      : me + ' returns ' + c + ' moves: first_part (' + firstPart.length + ') + middle_part (1) + last_part (' + lastPart.length + ').', root ? 'end' : 'ret', 1);
     stack.pop();
+    return result;
   }
 
   snap([], 'Key idea: to move n disks, park n-1 on the helper, move the biggest to the target, then stack the n-1 back on top.', 'start', 1);
-  call(n, source, target, helper, null);
-  return { frames: frames, result: moves };
+  const result = call(n, source, target, helper, null);
+  return { frames: frames, result: result || [] };
 }
 /* SIMULATE:END */
 
@@ -191,6 +212,20 @@ function simulate(n, source, target, helper){
 const $ = function(id){ return document.getElementById(id); };
 const $cv = $('cv'), $stage = $('stage'), $cap = $('caption'), $tag = $('tag'), $err = $('err'), $code = $('code');
 const $back = $('bBack'), $play = $('bPlay'), $next = $('bNext'), $reset = $('bReset'), $preset = $('preset'), $speed = $('speed');
+const $recover = $('bRecover');
+const $narration = $('bNarration'), $narrationStatus = $('narrationStatus'), $voice = $('voice');
+const speechAvailable = typeof window.speechSynthesis !== 'undefined' && typeof window.SpeechSynthesisUtterance !== 'undefined';
+const audioClips = {
+  introduction:new Audio('../hanoi-introduction.mp3'),
+  recursion:new Audio('../hanoi-recursion.mp3'),
+  baseCase:new Audio('../ElevenLabs_2026-11-03T19_52_32_Lauren - Friendly, Comforting and Soft_pvc_sp100_s50_sb75_v4.mp3'),
+  move:new Audio('../hanoi-move.mp3'),
+  returns:new Audio('../hanoi-return.mp3'),
+  error:new Audio('../hanoi-error.mp3')
+};
+const audioAvailable = Object.keys(audioClips).every(function(key){ return !!audioClips[key].canPlayType('audio/mpeg'); });
+const narrationAvailable = speechAvailable || audioAvailable;
+let availableVoices = [];
 const $customForm = $('customForm'), $customDisks = $('customDisks'), $inputStatus = $('inputStatus');
 const RM = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches:false };
 
@@ -212,7 +247,7 @@ const FROM_COL = '#2563a8', TO_COL = '#c46a14';
 const FROM_Z = 1.9, TO_Z = 2.8, FLOOR_Z0 = -1.5, FLOOR_Z1 = 3.6, FOCUS_Z = (FLOOR_Z0 + FLOOR_Z1) / 2;
 const YAW0 = -0.22, PITCH0 = 0.46, YAW_MAX = 0.55, FOV = 32;
 let gl = false, renderer = null, scene = null, camera = null;
-let world = null, disks = [], blocks = [], ptr = {}, slab = null, resLabel = null, emptyLabel = null;
+let world = null, disks = [], blocks = [], pegLabels = [], ptr = {}, slab = null, resLabel = null, emptyLabel = null;
 let dims = { halfW:7, halfY:3, ty:2, maxTop:3, pegH:1 };
 const view = { yaw:YAW0, pitch:PITCH0, dist:20 };
 const C = {};
@@ -277,7 +312,7 @@ function clearWorld(){
     if (o.geometry) o.geometry.dispose();
     if (o.material) o.material.dispose();
   });
-  scene.remove(world); world = null; disks = []; blocks = []; ptr = {}; slab = null; resLabel = null; emptyLabel = null;
+  scene.remove(world); world = null; disks = []; blocks = []; pegLabels = []; ptr = {}; slab = null; resLabel = null; emptyLabel = null;
 }
 
 function makePointer(name, color, z){
@@ -294,7 +329,7 @@ function build(cfg, keepView){
   if (!gl) return;
   clearWorld(); readTheme();
   world = new THREE.Group(); scene.add(world);
-  const n = cfg.n;
+  const n = Math.max(0, cfg.n);
   dims.pegH = n * DISK_STEP + 0.7;
   const rackTop = (n + 1) * BLK_STEP + 0.2;
   dims.maxTop = Math.max(dims.pegH + 1.5, rackTop + 0.5);
@@ -307,6 +342,7 @@ function build(cfg, keepView){
     peg.position.set(pegX(i), dims.pegH / 2, 0); world.add(peg);
     const lab = makeSprite(); lab.position.set(pegX(i), dims.pegH + 0.4, 0);
     setText(lab, nm, { font:SANS, color:C.ink }, 0.5, pegX(i)); world.add(lab);
+    pegLabels.push({ name:nm, sprite:lab });
   });
   const calls = makeSprite(); calls.position.set(RACK_X, 0.3, LABEL_Z);
   setText(calls, 'calls', { font:SANS, color:C.muted }, 0.4, RACK_X); world.add(calls);
@@ -402,7 +438,7 @@ if (gl){
 }
 
 /* ---------- playback state ---------- */
-const S = { cfg:null, frames:[], idx:0, state:'paused', timer:0, speed:1300, shown:-1 };
+const S = { cfg:null, frames:[], idx:0, state:'paused', timer:0, speed:1300, shown:-1, narration:false, narrationToken:0, narrationPending:false, voiceURI:'auto' };
 
 function tweenDur(f){ return S.state === 'playing' ? Math.max(120, Math.min(600, S.speed * f.hold * 0.5)) : 450; }
 function easeProp(get, set, to, animate, f){
@@ -441,6 +477,11 @@ function applyScene(f, animate){
   });
 
   const top = f.stack.length ? f.stack[f.stack.length - 1] : null;
+  pegLabels.forEach(function(label){
+    const role = top && (label.name === top[1] ? 'source' : label.name === top[2] ? 'target' : label.name === top[3] ? 'helper' : '');
+    const color = role === 'source' ? FROM_COL : role === 'target' ? TO_COL : role ? C.muted : C.ink;
+    setText(label.sprite, role ? label.name + ' · ' + role : label.name, { font:SANS, color:color }, role ? 0.36 : 0.5, pegX(NAMES.indexOf(label.name)));
+  });
   if (!top){
     ptr.from.visible = false; ptr.to.visible = false; slab.visible = false;
   } else {
@@ -464,7 +505,7 @@ function applyScene(f, animate){
     b.body.visible = on;
     if (!on){ b.outline.visible = false; b.lab.visible = false; return; }
     const c = f.stack[j], isTop = j === f.stack.length - 1;
-    setText(b.lab, 'n=' + c[0] + ' ' + c[1] + '\u2192' + c[2], { font:SANS, color:'#ffffff' }, 0.36, RACK_X);
+    setText(b.lab, 'hanoi(' + c.join(', ') + ')', { font:SANS, color:'#ffffff' }, 0.36, RACK_X);
     b.body.material.emissive.set(isTop ? '#5a4300' : '#000000');
     b.outline.visible = isTop;
   });
@@ -498,23 +539,170 @@ function describe(f){
   }).join('; ');
   const top = f.stack.length ? f.stack[f.stack.length - 1] : null;
   return 'Tower of Hanoi with ' + f.n + ' disks. ' + holds + '. ' +
-    (top ? 'Current call moves ' + top[0] + ' disks from ' + top[1] + ' to ' + top[2] + '. ' : '') + f.count + ' moves so far.';
+    (top ? (top[0] < 0 ? 'Current call rejects a negative disk count. ' : 'Current call hanoi(' + top.join(', ') + '). ') : '') + f.count + ' moves so far.';
 }
 function updateButtons(){
   const last = S.frames.length - 1;
   $back.disabled = S.idx <= 0;
   $next.disabled = S.idx >= last;
   $play.textContent = S.state === 'playing' ? 'Pause' : (S.idx >= last ? 'Replay' : 'Play');
+  const frame = S.frames[S.idx];
+  $recover.hidden = !frame || (frame.kind !== 'raise' && frame.kind !== 'error');
+  $narration.textContent = 'Narration: ' + (S.narration ? 'On' : 'Off');
+  $narration.setAttribute('aria-pressed', String(S.narration));
+}
+function tutorNarration(frame){
+  const call = frame.stack.length ? frame.stack[frame.stack.length - 1] : null;
+  if (frame.kind === 'start'){
+    return 'Welcome to the Tower of Hanoi. Our goal is to move every disk from peg A to peg C, using peg B as a helper. Remember two rules: move one disk at a time, and never place a larger disk on a smaller one. The strategy is to move the smaller stack aside, move the largest disk, then bring the smaller stack back.';
+  }
+  if (frame.kind === 'raise'){
+    return 'The disk count is negative, which is not a valid puzzle. The program now raises a ValueError to report that problem.';
+  }
+  if (frame.kind === 'error'){
+    return 'The ValueError was not handled, so it travels back to the caller and stops the program. No move list is returned. You can use the return button to try a valid disk count.';
+  }
+  if (!call) return frame.msg;
+
+  const n = call[0], source = 'peg ' + call[1], target = 'peg ' + call[2], helper = 'peg ' + call[3];
+  if (frame.kind === 'enter'){
+    if (n === 1){
+      return 'This call needs to move one disk from ' + source + ' to ' + target + '. First, the algorithm asks the same question for zero disks. That smaller call will reach the stopping case.';
+    }
+    return 'This call needs to move ' + n + ' disks from ' + source + ' to ' + target + '. Before moving the largest disk, we must park the top ' + (n - 1) + ' disk' + (n === 2 ? '' : 's') + ' on ' + helper + '. That is the same puzzle, just smaller.';
+  }
+  if ((frame.kind === 'end' || frame.kind === 'ret') && n === 0){
+    return 'We reached the base case: there are zero disks to move. Return an empty list of moves. This gives the recursion a place to stop.';
+  }
+  if (frame.kind === 'move'){
+    if (n === 1){
+      return 'There are no smaller disks above disk one, so it is safe to move it from ' + source + ' to ' + target + '.';
+    }
+    return 'The smaller disks are now safely on ' + helper + '. Move disk ' + n + ', the largest disk in this group, from ' + source + ' to ' + target + '. The smaller disks can go back on top afterward.';
+  }
+  if (frame.kind === 'ret' || frame.kind === 'end'){
+    const moves = Math.pow(2, n) - 1;
+    if (frame.kind === 'end'){
+      return 'The whole puzzle is solved: all ' + n + ' disks are on ' + target + '. This call returns ' + moves + ' moves. We solved it in three parts: move the smaller stack, move the largest disk, then move the smaller stack back.';
+    }
+    return 'This smaller call is complete. It returns a list of ' + moves + ' moves. Now the waiting call can continue with its next step.';
+  }
+  return frame.msg;
+}
+function voiceScore(voice){
+  const name = voice.name.toLowerCase(), lang = voice.lang.toLowerCase();
+  let score = lang.indexOf('en') === 0 ? 100 : -100;
+  if (/\b(natural|neural|enhanced|premium)\b/.test(name)) score += 80;
+  if (/\b(online|cloud)\b/.test(name)) score += 20;
+  if (lang === 'en-us') score += 5;
+  return score;
+}
+function preferredVoice(){
+  const english = availableVoices.filter(function(voice){ return voice.lang.toLowerCase().indexOf('en') === 0; });
+  english.sort(function(a, b){ return voiceScore(b) - voiceScore(a) || a.name.localeCompare(b.name); });
+  return english[0] || availableVoices.find(function(voice){ return voice.default; }) || null;
+}
+function refreshVoices(){
+  if (!speechAvailable) return;
+  const selected = S.voiceURI || $voice.value || 'auto';
+  availableVoices = window.speechSynthesis.getVoices();
+  $voice.replaceChildren();
+  const automatic = document.createElement('option');
+  automatic.value = 'auto';
+  automatic.textContent = 'Automatic (prefer natural English)';
+  $voice.appendChild(automatic);
+  availableVoices.slice().sort(function(a, b){
+    return voiceScore(b) - voiceScore(a) || a.name.localeCompare(b.name);
+  }).forEach(function(voice){
+    const option = document.createElement('option');
+    option.value = voice.voiceURI;
+    option.textContent = voice.name + ' (' + voice.lang + ')' + (voiceScore(voice) >= 180 ? ' · natural' : '');
+    $voice.appendChild(option);
+  });
+  $voice.value = Array.from($voice.options).some(function(option){ return option.value === selected; }) ? selected : 'auto';
+  S.voiceURI = $voice.value;
+}
+function cancelNarration(){
+  const wasPending = S.narrationPending;
+  S.narrationToken += 1;
+  S.narrationPending = false;
+  Object.keys(audioClips).forEach(function(key){
+    audioClips[key].pause();
+    audioClips[key].currentTime = 0;
+  });
+  if (speechAvailable && wasPending) window.speechSynthesis.cancel();
+}
+function speakTutor(frame, token, finish){
+  if (!speechAvailable){
+    S.narrationPending = false;
+    $narrationStatus.textContent = 'Browser speech is unavailable; recorded narration clips can still play.';
+    if (S.state === 'playing') schedule();
+    return;
+  }
+  const utterance = new SpeechSynthesisUtterance(tutorNarration(frame));
+  utterance.lang = document.documentElement.lang || 'en';
+  utterance.rate = S.speed >= 1100 ? 0.8 : S.speed >= 700 ? 1 : S.speed >= 400 ? 1.25 : 1.5;
+  utterance.voice = S.voiceURI === 'auto'
+    ? preferredVoice()
+    : availableVoices.find(function(voice){ return voice.voiceURI === S.voiceURI; }) || null;
+  utterance.onend = finish;
+  utterance.onerror = finish;
+  try {
+    window.speechSynthesis.speak(utterance);
+  } catch (e) {
+    if (token !== S.narrationToken) return;
+    S.narrationPending = false;
+    $narrationStatus.textContent = 'Browser speech could not be started.';
+    if (S.state === 'playing') schedule();
+  }
+}
+function speakFrame(frame){
+  cancelNarration();
+  if (!S.narration || !narrationAvailable) return;
+  const token = S.narrationToken;
+  const finish = function(){
+    if (token !== S.narrationToken) return;
+    S.narrationPending = false;
+    if (S.state === 'playing') schedule();
+  };
+  S.narrationPending = true;
+  const top = frame.stack.length ? frame.stack[frame.stack.length - 1] : null;
+  const clip = frame.kind === 'start' ? audioClips.introduction
+    : frame.kind === 'enter' ? audioClips.recursion
+    : frame.kind === 'move' ? audioClips.move
+    : frame.kind === 'raise' ? audioClips.error
+    : top && top[0] === 0 && (frame.kind === 'ret' || frame.kind === 'end') ? audioClips.baseCase
+    : frame.kind === 'ret' || frame.kind === 'end' ? audioClips.returns
+    : null;
+  if (audioAvailable && clip){
+    let fellBack = false;
+    const fallback = function(){
+      if (fellBack || token !== S.narrationToken) return;
+      fellBack = true;
+      clip.onended = null;
+      clip.onerror = null;
+      $narrationStatus.textContent = 'A recorded narration clip could not play; using browser speech instead.';
+      speakTutor(frame, token, finish);
+    };
+    clip.onended = finish;
+    clip.onerror = fallback;
+    clip.currentTime = 0;
+    clip.play().catch(fallback);
+  } else {
+    speakTutor(frame, token, finish);
+  }
 }
 function show(i, animate){
   const f = S.frames[i]; if (!f) return;
   settle();
   S.idx = i;
   $cap.textContent = f.msg;
+  $cap.classList.toggle('caption-error', f.kind === 'raise' || f.kind === 'error');
   $tag.textContent = 'n ' + f.n + ' \u00b7 moves ' + f.count;
   $cv.setAttribute('aria-label', describe(f));
   renderCode(f);
   applyScene(f, animate && Math.abs(i - S.shown) === 1);
+  speakFrame(f);
   S.shown = i;
   updateButtons();
 }
@@ -522,7 +710,7 @@ function show(i, animate){
 function clearTimer(){ if (S.timer){ clearTimeout(S.timer); S.timer = 0; } }
 function schedule(){
   clearTimer();
-  if (S.state !== 'playing') return;
+  if (S.state !== 'playing' || S.narrationPending) return;
   S.timer = setTimeout(tick, S.speed * S.frames[S.idx].hold);
 }
 function tick(){
@@ -533,11 +721,13 @@ function tick(){
   if (S.idx >= S.frames.length - 1){ S.state = 'ended'; updateButtons(); return; }
   schedule();
 }
-function pause(){ clearTimer(); settle(); if (S.state === 'playing' || S.state === 'ended') S.state = 'paused'; updateButtons(); }
+function pause(){ clearTimer(); cancelNarration(); settle(); if (S.state === 'playing' || S.state === 'ended') S.state = 'paused'; updateButtons(); }
 function play(){
   if (S.state === 'playing'){ pause(); return; }
   if (S.idx >= S.frames.length - 1) show(0, false);
-  S.state = 'playing'; updateButtons(); schedule();
+  S.state = 'playing';
+  if (S.narration && !S.narrationPending) speakFrame(S.frames[S.idx]);
+  updateButtons(); schedule();
 }
 function step(d){
   pause();
@@ -564,14 +754,59 @@ $back.addEventListener('click', function(){ step(-1); });
 $next.addEventListener('click', function(){ step(1); });
 $play.addEventListener('click', play);
 $reset.addEventListener('click', reset);
+$recover.addEventListener('click', function(){
+  $inputStatus.textContent = 'Returned to the standard 3-disk example.';
+  $preset.value = '1';
+  loadPreset(1);
+});
+$narration.disabled = !narrationAvailable;
+$voice.disabled = !speechAvailable;
+if (!narrationAvailable){
+  $narrationStatus.textContent = 'Narration is not supported in this browser.';
+} else if (!speechAvailable){
+  $narrationStatus.textContent = 'Recorded narration clips are available; browser speech is not supported.';
+}
+if (speechAvailable){
+  refreshVoices();
+  window.speechSynthesis.onvoiceschanged = refreshVoices;
+} else {
+  $voice.disabled = true;
+}
+$voice.addEventListener('change', function(){
+  S.voiceURI = $voice.value;
+  const voice = S.voiceURI === 'auto' ? preferredVoice() : availableVoices.find(function(item){ return item.voiceURI === S.voiceURI; });
+  $narrationStatus.textContent = voice
+    ? 'Narration voice: ' + voice.name + ' (' + voice.lang + ').'
+    : 'Using the browser default voice.';
+  if (S.narration){
+    clearTimer();
+    speakFrame(S.frames[S.idx]);
+  }
+});
+$narration.addEventListener('click', function(){
+  S.narration = !S.narration;
+  if (S.narration){
+    const voice = S.voiceURI === 'auto' ? preferredVoice() : availableVoices.find(function(item){ return item.voiceURI === S.voiceURI; });
+    $narrationStatus.textContent = voice
+      ? 'Tutor narration is on using ' + voice.name + ' (' + voice.lang + '). Playback waits for each explanation.'
+      : 'Tutor narration is on using the browser default voice. Playback waits for each explanation.';
+    speakFrame(S.frames[S.idx]);
+    if (S.state === 'playing') schedule();
+  } else {
+    cancelNarration();
+    $narrationStatus.textContent = 'Narration is off.';
+    if (S.state === 'playing') schedule();
+  }
+  updateButtons();
+});
 $preset.addEventListener('change', function(){ loadPreset(Number($preset.value)); });
 $customForm.addEventListener('submit', function(e){
   e.preventDefault();
   const n = Number($customDisks.value);
-  if (!Number.isInteger(n) || n < 0 || n > 7){
-    $inputStatus.textContent = 'Enter a whole number from 0 to 7.'; $customDisks.focus(); return;
+  if (!Number.isInteger(n) || n < -1 || n > 7){
+    $inputStatus.textContent = 'Enter a whole number from -1 to 7.'; $customDisks.focus(); return;
   }
-  $inputStatus.textContent = n === 0 ? 'Running the zero-disk case: no moves are needed.' : 'Running ' + n + ' disk' + (n === 1 ? '' : 's') + ' (' + (Math.pow(2, n) - 1) + ' moves).';
+  $inputStatus.textContent = n < 0 ? 'Running the negative-input error branch.' : n === 0 ? 'Running the zero-disk case: no moves are needed.' : 'Running ' + n + ' disk' + (n === 1 ? '' : 's') + ' (' + (Math.pow(2, n) - 1) + ' moves).';
   loadInput(n, 'Your input');
 });
 $speed.addEventListener('change', function(){
