@@ -20,9 +20,9 @@ This master playbook defines the spoken educational narration, timeline cues, an
 |---|---|:---:|:---:|:---:|:---:|
 | **Preset 0: apple: won with one miss** | `apple`, `['a','z','p','l','e']` | 3 | 9 | 2 clips (`01`–`02`) | Completed |
 | **Preset 1: python: lost after 3 misses** | `python`, `['a','b','c','d']` | 3 | 7 | 2 clips (`01`–`02`) | Completed |
-| **Preset 2: python: repeat, still playing** | `python`, `['p','p','y']` | 5 | 8 | 2 clips (`01`–`02`) | Planned |
-| **Preset 3: a: no guesses** | `a`, `[]` | 3 | 5 | 1 clip (`01`) | Planned |
-| **Preset 4: banana: own word** | `banana`, `['n','n','x','a','b']` | 4 | 9 | 2 clips (`01`–`02`) | Planned |
+| **Preset 2: python: repeat, still playing** | `python`, `['p','p','y']` | 5 | 8 | 2 clips (`01`–`02`) | Completed |
+| **Preset 3: a: no guesses** | `a`, `[]` | 3 | 5 | 1 clip (`01`) | Completed |
+| **Preset 4: banana: own word** | `banana`, `['n','n','x','a','b']` | 4 | 9 | 2 clips (`01`–`02`) | Completed |
 
 ---
 
@@ -84,3 +84,32 @@ def play_hangman(word, guesses, max_attempts):
 |---|---|:---:|---|
 | `01-setup-and-consecutive-misses` | `01-setup-and-consecutive-misses.mp3` | 0 – 3 | "Here we examine a losing game with the secret word python and a strict limit of three wrong attempts. Guessed letters and wrong attempts start empty. Our first guess is a: it is not in python, marking our first strike. Next, we guess b: also absent, consuming two of our three allowed attempts." |
 | `02-final-miss-and-loss` | `02-final-miss-and-loss.mp3` | 4 – 6 | "Our third guess is c. Because c is not in python, wrong reaches three, hitting our maximum attempt ceiling. The loss condition triggers immediately, halting further play before d is ever evaluated. The final masked display is constructed with six underscores, and the function returns status lost, display six blanks, and wrong guesses a, b, and c." |
+
+---
+
+## 6. Preset 2: "python: repeat, still playing"
+
+### Segments Table
+| Segment ID | Filename | Frames | Spoken Narration |
+|---|---|:---:|---|
+| `01-setup-and-repeat-guess` | `01-setup-and-repeat-guess.mp3` | 0 – 3 | "Now let's explore an ongoing game with repeated guesses. We play with the word python and five allowed misses. We start with empty guessed and wrong lists. Our first guess is p, hitting at index zero to reveal the first letter. Next, p is guessed a second time. Because p is already in our guessed collection, the algorithm skips it entirely—costing zero misses and keeping our game state unchanged." |
+| `02-reveal-and-incomplete-game` | `02-reveal-and-incomplete-game.mp3` | 4 – 7 | "Our third guess is y, which hits at index one, revealing two of six letters. At this point, our guesses list is exhausted before reaching either a win or a loss. The loop terminates, keeping the status as playing. The display string is constructed as p, y, followed by four underscores, and the function returns status playing, display py with four blanks, and an empty list of wrong guesses." |
+
+---
+
+## 7. Preset 3: "a: no guesses"
+
+### Segments Table
+| Segment ID | Filename | Frames | Spoken Narration |
+|---|---|:---:|---|
+| `01-empty-guesses-edge-case` | `01-empty-guesses-edge-case.mp3` | 0 – 4 | "This preset tests an immediate edge case: a single-letter word a with an empty list of guesses and three attempts allowed. With no guesses provided, the main loop never executes a single iteration. The game immediately proceeds to assemble the display string from our empty guessed list, producing a single underscore. The function finishes by returning status playing, a single blank display, and zero wrong guesses." |
+
+---
+
+## 8. Preset 4: "banana: own word"
+
+### Segments Table
+| Segment ID | Filename | Frames | Spoken Narration |
+|---|---|:---:|---|
+| `01-setup-multi-letter-hits-and-miss` | `01-setup-multi-letter-hits-and-miss.mp3` | 0 – 4 | "Here we test the word banana, featuring repeated letters and four allowed misses. We start fresh with empty tracking lists. Our first guess is n: because n occurs at two indices, a single guess uncovers two positions simultaneously. Next, guessing n again triggers the duplicate check and is ignored without penalty. Then, guessing x misses the word entirely, recording our first strike." |
+| `02-triple-hit-and-victory` | `02-triple-hit-and-victory.mp3` | 5 – 8 | "Fourth, we guess a: a appears three times, instantly filling positions one, three, and five, bringing us to five of six letters uncovered. Finally, guessing b reveals the initial letter. With all six positions displayed, the victory condition triggers immediately and halts execution. The display is formatted as banana, and the function returns status won, display banana, and the single miss x." |

@@ -520,6 +520,101 @@ const WALKTHROUGHS = {
         ]
       }
     ]
+  },
+  pythonRepeat: {
+    id: 'pythonRepeat',
+    name: 'python: repeat, still playing',
+    match: function(cfg){
+      return cfg && cfg.word === 'python' && Array.isArray(cfg.guesses) && cfg.guesses.join('') === 'ppy' && cfg.max === 5;
+    },
+    clips: {
+      setupAndRepeat: makeAudio('../audio-walkthroughs/hangman/python-repeat/01-setup-and-repeat-guess.mp3'),
+      revealAndIncomplete: makeAudio('../audio-walkthroughs/hangman/python-repeat/02-reveal-and-incomplete-game.mp3')
+    },
+    mapping: [
+      {
+        clip: 'setupAndRepeat',
+        startIdx: 0,
+        endIdx: 3,
+        cues: [
+          { time: 0, idx: 0 },
+          { time: 8.5, idx: 1 },
+          { time: 13.0, idx: 2 },
+          { time: 20.0, idx: 3 }
+        ]
+      },
+      {
+        clip: 'revealAndIncomplete',
+        startIdx: 4,
+        endIdx: 7,
+        cues: [
+          { time: 0, idx: 4 },
+          { time: 7.5, idx: 5 },
+          { time: 17.5, idx: 6 },
+          { time: 22.5, idx: 7 }
+        ]
+      }
+    ]
+  },
+  aNoGuesses: {
+    id: 'aNoGuesses',
+    name: 'a: no guesses',
+    match: function(cfg){
+      return cfg && cfg.word === 'a' && Array.isArray(cfg.guesses) && cfg.guesses.length === 0 && cfg.max === 3;
+    },
+    clips: {
+      emptyGuesses: makeAudio('../audio-walkthroughs/hangman/a-no-guesses/01-empty-guesses-edge-case.mp3')
+    },
+    mapping: [
+      {
+        clip: 'emptyGuesses',
+        startIdx: 0,
+        endIdx: 4,
+        cues: [
+          { time: 0, idx: 0 },
+          { time: 8.0, idx: 1 },
+          { time: 11.5, idx: 2 },
+          { time: 16.0, idx: 3 },
+          { time: 23.5, idx: 4 }
+        ]
+      }
+    ]
+  },
+  bananaOwn: {
+    id: 'bananaOwn',
+    name: 'banana: own word',
+    match: function(cfg){
+      return cfg && cfg.word === 'banana' && Array.isArray(cfg.guesses) && cfg.guesses.join('') === 'nnxab' && cfg.max === 4;
+    },
+    clips: {
+      multiLetterAndMiss: makeAudio('../audio-walkthroughs/hangman/banana-own/01-setup-multi-letter-hits-and-miss.mp3'),
+      tripleHitAndVictory: makeAudio('../audio-walkthroughs/hangman/banana-own/02-triple-hit-and-victory.mp3')
+    },
+    mapping: [
+      {
+        clip: 'multiLetterAndMiss',
+        startIdx: 0,
+        endIdx: 4,
+        cues: [
+          { time: 0, idx: 0 },
+          { time: 7.0, idx: 1 },
+          { time: 11.0, idx: 2 },
+          { time: 19.5, idx: 3 },
+          { time: 25.0, idx: 4 }
+        ]
+      },
+      {
+        clip: 'tripleHitAndVictory',
+        startIdx: 5,
+        endIdx: 8,
+        cues: [
+          { time: 0, idx: 5 },
+          { time: 11.5, idx: 6 },
+          { time: 21.0, idx: 7 },
+          { time: 24.5, idx: 8 }
+        ]
+      }
+    ]
   }
 };
 
