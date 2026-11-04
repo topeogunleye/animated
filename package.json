@@ -1,0 +1,16 @@
+{
+  "name": "animated-solutions",
+  "version": "1.0.0",
+  "description": "A collection of standalone, browser-based algorithm visualizations. Open [`index.html`](./index.html) locally or publish the project as a static website.",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node --env-file=.env.local index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@elevenlabs/elevenlabs-js": "^2.75.0"
+  }
+}
