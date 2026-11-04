@@ -51,6 +51,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
 .input-fields input{width:min(100%,26rem);min-height:36px;background:var(--bg)}
 .input-help,.input-status{margin:7px 0 0;color:var(--muted);font-size:.82rem}
 .input-status:not(:empty){min-height:1.2em}
+.narration-status{margin:8px 2px 0;font-size:.82rem;color:var(--muted);min-height:1.2em}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 #code{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 0;overflow:auto;max-height:70vh;min-width:0;font:13px/1.7 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
 @media (max-width:420px){#code{font-size:12px}}
@@ -74,8 +75,13 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
         <button id="bPlay" type="button">Play</button>
         <button id="bNext" type="button">Next</button>
         <button id="bReset" type="button">Reset</button>
+        <button id="bNarration" type="button" aria-pressed="false" title="Toggle voice walkthrough / speech narration (N)">Narration: Off</button>
         <label class="sr" for="preset">Input</label>
         <select id="preset"></select>
+        <label class="sr" for="vVoice">Voice</label>
+        <select id="vVoice" title="Text-to-speech voice">
+          <option value="auto">Default voice</option>
+        </select>
         <label class="sr" for="speed">Speed</label>
         <select id="speed">
           <option value="1300">Slow</option>
@@ -84,6 +90,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
           <option value="220">Very fast</option>
         </select>
       </div>
+      <div class="narration-status" id="narrationStatus" role="status" aria-live="polite">Narration is off. Recorded clips play automatically on supported presets when enabled.</div>
       <form class="custom-input" id="customForm">
         <h2>Play with your own input</h2>
         <div class="input-fields">
@@ -278,7 +285,347 @@ const $ = function(id){ return document.getElementById(id); };
 const $cv = $('cv'), $stage = $('stage'), $cap = $('caption'), $tag = $('tag'), $err = $('err'), $code = $('code');
 const $back = $('bBack'), $play = $('bPlay'), $next = $('bNext'), $reset = $('bReset'), $preset = $('preset'), $speed = $('speed');
 const $customForm = $('customForm'), $customNums = $('customNums'), $inputStatus = $('inputStatus');
+const $narration = $('bNarration'), $voice = $('vVoice'), $narrationStatus = $('narrationStatus');
 const RM = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches:false };
+
+const speechAvailable = typeof window !== 'undefined' && 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined';
+const audioAvailable = typeof window !== 'undefined' && typeof Audio !== 'undefined';
+const narrationAvailable = speechAvailable || audioAvailable;
+
+let availableVoices = [];
+function refreshVoices(){
+  if (!speechAvailable) return;
+  availableVoices = window.speechSynthesis.getVoices().filter(function(v){ return !v.lang || v.lang.toLowerCase().startsWith('en'); });
+  const oldVal = $voice.value;
+  $voice.innerHTML = '<option value="auto">Default voice</option>';
+  availableVoices.forEach(function(voice){
+    const opt = document.createElement('option');
+    opt.value = voice.voiceURI;
+    opt.textContent = voice.name + (voice.lang ? ' (' + voice.lang + ')' : '');
+    $voice.appendChild(opt);
+  });
+  if (oldVal && Array.from($voice.options).some(function(o){ return o.value === oldVal; })){
+    $voice.value = oldVal;
+  }
+}
+function preferredVoice(){
+  if (!speechAvailable || !availableVoices.length) return null;
+  const pref = ['samantha', 'victoria', 'karen', 'serena', 'zira', 'jenny', 'aria'];
+  for (let i = 0; i < pref.length; i++){
+    const match = availableVoices.find(function(v){ return v.name.toLowerCase().includes(pref[i]); });
+    if (match) return match;
+  }
+  return availableVoices[0];
+}
+
+function makeAudio(src){
+  const a = new Audio();
+  a.preload = 'auto';
+  a.src = src;
+  return a;
+}
+
+const WALKTHROUGHS = {
+  mixedListClassic: {
+    id: 'mixedListClassic',
+    name: 'Mixed list (the classic)',
+    match: function(cfg){
+      return cfg && Array.isArray(cfg.nums) && cfg.nums.length === 9 &&
+        cfg.nums.join(',') === '-2,1,-3,4,-1,2,1,-5,4';
+    },
+    clips: {
+      setup: makeAudio('../audio-walkthroughs/maximum-subarray/mixed-list-classic/01-setup-and-key-idea.mp3'),
+      brute: makeAudio('../audio-walkthroughs/maximum-subarray/mixed-list-classic/02-brute-force-all-slices.mp3'),
+      kadane1: makeAudio('../audio-walkthroughs/maximum-subarray/mixed-list-classic/03-kadane-init-and-early-drops.mp3'),
+      kadane2: makeAudio('../audio-walkthroughs/maximum-subarray/mixed-list-classic/04-kadane-accumulate-maximum.mp3'),
+      compare: makeAudio('../audio-walkthroughs/maximum-subarray/mixed-list-classic/05-comparison-and-complexity.mp3')
+    },
+    mapping: [
+      {
+        clip: 'setup',
+        startIdx: 0,
+        endIdx: 2,
+        cues: [
+          { time: 0, idx: 0 },
+          { time: 24.0, idx: 1 },
+          { time: 31.0, idx: 2 }
+        ]
+      },
+      {
+        clip: 'brute',
+        startIdx: 3,
+        endIdx: 57,
+        cues: [
+          { time: 0, idx: 3 },
+          { time: 2.0, idx: 5 },
+          { time: 4.0, idx: 10 },
+          { time: 7.0, idx: 15 },
+          { time: 10.0, idx: 20 },
+          { time: 13.0, idx: 25 },
+          { time: 17.0, idx: 30 },
+          { time: 22.0, idx: 34 },
+          { time: 26.0, idx: 40 },
+          { time: 28.5, idx: 45 },
+          { time: 30.5, idx: 50 },
+          { time: 32.5, idx: 55 },
+          { time: 34.0, idx: 57 }
+        ]
+      },
+      {
+        clip: 'kadane1',
+        startIdx: 58,
+        endIdx: 65,
+        cues: [
+          { time: 0, idx: 58 },
+          { time: 7.0, idx: 59 },
+          { time: 14.5, idx: 60 },
+          { time: 24.5, idx: 61 },
+          { time: 28.5, idx: 62 },
+          { time: 33.5, idx: 63 },
+          { time: 36.0, idx: 64 },
+          { time: 43.5, idx: 65 }
+        ]
+      },
+      {
+        clip: 'kadane2',
+        startIdx: 66,
+        endIdx: 75,
+        cues: [
+          { time: 0, idx: 66 },
+          { time: 7.5, idx: 67 },
+          { time: 10.5, idx: 68 },
+          { time: 15.0, idx: 69 },
+          { time: 18.5, idx: 70 },
+          { time: 24.0, idx: 71 },
+          { time: 31.5, idx: 72 },
+          { time: 35.0, idx: 73 },
+          { time: 36.5, idx: 74 },
+          { time: 39.0, idx: 75 }
+        ]
+      },
+      {
+        clip: 'compare',
+        startIdx: 76,
+        endIdx: 77,
+        cues: [
+          { time: 0, idx: 76 },
+          { time: 7.5, idx: 77 }
+        ]
+      }
+    ]
+  },
+  singleElement: {
+    id: 'singleElement',
+    name: 'Single element',
+    match: function(cfg){
+      return cfg && Array.isArray(cfg.nums) && cfg.nums.length === 1 && cfg.nums[0] === 5;
+    },
+    clips: {
+      setup: makeAudio('../audio-walkthroughs/maximum-subarray/single-element/01-setup-and-key-idea.mp3'),
+      explore: makeAudio('../audio-walkthroughs/maximum-subarray/single-element/02-brute-and-fast-single-element.mp3'),
+      match: makeAudio('../audio-walkthroughs/maximum-subarray/single-element/03-match-and-base-case.mp3')
+    },
+    mapping: [
+      {
+        clip: 'setup',
+        startIdx: 0,
+        endIdx: 2,
+        cues: [
+          { time: 0, idx: 0 },
+          { time: 16.0, idx: 1 },
+          { time: 21.0, idx: 2 }
+        ]
+      },
+      {
+        clip: 'explore',
+        startIdx: 3,
+        endIdx: 8,
+        cues: [
+          { time: 0, idx: 3 },
+          { time: 3.5, idx: 4 },
+          { time: 9.0, idx: 5 },
+          { time: 13.0, idx: 6 },
+          { time: 17.0, idx: 7 },
+          { time: 25.0, idx: 8 }
+        ]
+      },
+      {
+        clip: 'match',
+        startIdx: 9,
+        endIdx: 9,
+        cues: [
+          { time: 0, idx: 9 }
+        ]
+      }
+    ]
+  },
+  allNegative: {
+    id: 'allNegative',
+    name: 'All negative',
+    match: function(cfg){
+      return cfg && Array.isArray(cfg.nums) && cfg.nums.length === 3 && cfg.nums.join(',') === '-3,-1,-2';
+    },
+    clips: {
+      brute: makeAudio('../audio-walkthroughs/maximum-subarray/all-negative/01-setup-and-brute-force.mp3'),
+      kadane: makeAudio('../audio-walkthroughs/maximum-subarray/all-negative/02-kadane-all-negative-resets.mp3'),
+      match: makeAudio('../audio-walkthroughs/maximum-subarray/all-negative/03-match-and-least-negative.mp3')
+    },
+    mapping: [
+      {
+        clip: 'brute',
+        startIdx: 0,
+        endIdx: 12,
+        cues: [
+          { time: 0, idx: 0 },
+          { time: 15.0, idx: 1 },
+          { time: 19.0, idx: 2 },
+          { time: 21.5, idx: 3 },
+          { time: 23.5, idx: 4 },
+          { time: 25.5, idx: 5 },
+          { time: 27.5, idx: 6 },
+          { time: 29.5, idx: 7 },
+          { time: 31.5, idx: 8 },
+          { time: 34.5, idx: 9 },
+          { time: 36.5, idx: 10 },
+          { time: 38.5, idx: 11 },
+          { time: 40.5, idx: 12 }
+        ]
+      },
+      {
+        clip: 'kadane',
+        startIdx: 13,
+        endIdx: 19,
+        cues: [
+          { time: 0, idx: 13 },
+          { time: 3.5, idx: 14 },
+          { time: 12.0, idx: 15 },
+          { time: 18.5, idx: 16 },
+          { time: 25.0, idx: 17 },
+          { time: 31.5, idx: 18 },
+          { time: 35.0, idx: 19 }
+        ]
+      },
+      {
+        clip: 'match',
+        startIdx: 20,
+        endIdx: 20,
+        cues: [
+          { time: 0, idx: 20 }
+        ]
+      }
+    ]
+  },
+  emptyList: {
+    id: 'emptyList',
+    name: 'Empty list',
+    match: function(cfg){
+      return cfg && Array.isArray(cfg.nums) && cfg.nums.length === 0;
+    },
+    clips: {
+      brute: makeAudio('../audio-walkthroughs/maximum-subarray/empty-list/01-setup-and-brute-empty.mp3'),
+      kadane: makeAudio('../audio-walkthroughs/maximum-subarray/empty-list/02-kadane-empty-and-match.mp3')
+    },
+    mapping: [
+      {
+        clip: 'brute',
+        startIdx: 0,
+        endIdx: 2,
+        cues: [
+          { time: 0, idx: 0 },
+          { time: 14.0, idx: 1 },
+          { time: 19.5, idx: 2 }
+        ]
+      },
+      {
+        clip: 'kadane',
+        startIdx: 3,
+        endIdx: 5,
+        cues: [
+          { time: 0, idx: 3 },
+          { time: 5.0, idx: 4 },
+          { time: 15.0, idx: 5 }
+        ]
+      }
+    ]
+  },
+  tie1Minus11: {
+    id: 'tie1Minus11',
+    name: 'Tie: 1, -1, 1',
+    match: function(cfg){
+      return cfg && Array.isArray(cfg.nums) && cfg.nums.length === 3 && cfg.nums.join(',') === '1,-1,1';
+    },
+    clips: {
+      brute: makeAudio('../audio-walkthroughs/maximum-subarray/tie-1-minus-1-1/01-setup-and-brute-force.mp3'),
+      kadane: makeAudio('../audio-walkthroughs/maximum-subarray/tie-1-minus-1-1/02-kadane-symmetry-and-ties.mp3'),
+      match: makeAudio('../audio-walkthroughs/maximum-subarray/tie-1-minus-1-1/03-tie-resolution-and-match.mp3')
+    },
+    mapping: [
+      {
+        clip: 'brute',
+        startIdx: 0,
+        endIdx: 12,
+        cues: [
+          { time: 0, idx: 0 },
+          { time: 18.0, idx: 1 },
+          { time: 21.0, idx: 2 },
+          { time: 23.5, idx: 3 },
+          { time: 25.5, idx: 4 },
+          { time: 27.5, idx: 5 },
+          { time: 29.5, idx: 6 },
+          { time: 31.5, idx: 7 },
+          { time: 33.5, idx: 8 },
+          { time: 35.5, idx: 9 },
+          { time: 37.5, idx: 10 },
+          { time: 39.5, idx: 11 },
+          { time: 41.5, idx: 12 }
+        ]
+      },
+      {
+        clip: 'kadane',
+        startIdx: 13,
+        endIdx: 19,
+        cues: [
+          { time: 0, idx: 13 },
+          { time: 3.5, idx: 14 },
+          { time: 8.5, idx: 15 },
+          { time: 17.5, idx: 16 },
+          { time: 20.5, idx: 17 },
+          { time: 27.5, idx: 18 },
+          { time: 31.0, idx: 19 }
+        ]
+      },
+      {
+        clip: 'match',
+        startIdx: 20,
+        endIdx: 20,
+        cues: [
+          { time: 0, idx: 20 }
+        ]
+      }
+    ]
+  }
+};
+
+function getActiveWalkthrough(cfg){
+  if (!cfg) return null;
+  const keys = Object.keys(WALKTHROUGHS);
+  for (let i = 0; i < keys.length; i++){
+    const wt = WALKTHROUGHS[keys[i]];
+    if (wt.match(cfg)) return wt;
+  }
+  return null;
+}
+
+function narrationStatusMessage(cfg){
+  const wt = getActiveWalkthrough(cfg);
+  if (wt){
+    return 'Narration enabled (using recorded voice walkthrough for ' + wt.name + ').';
+  }
+  if (speechAvailable){
+    return 'Narration enabled (using browser speech synthesis for custom/other inputs).';
+  }
+  return 'Recorded voice walkthrough is not available for this input.';
+}
 
 const rows = SRC.map(function(txt, i){
   const r = document.createElement('div'); r.className = 'row';
@@ -471,7 +818,11 @@ if (gl){
 }
 
 /* ---------- playback state ---------- */
-const S = { cfg:null, frames:[], idx:0, state:'paused', timer:0, speed:1300, shown:-1 };
+const S = {
+  cfg: null, frames: [], idx: 0, state: 'paused', timer: 0, speed: 1300, shown: -1,
+  narration: false, narrationPending: false, narrationToken: 0, voiceURI: 'auto',
+  currentClip: null, cueTimers: []
+};
 
 function tweenDur(f){ return S.state === 'playing' ? Math.max(120, Math.min(600, S.speed * f.hold * 0.5)) : 450; }
 function easeProp(get, set, to, animate, f){
@@ -550,6 +901,161 @@ function describe(f){
     (f.high !== null ? ' ' + f.highName + ' at index ' + f.high + '.' : '') +
     (f.best !== null ? ' Best slice is indexes ' + f.best[0] + ' to ' + f.best[1] + '.' : '');
 }
+function clearCueTimers(){
+  if (S.cueTimers && S.cueTimers.length){
+    S.cueTimers.forEach(function(t){ clearTimeout(t); });
+    S.cueTimers = [];
+  }
+}
+
+function cancelNarration(){
+  const wasPending = S.narrationPending;
+  S.narrationToken += 1;
+  S.narrationPending = false;
+  S.currentClip = null;
+  clearCueTimers();
+  Object.keys(WALKTHROUGHS).forEach(function(key){
+    const clips = WALKTHROUGHS[key].clips;
+    Object.keys(clips).forEach(function(k){
+      const c = clips[k];
+      c.pause();
+      c.currentTime = 0;
+      c.onended = null;
+      c.onerror = null;
+    });
+  });
+  if (speechAvailable && wasPending){
+    try { window.speechSynthesis.cancel(); } catch(e){}
+  }
+}
+
+function tutorNarration(frame){
+  return frame.msg
+    .replace(/["']/g, '')
+    .replace(/==/g, 'equals')
+    .replace(/!=/g, 'is not')
+    .replace(/<=/g, 'less than or equal to')
+    .replace(/>=/g, 'greater than or equal to')
+    .replace(/\+/g, 'plus')
+    .replace(/\*/g, 'times');
+}
+
+function speakTutor(frame, token, finish){
+  if (!speechAvailable){
+    S.narrationPending = false;
+    $narrationStatus.textContent = 'Browser speech is unavailable; captions still guide each step.';
+    if (S.state === 'playing') schedule();
+    return;
+  }
+  const utterance = new SpeechSynthesisUtterance(tutorNarration(frame));
+  utterance.lang = document.documentElement.lang || 'en';
+  utterance.rate = S.speed >= 1100 ? 0.85 : S.speed >= 700 ? 1 : S.speed >= 400 ? 1.25 : 1.4;
+  utterance.voice = S.voiceURI === 'auto'
+    ? preferredVoice()
+    : availableVoices.find(function(voice){ return voice.voiceURI === S.voiceURI; }) || null;
+  utterance.onend = finish;
+  utterance.onerror = finish;
+  try {
+    window.speechSynthesis.speak(utterance);
+  } catch (e) {
+    if (token !== S.narrationToken) return;
+    S.narrationPending = false;
+    $narrationStatus.textContent = 'Browser speech could not be started.';
+    if (S.state === 'playing') schedule();
+  }
+}
+
+function speakFrame(frame){
+  const wt = getActiveWalkthrough(S.cfg);
+  let milestone = null;
+  if (wt){
+    milestone = wt.mapping.find(function(m){ return S.idx >= m.startIdx && S.idx <= m.endIdx; });
+  }
+
+  const expectedClip = (wt && milestone) ? wt.clips[milestone.clip] : null;
+  if (expectedClip && S.currentClip === expectedClip && !expectedClip.paused && !expectedClip.ended){
+    return;
+  }
+
+  cancelNarration();
+  if (!S.narration || !narrationAvailable) return;
+
+  const token = S.narrationToken;
+  const finish = function(){
+    if (token !== S.narrationToken) return;
+    S.narrationPending = false;
+    S.currentClip = null;
+    clearCueTimers();
+    if (S.state === 'playing'){
+      if (S.idx >= S.frames.length - 1){
+        S.state = 'ended';
+        updateButtons();
+      } else {
+        schedule();
+      }
+    }
+  };
+  S.narrationPending = true;
+
+  if (wt && audioAvailable && milestone){
+    const clip = wt.clips[milestone.clip];
+    S.currentClip = clip;
+    let fellBack = false;
+    const fallback = function(){
+      if (fellBack || token !== S.narrationToken) return;
+      fellBack = true;
+      clip.onended = null;
+      clip.onerror = null;
+      S.currentClip = null;
+      clearCueTimers();
+      $narrationStatus.textContent = 'A recorded narration clip could not play; using browser speech instead.';
+      speakTutor(frame, token, finish);
+    };
+
+    clip.onended = finish;
+    clip.onerror = fallback;
+
+    let currentCue = null;
+    for (let c = milestone.cues.length - 1; c >= 0; c--){
+      if (S.idx >= milestone.cues[c].idx){
+        currentCue = milestone.cues[c];
+        break;
+      }
+    }
+    if (!currentCue) currentCue = milestone.cues[0];
+
+    try { clip.currentTime = currentCue.time; } catch(e){}
+
+    if (S.state === 'playing'){
+      milestone.cues.forEach(function(cue){
+        if (cue.time > currentCue.time){
+          const delay = (cue.time - currentCue.time) * 1000;
+          const tid = setTimeout(function(){
+            if (token === S.narrationToken && S.state === 'playing'){
+              show(cue.idx, true);
+            }
+          }, delay);
+          S.cueTimers.push(tid);
+        }
+      });
+    }
+
+    const playPromise = clip.play();
+    if (playPromise !== undefined){
+      playPromise.catch(function(err){
+        if (err && err.name === 'NotAllowedError'){
+          $narrationStatus.textContent = 'Audio playback was blocked by browser autoplay policy. Click Play or Next to enable sound.';
+          fallback();
+        } else {
+          fallback();
+        }
+      });
+    }
+  } else {
+    speakTutor(frame, token, finish);
+  }
+}
+
 function updateButtons(){
   const last = S.frames.length - 1;
   $back.disabled = S.idx <= 0;
@@ -565,6 +1071,7 @@ function show(i, animate){
   $cv.setAttribute('aria-label', describe(f));
   renderCode(f);
   applyScene(f, animate && Math.abs(i - S.shown) === 1);
+  speakFrame(f);
   S.shown = i;
   updateButtons();
 }
@@ -572,7 +1079,7 @@ function show(i, animate){
 function clearTimer(){ if (S.timer){ clearTimeout(S.timer); S.timer = 0; } }
 function schedule(){
   clearTimer();
-  if (S.state !== 'playing') return;
+  if (S.state !== 'playing' || S.narrationPending) return;
   S.timer = setTimeout(tick, S.speed * S.frames[S.idx].hold);
 }
 function tick(){
@@ -583,36 +1090,103 @@ function tick(){
   if (S.idx >= S.frames.length - 1){ S.state = 'ended'; updateButtons(); return; }
   schedule();
 }
-function pause(){ clearTimer(); settle(); if (S.state === 'playing' || S.state === 'ended') S.state = 'paused'; updateButtons(); }
+function pause(){
+  clearTimer();
+  clearCueTimers();
+  if (S.currentClip && !S.currentClip.paused){
+    S.currentClip.pause();
+  } else {
+    cancelNarration();
+  }
+  settle();
+  if (S.state === 'playing' || S.state === 'ended') S.state = 'paused';
+  updateButtons();
+}
 function play(){
   if (S.state === 'playing'){ pause(); return; }
   if (S.idx >= S.frames.length - 1) show(0, false);
-  S.state = 'playing'; updateButtons(); schedule();
+  S.state = 'playing'; updateButtons();
+  if (S.narration){
+    const wt = getActiveWalkthrough(S.cfg);
+    if (wt && S.currentClip && S.currentClip.paused && !S.currentClip.ended){
+      const token = S.narrationToken;
+      const milestone = wt.mapping.find(function(m){ return S.idx >= m.startIdx && S.idx <= m.endIdx; });
+      if (milestone){
+        clearCueTimers();
+        const curTime = S.currentClip.currentTime;
+        milestone.cues.forEach(function(cue){
+          if (cue.time > curTime){
+            const delay = (cue.time - curTime) * 1000;
+            const tid = setTimeout(function(){
+              if (token === S.narrationToken && S.state === 'playing'){
+                show(cue.idx, true);
+              }
+            }, delay);
+            S.cueTimers.push(tid);
+          }
+        });
+      }
+      S.narrationPending = true;
+      S.currentClip.play().catch(function(){ speakFrame(S.frames[S.idx]); });
+    } else {
+      speakFrame(S.frames[S.idx]);
+    }
+  }
+  schedule();
 }
 function step(d){
+  cancelNarration();
   pause();
   const j = S.idx + d;
   if (j < 0 || j >= S.frames.length) return;
   show(j, true);
 }
-function reset(){ pause(); show(0, false); }
+function reset(){
+  cancelNarration();
+  pause();
+  show(0, false);
+}
 function loadInput(nums, name){
+  cancelNarration();
   pause();
   S.cfg = { name:name, nums:nums };
   S.frames = simulate(nums).frames; S.shown = -1; S.idx = 0;
   $customNums.value = nums.join(', ');
   build(S.cfg);
   show(0, false);
+  if (S.narration){
+    $narrationStatus.textContent = narrationStatusMessage(S.cfg);
+  }
 }
 function loadPreset(i){
   const p = PRESETS[i];
   loadInput(p.args[0], p.name);
 }
 
+function toggleNarration(){
+  S.narration = !S.narration;
+  $narration.textContent = S.narration ? 'Narration: On' : 'Narration: Off';
+  $narration.setAttribute('aria-pressed', S.narration ? 'true' : 'false');
+  if (!S.narration){
+    cancelNarration();
+    $narrationStatus.textContent = 'Narration muted.';
+    if (S.state === 'playing') schedule();
+  } else {
+    $narrationStatus.textContent = narrationStatusMessage(S.cfg);
+    speakFrame(S.frames[S.idx]);
+  }
+  updateButtons();
+}
+
 $back.addEventListener('click', function(){ step(-1); });
 $next.addEventListener('click', function(){ step(1); });
 $play.addEventListener('click', play);
 $reset.addEventListener('click', reset);
+$narration.addEventListener('click', toggleNarration);
+$voice.addEventListener('change', function(){
+  S.voiceURI = $voice.value;
+  if (S.narration && !getActiveWalkthrough(S.cfg)) speakFrame(S.frames[S.idx]);
+});
 $preset.addEventListener('change', function(){ loadPreset(Number($preset.value)); });
 $customForm.addEventListener('submit', function(e){
   e.preventDefault();
@@ -638,8 +1212,23 @@ document.addEventListener('keydown', function(e){
   if (e.key === ' '){ e.preventDefault(); play(); }
   else if (e.key === 'ArrowRight'){ step(1); }
   else if (e.key === 'ArrowLeft'){ step(-1); }
+  else if (e.key === 'n' || e.key === 'N'){ toggleNarration(); }
 });
 document.addEventListener('visibilitychange', function(){ if (document.hidden && S.state === 'playing') pause(); });
+
+$narration.disabled = !narrationAvailable;
+$voice.disabled = !speechAvailable;
+if (!narrationAvailable){
+  $narrationStatus.textContent = 'Narration is not supported in this browser.';
+} else if (!speechAvailable){
+  $narrationStatus.textContent = 'Recorded narration clips are available; browser speech is not supported.';
+}
+if (speechAvailable){
+  refreshVoices();
+  window.speechSynthesis.onvoiceschanged = refreshVoices;
+} else {
+  $voice.disabled = true;
+}
 
 if (typeof ResizeObserver !== 'undefined') new ResizeObserver(fitCamera).observe($stage);
 else window.addEventListener('resize', fitCamera);
