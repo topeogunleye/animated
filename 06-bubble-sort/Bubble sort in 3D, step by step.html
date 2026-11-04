@@ -56,6 +56,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
 .check-field{display:flex!important;grid-auto-flow:column;align-items:center;min-height:36px}
 .input-help,.input-status{margin:7px 0 0;color:var(--muted);font-size:.82rem}
 .input-status:not(:empty){min-height:1.2em}
+.narration-status{margin:8px 2px 0;font-size:.82rem;color:var(--muted);min-height:1.2em}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 #code{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 0;overflow:auto;max-height:70vh;font:13px/1.7 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
 @media (max-width:420px){#code{font-size:12px}}
@@ -81,6 +82,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
         <button id="bPlay" type="button">Play</button>
         <button id="bNext" type="button">Next</button>
         <button id="bReset" type="button">Reset</button>
+        <button id="bNarration" type="button" aria-pressed="false" aria-describedby="narrationStatus">Narration: Off</button>
         <label class="sr" for="preset">Input</label>
         <select id="preset"></select>
         <label class="sr" for="speed">Speed</label>
@@ -90,7 +92,12 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
           <option value="450">Fast</option>
           <option value="220">Very fast</option>
         </select>
+        <label class="sr" for="voice">Voice</label>
+        <select id="voice" aria-label="Narration voice">
+          <option value="auto">Automatic (prefer natural English)</option>
+        </select>
       </div>
+      <div class="narration-status" id="narrationStatus" role="status" aria-live="polite">Narration is off. Recorded clips play automatically on supported presets when enabled.</div>
       <form class="custom-input" id="customForm">
         <h2>Play with your own input</h2>
         <div class="input-fields">
@@ -218,7 +225,166 @@ const $ = function(id){ return document.getElementById(id); };
 const $cv = $('cv'), $stage = $('stage'), $cap = $('caption'), $tag = $('tag'), $err = $('err'), $code = $('code');
 const $back = $('bBack'), $play = $('bPlay'), $next = $('bNext'), $reset = $('bReset'), $preset = $('preset'), $speed = $('speed');
 const $customForm = $('customForm'), $customNums = $('customNums'), $customDescending = $('customDescending'), $inputStatus = $('inputStatus');
+const $narration = $('bNarration'), $narrationStatus = $('narrationStatus'), $voice = $('voice');
 const RM = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches:false };
+
+const speechAvailable = typeof window !== 'undefined' && 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined';
+const audioAvailable = typeof window !== 'undefined' && typeof Audio !== 'undefined';
+const narrationAvailable = speechAvailable || audioAvailable;
+
+let availableVoices = [];
+function voiceScore(voice){
+  const name = voice.name.toLowerCase(), lang = voice.lang.toLowerCase();
+  let score = lang.indexOf('en') === 0 ? 100 : -100;
+  if (/\b(natural|neural|enhanced|premium)\b/.test(name)) score += 80;
+  if (/\b(online|cloud)\b/.test(name)) score += 20;
+  if (lang === 'en-us') score += 5;
+  return score;
+}
+function preferredVoice(){
+  const english = availableVoices.filter(function(voice){ return voice.lang.toLowerCase().indexOf('en') === 0; });
+  english.sort(function(a, b){ return voiceScore(b) - voiceScore(a) || a.name.localeCompare(b.name); });
+  return english[0] || availableVoices.find(function(voice){ return voice.default; }) || null;
+}
+function refreshVoices(){
+  if (!speechAvailable) return;
+  const selected = S.voiceURI || $voice.value || 'auto';
+  availableVoices = window.speechSynthesis.getVoices();
+  $voice.replaceChildren();
+  const automatic = document.createElement('option');
+  automatic.value = 'auto';
+  automatic.textContent = 'Automatic (prefer natural English)';
+  $voice.appendChild(automatic);
+  availableVoices.slice().sort(function(a, b){
+    return voiceScore(b) - voiceScore(a) || a.name.localeCompare(b.name);
+  }).forEach(function(voice){
+    const option = document.createElement('option');
+    option.value = voice.voiceURI;
+    option.textContent = voice.name + ' (' + voice.lang + ')' + (voiceScore(voice) >= 180 ? ' · natural' : '');
+    $voice.appendChild(option);
+  });
+  $voice.value = Array.from($voice.options).some(function(option){ return option.value === selected; }) ? selected : 'auto';
+  S.voiceURI = $voice.value;
+}
+
+function makeAudio(src){
+  const a = new Audio();
+  a.preload = 'auto';
+  a.src = src;
+  return a;
+}
+
+const WALKTHROUGHS = {
+  example: {
+    id: 'example',
+    name: 'Example [5, 1, 4, 2, 8]',
+    match: function(cfg){
+      return cfg && !cfg.descending && Array.isArray(cfg.nums) && cfg.nums.length === 5 &&
+        cfg.nums[0] === 5 && cfg.nums[1] === 1 && cfg.nums[2] === 4 && cfg.nums[3] === 2 && cfg.nums[4] === 8;
+    },
+    clips: {
+      pass1: makeAudio('../audio-walkthroughs/bubble-sort/example-5-1-4-2-8/01-setup-and-pass-one.mp3'),
+      pass2: makeAudio('../audio-walkthroughs/bubble-sort/example-5-1-4-2-8/02-pass-two-bubbling-four.mp3'),
+      pass3: makeAudio('../audio-walkthroughs/bubble-sort/example-5-1-4-2-8/03-pass-three-and-early-exit.mp3')
+    },
+    mapping: [
+      {
+        clip: 'pass1',
+        startIdx: 0,
+        endIdx: 10,
+        cues: [
+          { time: 0, idx: 0 },
+          { time: 18.5, idx: 2 },
+          { time: 21.5, idx: 3 },
+          { time: 28.0, idx: 5 },
+          { time: 34.5, idx: 7 },
+          { time: 40.0, idx: 9 },
+          { time: 44.5, idx: 10 }
+        ]
+      },
+      {
+        clip: 'pass2',
+        startIdx: 11,
+        endIdx: 16,
+        cues: [
+          { time: 0, idx: 11 },
+          { time: 12.0, idx: 12 },
+          { time: 16.5, idx: 13 },
+          { time: 24.0, idx: 15 },
+          { time: 28.0, idx: 16 }
+        ]
+      },
+      {
+        clip: 'pass3',
+        startIdx: 17,
+        endIdx: 21,
+        cues: [
+          { time: 0, idx: 17 },
+          { time: 5.5, idx: 18 },
+          { time: 10.0, idx: 19 },
+          { time: 14.5, idx: 20 },
+          { time: 26.5, idx: 21 }
+        ]
+      }
+    ]
+  },
+  alreadySorted: {
+    id: 'alreadySorted',
+    name: 'Already sorted (best case)',
+    match: function(cfg){
+      return cfg && !cfg.descending && Array.isArray(cfg.nums) && cfg.nums.length === 5 &&
+        cfg.nums[0] === 1 && cfg.nums[1] === 2 && cfg.nums[2] === 3 && cfg.nums[3] === 4 && cfg.nums[4] === 5;
+    },
+    clips: {
+      pass1: makeAudio('../audio-walkthroughs/bubble-sort/already-sorted/01-setup-and-single-pass.mp3'),
+      earlyBreak: makeAudio('../audio-walkthroughs/bubble-sort/already-sorted/02-early-break-and-best-case.mp3')
+    },
+    mapping: [
+      {
+        clip: 'pass1',
+        startIdx: 0,
+        endIdx: 6,
+        cues: [
+          { time: 0, idx: 0 },
+          { time: 13.5, idx: 3 },
+          { time: 16.5, idx: 4 },
+          { time: 19.5, idx: 5 },
+          { time: 22.5, idx: 6 }
+        ]
+      },
+      {
+        clip: 'earlyBreak',
+        startIdx: 7,
+        endIdx: 8,
+        cues: [
+          { time: 0, idx: 7 },
+          { time: 16.0, idx: 8 }
+        ]
+      }
+    ]
+  }
+};
+
+function getActiveWalkthrough(cfg){
+  if (!cfg) return null;
+  const keys = Object.keys(WALKTHROUGHS);
+  for (let i = 0; i < keys.length; i++){
+    const wt = WALKTHROUGHS[keys[i]];
+    if (wt.match(cfg)) return wt;
+  }
+  return null;
+}
+
+function narrationStatusMessage(cfg){
+  const wt = getActiveWalkthrough(cfg);
+  if (wt){
+    return 'Narration enabled (using recorded voice walkthrough for ' + wt.name + ').';
+  }
+  if (speechAvailable){
+    return 'Narration enabled (using browser speech synthesis for custom/other inputs).';
+  }
+  return 'Recorded voice walkthrough is not available for this input.';
+}
 
 const rows = SRC.map(function(txt, i){
   const r = document.createElement('div'); r.className = 'row';
@@ -410,7 +576,14 @@ if (gl){
 }
 
 /* ---------- playback state ---------- */
-const S = { cfg:null, frames:[], idx:0, state:'paused', timer:0, speed:1300, shown:-1 };
+const S = { cfg:null, frames:[], idx:0, state:'paused', timer:0, speed:1300, shown:-1, narration:false, narrationToken:0, narrationPending:false, voiceURI:'auto', currentClip:null, cueTimers:[] };
+
+function clearCueTimers(){
+  if (S.cueTimers && S.cueTimers.length){
+    S.cueTimers.forEach(function(tid){ clearTimeout(tid); });
+    S.cueTimers = [];
+  }
+}
 
 function tweenDur(f){ return S.state === 'playing' ? Math.max(120, Math.min(600, S.speed * f.hold * 0.5)) : 450; }
 function easeProp(get, set, to, animate, f){
@@ -497,7 +670,161 @@ function updateButtons(){
   $back.disabled = S.idx <= 0;
   $next.disabled = S.idx >= last;
   $play.textContent = S.state === 'playing' ? 'Pause' : (S.idx >= last ? 'Replay' : 'Play');
+  $narration.textContent = S.narration ? 'Narration: On' : 'Narration: Off';
+  $narration.setAttribute('aria-pressed', S.narration ? 'true' : 'false');
 }
+
+function tutorNarration(frame){
+  return frame.msg
+    .replace(/["']/g, '')
+    .replace(/==/g, 'equals')
+    .replace(/!=/g, 'is not')
+    .replace(/<=/g, 'less than or equal to')
+    .replace(/>=/g, 'greater than or equal to')
+    .replace(/\u2264/g, 'less than or equal to')
+    .replace(/\u2265/g, 'greater than or equal to')
+    .replace(/−/g, 'minus')
+    .replace(/\+/g, 'plus')
+    .replace(/\*/g, 'times');
+}
+
+function speakTutor(frame, token, finish){
+  if (!speechAvailable){
+    S.narrationPending = false;
+    $narrationStatus.textContent = 'Browser speech is unavailable; captions still guide each step.';
+    if (S.state === 'playing') schedule();
+    return;
+  }
+  const utterance = new SpeechSynthesisUtterance(tutorNarration(frame));
+  utterance.lang = document.documentElement.lang || 'en';
+  utterance.rate = S.speed >= 1100 ? 0.85 : S.speed >= 700 ? 1 : S.speed >= 400 ? 1.25 : 1.4;
+  utterance.voice = S.voiceURI === 'auto'
+    ? preferredVoice()
+    : availableVoices.find(function(voice){ return voice.voiceURI === S.voiceURI; }) || null;
+  utterance.onend = finish;
+  utterance.onerror = finish;
+  try {
+    window.speechSynthesis.speak(utterance);
+  } catch (e) {
+    if (token !== S.narrationToken) return;
+    S.narrationPending = false;
+    $narrationStatus.textContent = 'Browser speech could not be started.';
+    if (S.state === 'playing') schedule();
+  }
+}
+
+function cancelNarration(){
+  const wasPending = S.narrationPending;
+  S.narrationToken += 1;
+  S.narrationPending = false;
+  clearCueTimers();
+  S.currentClip = null;
+  Object.keys(WALKTHROUGHS).forEach(function(wKey){
+    const clips = WALKTHROUGHS[wKey].clips;
+    Object.keys(clips).forEach(function(k){
+      const c = clips[k];
+      c.pause();
+      c.currentTime = 0;
+      c.onended = null;
+      c.onerror = null;
+    });
+  });
+  if (speechAvailable && wasPending){
+    try { window.speechSynthesis.cancel(); } catch(e){}
+  }
+}
+
+function speakFrame(frame){
+  const wt = getActiveWalkthrough(S.cfg);
+  let milestone = null;
+  if (wt){
+    milestone = wt.mapping.find(function(m){ return S.idx >= m.startIdx && S.idx <= m.endIdx; });
+  }
+
+  const expectedClip = (wt && milestone) ? wt.clips[milestone.clip] : null;
+  if (expectedClip && S.currentClip === expectedClip && !expectedClip.paused && !expectedClip.ended){
+    return;
+  }
+
+  cancelNarration();
+  if (!S.narration || !narrationAvailable) return;
+
+  const token = S.narrationToken;
+  const finish = function(){
+    if (token !== S.narrationToken) return;
+    S.narrationPending = false;
+    S.currentClip = null;
+    clearCueTimers();
+    if (S.state === 'playing'){
+      if (S.idx >= S.frames.length - 1){
+        S.state = 'ended';
+        updateButtons();
+      } else {
+        schedule();
+      }
+    }
+  };
+  S.narrationPending = true;
+
+  if (wt && audioAvailable && milestone){
+    const clip = wt.clips[milestone.clip];
+    S.currentClip = clip;
+    let fellBack = false;
+    const fallback = function(){
+      if (fellBack || token !== S.narrationToken) return;
+      fellBack = true;
+      clip.onended = null;
+      clip.onerror = null;
+      S.currentClip = null;
+      clearCueTimers();
+      $narrationStatus.textContent = 'A recorded narration clip could not play; using browser speech instead.';
+      speakTutor(frame, token, finish);
+    };
+
+    clip.onended = finish;
+    clip.onerror = fallback;
+
+    let currentCue = null;
+    for (let c = milestone.cues.length - 1; c >= 0; c--){
+      if (S.idx >= milestone.cues[c].idx){
+        currentCue = milestone.cues[c];
+        break;
+      }
+    }
+    if (!currentCue) currentCue = milestone.cues[0];
+
+    try { clip.currentTime = currentCue.time; } catch(e){}
+
+    if (S.state === 'playing'){
+      milestone.cues.forEach(function(cue){
+        if (cue.time > currentCue.time){
+          const delay = (cue.time - currentCue.time) * 1000;
+          const tid = setTimeout(function(){
+            if (token === S.narrationToken && S.state === 'playing'){
+              show(cue.idx, true);
+            }
+          }, delay);
+          S.cueTimers.push(tid);
+        }
+      });
+    }
+
+    const playPromise = clip.play();
+    if (playPromise !== undefined){
+      playPromise.catch(function(err){
+        if (err && err.name === 'NotAllowedError'){
+          $narrationStatus.textContent = 'Audio playback was blocked by browser autoplay policy. Click Play or Next to enable sound.';
+          fallback();
+        } else {
+          fallback();
+        }
+      });
+    }
+  } else {
+    speakTutor(frame, token, finish);
+  }
+}
+
 function show(i, animate){
   const f = S.frames[i]; if (!f) return;
   settle();
@@ -507,6 +834,7 @@ function show(i, animate){
   $cv.setAttribute('aria-label', describe(f));
   renderCode(f);
   applyScene(f, animate && Math.abs(i - S.shown) === 1);
+  speakFrame(f);
   S.shown = i;
   updateButtons();
 }
@@ -514,7 +842,7 @@ function show(i, animate){
 function clearTimer(){ if (S.timer){ clearTimeout(S.timer); S.timer = 0; } }
 function schedule(){
   clearTimer();
-  if (S.state !== 'playing') return;
+  if (S.state !== 'playing' || S.narrationPending) return;
   S.timer = setTimeout(tick, S.speed * S.frames[S.idx].hold);
 }
 function tick(){
@@ -525,26 +853,73 @@ function tick(){
   if (S.idx >= S.frames.length - 1){ S.state = 'ended'; updateButtons(); return; }
   schedule();
 }
-function pause(){ clearTimer(); settle(); if (S.state === 'playing' || S.state === 'ended') S.state = 'paused'; updateButtons(); }
+function pause(){
+  clearTimer();
+  clearCueTimers();
+  if (S.currentClip && !S.currentClip.paused){
+    S.currentClip.pause();
+  } else {
+    cancelNarration();
+  }
+  settle();
+  if (S.state === 'playing' || S.state === 'ended') S.state = 'paused';
+  updateButtons();
+}
 function play(){
   if (S.state === 'playing'){ pause(); return; }
   if (S.idx >= S.frames.length - 1) show(0, false);
-  S.state = 'playing'; updateButtons(); schedule();
+  S.state = 'playing'; updateButtons();
+  if (S.narration){
+    const wt = getActiveWalkthrough(S.cfg);
+    if (wt && S.currentClip && S.currentClip.paused && !S.currentClip.ended){
+      const token = S.narrationToken;
+      const milestone = wt.mapping.find(function(m){ return S.idx >= m.startIdx && S.idx <= m.endIdx; });
+      if (milestone){
+        clearCueTimers();
+        const curTime = S.currentClip.currentTime;
+        milestone.cues.forEach(function(cue){
+          if (cue.time > curTime){
+            const delay = (cue.time - curTime) * 1000;
+            const tid = setTimeout(function(){
+              if (token === S.narrationToken && S.state === 'playing'){
+                show(cue.idx, true);
+              }
+            }, delay);
+            S.cueTimers.push(tid);
+          }
+        });
+      }
+      S.narrationPending = true;
+      S.currentClip.play().catch(function(){ speakFrame(S.frames[S.idx]); });
+    } else {
+      speakFrame(S.frames[S.idx]);
+    }
+  }
+  schedule();
 }
 function step(d){
+  cancelNarration();
   pause();
   const j = S.idx + d;
   if (j < 0 || j >= S.frames.length) return;
   show(j, true);
 }
-function reset(){ pause(); show(0, false); }
+function reset(){
+  cancelNarration();
+  pause();
+  show(0, false);
+}
 function loadInput(nums, descending, name){
+  cancelNarration();
   pause();
   S.cfg = { name:name, nums:nums, descending:descending };
   S.frames = simulate(nums, descending).frames; S.shown = -1; S.idx = 0;
   $customNums.value = nums.join(', ');
   $customDescending.checked = descending;
   build(S.cfg);
+  if (S.narration){
+    $narrationStatus.textContent = narrationStatusMessage(S.cfg);
+  }
   show(0, false);
 }
 function loadPreset(i){
@@ -552,10 +927,41 @@ function loadPreset(i){
   loadInput(p.args[0], p.args[1], p.name);
 }
 
+function toggleNarration(){
+  if (!narrationAvailable){
+    $narrationStatus.textContent = 'Voice narration is unavailable in this environment.';
+    return;
+  }
+  S.narration = !S.narration;
+  $narration.textContent = S.narration ? 'Narration: On' : 'Narration: Off';
+  $narration.setAttribute('aria-pressed', S.narration ? 'true' : 'false');
+  if (S.narration){
+    $narrationStatus.textContent = narrationStatusMessage(S.cfg);
+    speakFrame(S.frames[S.idx]);
+  } else {
+    cancelNarration();
+    $narrationStatus.textContent = 'Narration muted.';
+    if (S.state === 'playing') schedule();
+  }
+  updateButtons();
+}
+
 $back.addEventListener('click', function(){ step(-1); });
 $next.addEventListener('click', function(){ step(1); });
 $play.addEventListener('click', play);
 $reset.addEventListener('click', reset);
+$narration.addEventListener('click', toggleNarration);
+$voice.addEventListener('change', function(){
+  S.voiceURI = $voice.value;
+  if (S.narration && !getActiveWalkthrough(S.cfg)) speakFrame(S.frames[S.idx]);
+});
+$narration.disabled = !narrationAvailable;
+if (speechAvailable){
+  refreshVoices();
+  window.speechSynthesis.onvoiceschanged = refreshVoices;
+} else {
+  $voice.disabled = true;
+}
 $preset.addEventListener('change', function(){ loadPreset(Number($preset.value)); });
 $customForm.addEventListener('submit', function(e){
   e.preventDefault();
