@@ -367,6 +367,304 @@ const WALKTHROUGHS = {
         ]
       }
     ]
+  },
+  twelveAsTwoDigits: {
+    id: 'twelveAsTwoDigits',
+    name: 'Twelve a’s (two digits)',
+    match: function(cfg){
+      return cfg && cfg.s === 'aaaaaaaaaaaab';
+    },
+    clips: {
+      setup: makeAudio('../audio-walkthroughs/run-length-round-trip/twelve-as-two-digits/01-setup-and-key-idea.mp3'),
+      encodeA: makeAudio('../audio-walkthroughs/run-length-round-trip/twelve-as-two-digits/02-encode-twelve-as.mp3'),
+      encodeB: makeAudio('../audio-walkthroughs/run-length-round-trip/twelve-as-two-digits/03-encode-b-and-return.mp3'),
+      decodeA: makeAudio('../audio-walkthroughs/run-length-round-trip/twelve-as-two-digits/04-decode-two-digit-run-twelve.mp3'),
+      decodeB: makeAudio('../audio-walkthroughs/run-length-round-trip/twelve-as-two-digits/05-decode-b-and-round-trip.mp3')
+    },
+    mapping: [
+      {
+        clip: 'setup',
+        startIdx: 0,
+        endIdx: 1,
+        cues: [
+          { time: 0, idx: 0 },
+          { time: 15.0, idx: 1 }
+        ]
+      },
+      {
+        clip: 'encodeA',
+        startIdx: 2,
+        endIdx: 16,
+        cues: [
+          { time: 0, idx: 2 },
+          { time: 4.5, idx: 3 },
+          { time: 6.0, idx: 4 },
+          { time: 7.5, idx: 5 },
+          { time: 9.0, idx: 6 },
+          { time: 10.5, idx: 7 },
+          { time: 12.0, idx: 8 },
+          { time: 13.5, idx: 9 },
+          { time: 15.0, idx: 10 },
+          { time: 16.5, idx: 11 },
+          { time: 18.0, idx: 12 },
+          { time: 19.5, idx: 13 },
+          { time: 21.0, idx: 14 },
+          { time: 23.5, idx: 15 },
+          { time: 28.5, idx: 16 }
+        ]
+      },
+      {
+        clip: 'encodeB',
+        startIdx: 17,
+        endIdx: 22,
+        cues: [
+          { time: 0, idx: 17 },
+          { time: 3.5, idx: 18 },
+          { time: 5.5, idx: 19 },
+          { time: 8.5, idx: 20 },
+          { time: 15.0, idx: 21 },
+          { time: 18.0, idx: 22 }
+        ]
+      },
+      {
+        clip: 'decodeA',
+        startIdx: 23,
+        endIdx: 28,
+        cues: [
+          { time: 0, idx: 23 },
+          { time: 7.5, idx: 24 },
+          { time: 14.0, idx: 25 },
+          { time: 19.0, idx: 26 },
+          { time: 26.5, idx: 27 },
+          { time: 31.0, idx: 28 }
+        ]
+      },
+      {
+        clip: 'decodeB',
+        startIdx: 29,
+        endIdx: 35,
+        cues: [
+          { time: 0, idx: 29 },
+          { time: 4.5, idx: 30 },
+          { time: 7.5, idx: 31 },
+          { time: 10.5, idx: 32 },
+          { time: 16.5, idx: 33 },
+          { time: 19.5, idx: 34 },
+          { time: 23.0, idx: 35 }
+        ]
+      }
+    ]
+  },
+  noRepeatedLetters: {
+    id: 'noRepeatedLetters',
+    name: 'No repeated letters',
+    match: function(cfg){
+      return cfg && cfg.s === 'abcabc';
+    },
+    clips: {
+      setup: makeAudio('../audio-walkthroughs/run-length-round-trip/no-repeated-letters/01-setup-and-expansion-concept.mp3'),
+      encode1: makeAudio('../audio-walkthroughs/run-length-round-trip/no-repeated-letters/02-encode-first-half-abc.mp3'),
+      encode2: makeAudio('../audio-walkthroughs/run-length-round-trip/no-repeated-letters/03-encode-second-half-and-return.mp3'),
+      decode1: makeAudio('../audio-walkthroughs/run-length-round-trip/no-repeated-letters/04-decode-setup-and-first-half.mp3'),
+      decode2: makeAudio('../audio-walkthroughs/run-length-round-trip/no-repeated-letters/05-decode-second-half-and-round-trip.mp3')
+    },
+    mapping: [
+      {
+        clip: 'setup',
+        startIdx: 0,
+        endIdx: 1,
+        cues: [
+          { time: 0, idx: 0 },
+          { time: 19.5, idx: 1 }
+        ]
+      },
+      {
+        clip: 'encode1',
+        startIdx: 2,
+        endIdx: 13,
+        cues: [
+          { time: 0, idx: 2 },
+          { time: 3.0, idx: 3 },
+          { time: 4.5, idx: 4 },
+          { time: 7.5, idx: 5 },
+          { time: 11.0, idx: 6 },
+          { time: 13.5, idx: 7 },
+          { time: 15.0, idx: 8 },
+          { time: 18.0, idx: 9 },
+          { time: 21.0, idx: 10 },
+          { time: 23.5, idx: 11 },
+          { time: 25.0, idx: 12 },
+          { time: 28.5, idx: 13 }
+        ]
+      },
+      {
+        clip: 'encode2',
+        startIdx: 14,
+        endIdx: 27,
+        cues: [
+          { time: 0, idx: 14 },
+          { time: 3.5, idx: 15 },
+          { time: 5.0, idx: 16 },
+          { time: 8.0, idx: 17 },
+          { time: 11.5, idx: 18 },
+          { time: 13.5, idx: 19 },
+          { time: 15.0, idx: 20 },
+          { time: 18.0, idx: 21 },
+          { time: 21.0, idx: 22 },
+          { time: 23.0, idx: 23 },
+          { time: 24.5, idx: 24 },
+          { time: 27.0, idx: 25 },
+          { time: 31.0, idx: 26 },
+          { time: 33.0, idx: 27 }
+        ]
+      },
+      {
+        clip: 'decode1',
+        startIdx: 28,
+        endIdx: 40,
+        cues: [
+          { time: 0, idx: 28 },
+          { time: 6.5, idx: 29 },
+          { time: 10.0, idx: 30 },
+          { time: 12.0, idx: 31 },
+          { time: 14.0, idx: 32 },
+          { time: 17.0, idx: 33 },
+          { time: 19.5, idx: 34 },
+          { time: 21.5, idx: 35 },
+          { time: 23.5, idx: 36 },
+          { time: 26.5, idx: 37 },
+          { time: 29.0, idx: 38 },
+          { time: 31.0, idx: 39 },
+          { time: 33.0, idx: 40 }
+        ]
+      },
+      {
+        clip: 'decode2',
+        startIdx: 41,
+        endIdx: 55,
+        cues: [
+          { time: 0, idx: 41 },
+          { time: 3.0, idx: 42 },
+          { time: 5.0, idx: 43 },
+          { time: 7.0, idx: 44 },
+          { time: 10.0, idx: 45 },
+          { time: 12.0, idx: 46 },
+          { time: 14.0, idx: 47 },
+          { time: 16.0, idx: 48 },
+          { time: 19.0, idx: 49 },
+          { time: 21.0, idx: 50 },
+          { time: 23.0, idx: 51 },
+          { time: 25.0, idx: 52 },
+          { time: 28.5, idx: 53 },
+          { time: 30.5, idx: 54 },
+          { time: 33.0, idx: 55 }
+        ]
+      }
+    ]
+  },
+  exactlyTenKs: {
+    id: 'exactlyTenKs',
+    name: 'Exactly ten k’s',
+    match: function(cfg){
+      return cfg && cfg.s === 'kkkkkkkkkk';
+    },
+    clips: {
+      setup: makeAudio('../audio-walkthroughs/run-length-round-trip/exactly-ten-ks/01-setup-and-key-idea.mp3'),
+      encode: makeAudio('../audio-walkthroughs/run-length-round-trip/exactly-ten-ks/02-encode-ten-ks.mp3'),
+      decode: makeAudio('../audio-walkthroughs/run-length-round-trip/exactly-ten-ks/03-decode-parse-ten.mp3'),
+      verify: makeAudio('../audio-walkthroughs/run-length-round-trip/exactly-ten-ks/04-termination-and-round-trip.mp3')
+    },
+    mapping: [
+      {
+        clip: 'setup',
+        startIdx: 0,
+        endIdx: 1,
+        cues: [
+          { time: 0, idx: 0 },
+          { time: 22.5, idx: 1 }
+        ]
+      },
+      {
+        clip: 'encode',
+        startIdx: 2,
+        endIdx: 16,
+        cues: [
+          { time: 0, idx: 2 },
+          { time: 4.0, idx: 3 },
+          { time: 5.5, idx: 4 },
+          { time: 7.0, idx: 5 },
+          { time: 8.5, idx: 6 },
+          { time: 10.0, idx: 7 },
+          { time: 11.5, idx: 8 },
+          { time: 13.0, idx: 9 },
+          { time: 14.5, idx: 10 },
+          { time: 16.0, idx: 11 },
+          { time: 17.5, idx: 12 },
+          { time: 20.0, idx: 13 },
+          { time: 24.5, idx: 14 },
+          { time: 33.0, idx: 15 },
+          { time: 36.0, idx: 16 }
+        ]
+      },
+      {
+        clip: 'decode',
+        startIdx: 17,
+        endIdx: 22,
+        cues: [
+          { time: 0, idx: 17 },
+          { time: 13.5, idx: 18 },
+          { time: 19.5, idx: 19 },
+          { time: 26.0, idx: 20 },
+          { time: 31.5, idx: 21 },
+          { time: 34.0, idx: 22 }
+        ]
+      },
+      {
+        clip: 'verify',
+        startIdx: 23,
+        endIdx: 25,
+        cues: [
+          { time: 0, idx: 23 },
+          { time: 5.5, idx: 24 },
+          { time: 9.5, idx: 25 }
+        ]
+      }
+    ]
+  },
+  emptyString: {
+    id: 'emptyString',
+    name: 'Empty string',
+    match: function(cfg){
+      return cfg && cfg.s === '';
+    },
+    clips: {
+      encode: makeAudio('../audio-walkthroughs/run-length-round-trip/empty-string/01-setup-and-encode-empty.mp3'),
+      decode: makeAudio('../audio-walkthroughs/run-length-round-trip/empty-string/02-decode-and-round-trip.mp3')
+    },
+    mapping: [
+      {
+        clip: 'encode',
+        startIdx: 0,
+        endIdx: 3,
+        cues: [
+          { time: 0, idx: 0 },
+          { time: 22.0, idx: 1 },
+          { time: 33.0, idx: 2 },
+          { time: 39.5, idx: 3 }
+        ]
+      },
+      {
+        clip: 'decode',
+        startIdx: 4,
+        endIdx: 7,
+        cues: [
+          { time: 0, idx: 4 },
+          { time: 24.5, idx: 5 },
+          { time: 33.5, idx: 6 },
+          { time: 38.0, idx: 7 }
+        ]
+      }
+    ]
   }
 };
 

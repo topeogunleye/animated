@@ -134,7 +134,7 @@ Integrate the clips into the animation so narration plays at the appropriate ste
 | Preset ID | Preset Name | String (`s`) | Encoded Result | Key Educational Focus |
 |:---:|:---|:---|:---:|:---|
 | 0 | **Runs of 3, 2, 1** *(Completed)* | `'aaabbc'` | `'a3b2c1'` | Standard runs of varying lengths (3, 2, and 1); full round trip demonstration. |
-| 1 | **Twelve a’s (two digits)** | `'aaaaaaaaaaaab'` | `'a12b1'` | Multi-digit run lengths; decodes `12` by parsing digits `1` and `2` sequentially. |
-| 2 | **No repeated letters** | `'abcabc'` | `'a1b1c1a1b1c1'` | Worst-case run length encoding where every run length is 1, expanding total length. |
-| 3 | **Exactly ten k’s** | `'kkkkkkkkkk'` | `'k10'` | Single long run of 10 identical letters showing round trip boundary condition. |
-| 4 | **Empty string** | `''` | `''` | Base case / edge case: zero iterations, loops terminate immediately, round trip holds. |
+| 1 | **Twelve a’s (two digits)** *(Completed)* | `'aaaaaaaaaaaab'` | `'a12b1'` | Multi-digit run lengths; decodes `12` by parsing digits `1` and `2` sequentially. |
+| 2 | **No repeated letters** *(Completed)* | `'abcabc'` | `'a1b1c1a1b1c1'` | Worst-case run length encoding where every run length is 1, expanding total length. |
+| 3 | **Exactly ten k’s** *(Completed)* | `'kkkkkkkkkk'` | `'k10'` | Single long run of 10 identical letters showing round trip boundary condition. |
+| 4 | **Empty string** *(Completed)* | `''` | `''` | Base case / edge case: zero iterations, loops terminate immediately, round trip holds. |
