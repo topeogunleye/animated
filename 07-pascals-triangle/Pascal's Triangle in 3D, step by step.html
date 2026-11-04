@@ -507,6 +507,120 @@ const WALKTHROUGHS = {
         ]
       }
     ]
+  },
+  n0: {
+    id: 'n0',
+    name: 'n = 0 (empty)',
+    match: function(cfg){
+      return cfg && cfg.n === 0;
+    },
+    clips: {
+      empty: makeAudio('../audio-walkthroughs/pascals-triangle/n-0-empty/01-empty-triangle-base-case.mp3')
+    },
+    mapping: [
+      {
+        clip: 'empty',
+        startIdx: 0,
+        endIdx: 3,
+        cues: [
+          { time: 0, idx: 0 },
+          { time: 6.0, idx: 1 },
+          { time: 11.5, idx: 2 },
+          { time: 17.5, idx: 3 }
+        ]
+      }
+    ]
+  },
+  n8: {
+    id: 'n8',
+    name: 'n = 8',
+    match: function(cfg){
+      return cfg && cfg.n === 8;
+    },
+    clips: {
+      rows0to3: makeAudio('../audio-walkthroughs/pascals-triangle/n-8/01-setup-and-rows-zero-to-three.mp3'),
+      rows4to5: makeAudio('../audio-walkthroughs/pascals-triangle/n-8/02-rows-four-and-five.mp3'),
+      rows6to7andFinish: makeAudio('../audio-walkthroughs/pascals-triangle/n-8/03-rows-six-and-seven-and-completion.mp3')
+    },
+    mapping: [
+      {
+        clip: 'rows0to3',
+        startIdx: 0,
+        endIdx: 19,
+        cues: [
+          { time: 0, idx: 0 },
+          { time: 4.0, idx: 1 },
+          { time: 8.5, idx: 2 },
+          { time: 10.0, idx: 3 },
+          { time: 11.5, idx: 4 },
+          { time: 13.0, idx: 5 },
+          { time: 14.5, idx: 6 },
+          { time: 16.0, idx: 7 },
+          { time: 17.5, idx: 8 },
+          { time: 19.0, idx: 9 },
+          { time: 20.5, idx: 10 },
+          { time: 22.0, idx: 11 },
+          { time: 23.5, idx: 12 },
+          { time: 25.0, idx: 13 },
+          { time: 26.5, idx: 14 },
+          { time: 28.0, idx: 15 },
+          { time: 29.5, idx: 16 },
+          { time: 31.0, idx: 17 },
+          { time: 32.5, idx: 18 },
+          { time: 33.5, idx: 19 }
+        ]
+      },
+      {
+        clip: 'rows4to5',
+        startIdx: 20,
+        endIdx: 34,
+        cues: [
+          { time: 0, idx: 20 },
+          { time: 2.0, idx: 21 },
+          { time: 3.5, idx: 22 },
+          { time: 5.5, idx: 23 },
+          { time: 7.5, idx: 24 },
+          { time: 9.5, idx: 25 },
+          { time: 11.5, idx: 26 },
+          { time: 13.5, idx: 27 },
+          { time: 15.0, idx: 28 },
+          { time: 16.5, idx: 29 },
+          { time: 19.0, idx: 30 },
+          { time: 21.5, idx: 31 },
+          { time: 24.0, idx: 32 },
+          { time: 26.5, idx: 33 },
+          { time: 29.0, idx: 34 }
+        ]
+      },
+      {
+        clip: 'rows6to7andFinish',
+        startIdx: 35,
+        endIdx: 55,
+        cues: [
+          { time: 0, idx: 35 },
+          { time: 1.5, idx: 36 },
+          { time: 3.0, idx: 37 },
+          { time: 4.5, idx: 38 },
+          { time: 6.0, idx: 39 },
+          { time: 7.5, idx: 40 },
+          { time: 9.0, idx: 41 },
+          { time: 10.5, idx: 42 },
+          { time: 12.0, idx: 43 },
+          { time: 13.5, idx: 44 },
+          { time: 15.0, idx: 45 },
+          { time: 16.5, idx: 46 },
+          { time: 18.0, idx: 47 },
+          { time: 19.5, idx: 48 },
+          { time: 21.0, idx: 49 },
+          { time: 22.5, idx: 50 },
+          { time: 24.0, idx: 51 },
+          { time: 25.5, idx: 52 },
+          { time: 27.0, idx: 53 },
+          { time: 28.5, idx: 54 },
+          { time: 30.0, idx: 55 }
+        ]
+      }
+    ]
   }
 };
 

@@ -20,8 +20,8 @@ This master playbook defines the spoken educational narration, timeline cues, an
 |---|---|:---:|:---:|:---:|:---:|
 | **Preset 0: n = 5 (example)** | `n = 5` | 5 rows / 15 cells | 29 | 3 clips (`01`–`03`) | Completed |
 | **Preset 1: n = 1** | `n = 1` | 1 row / 1 cell | 7 | 1 clip (`01`) | Completed |
-| **Preset 2: n = 0 (empty)** | `n = 0` | 0 rows / 0 cells | 4 | 1 clip (`01`) | Planned |
-| **Preset 3: n = 8** | `n = 8` | 8 rows / 36 cells | 56 | 3 clips (`01`–`03`) | Planned |
+| **Preset 2: n = 0 (empty)** | `n = 0` | 0 rows / 0 cells | 4 | 1 clip (`01`) | Completed |
+| **Preset 3: n = 8** | `n = 8` | 8 rows / 36 cells | 56 | 3 clips (`01`–`03`) | Completed |
 
 ---
 
@@ -67,3 +67,24 @@ def pascal_rows(n):
 | Segment ID | Filename | Frames | Spoken Narration |
 |---|---|:---:|---|
 | `01-single-row-base-case` | `01-single-row-base-case.mp3` | 0 – 6 | "Here we observe the minimal non-empty base case where n equals one. The rows list is initialized, and the outer loop executes exactly one iteration for row zero. A single cell at position zero, zero is an edge, so we append one. Row zero is appended to rows, the loop concludes, and the algorithm returns a list containing a single row of one." |
+
+---
+
+## 6. Preset 2: "n = 0 (empty)"
+
+### Segments Table
+| Segment ID | Filename | Frames | Spoken Narration |
+|---|---|:---:|---|
+| `01-empty-triangle-base-case` | `01-empty-triangle-base-case.mp3` | 0 – 3 | "Here we inspect the edge case where n equals zero, representing an empty Pascal's triangle. The rows list is initialized to empty. Because range of zero contains no values, the outer loop never executes, and no cells or rows are created. The function immediately returns an empty list, validating our edge case handling in constant time." |
+
+---
+
+## 7. Preset 3: "n = 8"
+
+### Segments Table
+| Segment ID | Filename | Frames | Spoken Narration |
+|---|---|:---:|---|
+| `01-setup-and-rows-zero-to-three` | `01-setup-and-rows-zero-to-three.mp3` | 0 – 19 | "We now observe a larger, eight-row expansion of Pascal's triangle. Building out eight complete rows will produce thirty-six total cells, exhibiting rich combinatorial symmetry. Rows zero and one establish our apex with one and one, one. Row two introduces our first sum: one plus one equals two, giving one, two, one. Row three sums one plus two to three, and two plus one to three, generating the cubic coefficients one, three, three, one." |
+| `02-rows-four-and-five` | `02-rows-four-and-five.mp3` | 20 – 34 | "Continuing to row four, the interior cells compute one plus three equals four, three plus three equals six, and three plus one equals four, appending row four. In row five, each interior position sums the adjacent pair from row four: one plus four is five, four plus six is ten, six plus four is ten, and four plus one is five, assembling the six-element row one, five, ten, ten, five, one." |
+| `03-rows-six-and-seven-and-completion` | `03-rows-six-and-seven-and-completion.mp3` | 35 – 55 | "Row six produces twenty at its center, with symmetric flanks of fifteen, six, and one. Finally, row seven calculates our largest values: thirty-five at the twin peaks, flanked by twenty-one, seven, and the boundary ones. The outer loop exhausts all eight rows. The function returns the complete thirty-six-cell triangle, beautifully displaying the binomial coefficients for powers zero through seven." |
+
