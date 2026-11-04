@@ -325,6 +325,195 @@ const WALKTHROUGHS = {
         ]
       }
     ]
+  },
+  fourDisks: {
+    id: 'fourDisks',
+    name: 'n = 4',
+    match: function(cfg){
+      return cfg && cfg.n === 4;
+    },
+    clips: {
+      strategy: makeAudio('../audio-walkthroughs/tower-of-hanoi/four-disks/01-setup-and-four-disk-strategy.mp3'),
+      parking: makeAudio('../audio-walkthroughs/tower-of-hanoi/four-disks/02-parking-three-disks-on-b.mp3'),
+      transfer: makeAudio('../audio-walkthroughs/tower-of-hanoi/four-disks/03-transferring-disk-four.mp3'),
+      restacking: makeAudio('../audio-walkthroughs/tower-of-hanoi/four-disks/04-restacking-and-final-assembly.mp3')
+    },
+    mapping: [
+      {
+        clip: 'strategy',
+        startIdx: 0,
+        endIdx: 5,
+        cues: [
+          { time: 0, idx: 0 },
+          { time: 14.0, idx: 1 },
+          { time: 18.5, idx: 2 },
+          { time: 23.0, idx: 3 },
+          { time: 27.5, idx: 4 },
+          { time: 32.0, idx: 5 }
+        ]
+      },
+      {
+        clip: 'parking',
+        startIdx: 6,
+        endIdx: 30,
+        cues: [
+          { time: 0, idx: 6 },
+          { time: 4.5, idx: 9 },
+          { time: 8.5, idx: 12 },
+          { time: 12.5, idx: 16 },
+          { time: 17.5, idx: 20 },
+          { time: 21.0, idx: 23 },
+          { time: 24.5, idx: 26 },
+          { time: 29.5, idx: 30 }
+        ]
+      },
+      {
+        clip: 'transfer',
+        startIdx: 31,
+        endIdx: 45,
+        cues: [
+          { time: 0, idx: 31 },
+          { time: 10.5, idx: 32 },
+          { time: 16.0, idx: 36 },
+          { time: 20.0, idx: 39 },
+          { time: 24.0, idx: 42 }
+        ]
+      },
+      {
+        clip: 'restacking',
+        startIdx: 46,
+        endIdx: 61,
+        cues: [
+          { time: 0, idx: 46 },
+          { time: 8.0, idx: 50 },
+          { time: 13.5, idx: 53 },
+          { time: 18.5, idx: 56 },
+          { time: 24.0, idx: 60 },
+          { time: 28.0, idx: 61 }
+        ]
+      }
+    ]
+  },
+  fiveDisks: {
+    id: 'fiveDisks',
+    name: 'n = 5',
+    match: function(cfg){
+      return cfg && cfg.n === 5;
+    },
+    clips: {
+      strategy: makeAudio('../audio-walkthroughs/tower-of-hanoi/five-disks/01-setup-and-exponential-scale.mp3'),
+      parking: makeAudio('../audio-walkthroughs/tower-of-hanoi/five-disks/02-clearing-four-disks-to-b.mp3'),
+      transfer: makeAudio('../audio-walkthroughs/tower-of-hanoi/five-disks/03-transferring-disk-five.mp3'),
+      restacking: makeAudio('../audio-walkthroughs/tower-of-hanoi/five-disks/04-final-tower-assembly.mp3')
+    },
+    mapping: [
+      {
+        clip: 'strategy',
+        startIdx: 0,
+        endIdx: 31,
+        cues: [
+          { time: 0, idx: 0 },
+          { time: 14.0, idx: 1 },
+          { time: 19.0, idx: 7 },
+          { time: 24.0, idx: 10 },
+          { time: 28.0, idx: 17 },
+          { time: 33.0, idx: 31 }
+        ]
+      },
+      {
+        clip: 'parking',
+        startIdx: 32,
+        endIdx: 62,
+        cues: [
+          { time: 0, idx: 32 },
+          { time: 7.0, idx: 37 },
+          { time: 12.0, idx: 40 },
+          { time: 16.5, idx: 47 },
+          { time: 21.0, idx: 54 },
+          { time: 25.5, idx: 57 },
+          { time: 29.5, idx: 62 }
+        ]
+      },
+      {
+        clip: 'transfer',
+        startIdx: 63,
+        endIdx: 93,
+        cues: [
+          { time: 0, idx: 63 },
+          { time: 12.5, idx: 64 },
+          { time: 18.0, idx: 69 },
+          { time: 22.5, idx: 72 },
+          { time: 26.5, idx: 79 },
+          { time: 30.5, idx: 93 }
+        ]
+      },
+      {
+        clip: 'restacking',
+        startIdx: 94,
+        endIdx: 125,
+        cues: [
+          { time: 0, idx: 94 },
+          { time: 7.5, idx: 95 },
+          { time: 11.5, idx: 109 },
+          { time: 16.5, idx: 116 },
+          { time: 20.5, idx: 119 },
+          { time: 25.0, idx: 124 },
+          { time: 29.0, idx: 125 }
+        ]
+      }
+    ]
+  },
+  zeroDisks: {
+    id: 'zeroDisks',
+    name: 'n = 0 (no disks)',
+    match: function(cfg){
+      return cfg && cfg.n === 0;
+    },
+    clips: {
+      baseCase: makeAudio('../audio-walkthroughs/tower-of-hanoi/zero-disks/01-zero-disks-base-case.mp3')
+    },
+    mapping: [
+      {
+        clip: 'baseCase',
+        startIdx: 0,
+        endIdx: 1,
+        cues: [
+          { time: 0, idx: 0 },
+          { time: 7.0, idx: 1 }
+        ]
+      }
+    ]
+  },
+  negativeOne: {
+    id: 'negativeOne',
+    name: 'n = -1 (error branch)',
+    match: function(cfg){
+      return cfg && cfg.n < 0;
+    },
+    clips: {
+      guard: makeAudio('../audio-walkthroughs/tower-of-hanoi/negative-one/01-setup-and-guard-check.mp3'),
+      error: makeAudio('../audio-walkthroughs/tower-of-hanoi/negative-one/02-raising-value-error.mp3')
+    },
+    mapping: [
+      {
+        clip: 'guard',
+        startIdx: 0,
+        endIdx: 1,
+        cues: [
+          { time: 0, idx: 0 },
+          { time: 8.5, idx: 1 }
+        ]
+      },
+      {
+        clip: 'error',
+        startIdx: 2,
+        endIdx: 3,
+        cues: [
+          { time: 0, idx: 2 },
+          { time: 8.0, idx: 3 }
+        ]
+      }
+    ]
   }
 };
 
