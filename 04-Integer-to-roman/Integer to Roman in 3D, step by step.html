@@ -363,6 +363,157 @@ const WALKTHROUGHS = {
         ]
       }
     ]
+  },
+  example58: {
+    id: 'example58',
+    name: 'Example: 58',
+    match: function(cfg){
+      return cfg && cfg.input === 58;
+    },
+    clips: {
+      tens: makeAudio('../audio-walkthroughs/integer-to-roman/example-58/01-setup-and-tens.mp3'),
+      fives: makeAudio('../audio-walkthroughs/integer-to-roman/example-58/02-fives-and-subtractive-check.mp3'),
+      ones: makeAudio('../audio-walkthroughs/integer-to-roman/example-58/03-ones-and-return.mp3')
+    },
+    mapping: [
+      {
+        clip: 'tens',
+        startIdx: 0,
+        endIdx: 11,
+        cues: [
+          { time: 0, idx: 0 },
+          { time: 14.0, idx: 1 },
+          { time: 21.0, idx: 2 },
+          { time: 26.0, idx: 3 },
+          { time: 27.5, idx: 4 },
+          { time: 29.0, idx: 5 },
+          { time: 30.5, idx: 6 },
+          { time: 32.0, idx: 7 },
+          { time: 33.5, idx: 8 },
+          { time: 35.0, idx: 9 },
+          { time: 38.0, idx: 10 },
+          { time: 40.5, idx: 11 }
+        ]
+      },
+      {
+        clip: 'fives',
+        startIdx: 12,
+        endIdx: 18,
+        cues: [
+          { time: 0, idx: 12 },
+          { time: 2.5, idx: 13 },
+          { time: 4.5, idx: 14 },
+          { time: 7.5, idx: 15 },
+          { time: 12.0, idx: 16 },
+          { time: 16.5, idx: 17 },
+          { time: 20.0, idx: 18 }
+        ]
+      },
+      {
+        clip: 'ones',
+        startIdx: 19,
+        endIdx: 25,
+        cues: [
+          { time: 0, idx: 19 },
+          { time: 5.0, idx: 20 },
+          { time: 9.5, idx: 21 },
+          { time: 14.0, idx: 22 },
+          { time: 18.5, idx: 23 },
+          { time: 22.0, idx: 24 },
+          { time: 25.5, idx: 25 }
+        ]
+      }
+    ]
+  },
+  largest3999: {
+    id: 'largest3999',
+    name: 'Largest: 3999',
+    match: function(cfg){
+      return cfg && cfg.input === 3999;
+    },
+    clips: {
+      thousands: makeAudio('../audio-walkthroughs/integer-to-roman/largest-3999/01-setup-and-three-thousands.mp3'),
+      hundreds: makeAudio('../audio-walkthroughs/integer-to-roman/largest-3999/02-hundreds-and-tens.mp3'),
+      nines: makeAudio('../audio-walkthroughs/integer-to-roman/largest-3999/03-nines-and-return.mp3')
+    },
+    mapping: [
+      {
+        clip: 'thousands',
+        startIdx: 0,
+        endIdx: 7,
+        cues: [
+          { time: 0, idx: 0 },
+          { time: 14.0, idx: 1 },
+          { time: 21.0, idx: 2 },
+          { time: 26.0, idx: 3 },
+          { time: 29.5, idx: 4 },
+          { time: 33.5, idx: 5 },
+          { time: 37.5, idx: 6 },
+          { time: 41.5, idx: 7 }
+        ]
+      },
+      {
+        clip: 'hundreds',
+        startIdx: 8,
+        endIdx: 16,
+        cues: [
+          { time: 0, idx: 8 },
+          { time: 5.0, idx: 9 },
+          { time: 10.0, idx: 10 },
+          { time: 13.5, idx: 11 },
+          { time: 15.5, idx: 12 },
+          { time: 17.5, idx: 13 },
+          { time: 20.0, idx: 14 },
+          { time: 25.0, idx: 15 },
+          { time: 30.0, idx: 16 }
+        ]
+      },
+      {
+        clip: 'nines',
+        startIdx: 17,
+        endIdx: 24,
+        cues: [
+          { time: 0, idx: 17 },
+          { time: 2.5, idx: 18 },
+          { time: 4.5, idx: 19 },
+          { time: 7.0, idx: 20 },
+          { time: 11.5, idx: 21 },
+          { time: 16.5, idx: 22 },
+          { time: 20.0, idx: 23 },
+          { time: 24.5, idx: 24 }
+        ]
+      }
+    ]
+  },
+  outOfRange4000: {
+    id: 'outOfRange4000',
+    name: 'Out of range: 4000',
+    match: function(cfg){
+      return cfg && cfg.input === 4000;
+    },
+    clips: {
+      setup: makeAudio('../audio-walkthroughs/integer-to-roman/out-of-range-4000/01-setup-and-range-check.mp3'),
+      guard: makeAudio('../audio-walkthroughs/integer-to-roman/out-of-range-4000/02-value-error-guard.mp3')
+    },
+    mapping: [
+      {
+        clip: 'setup',
+        startIdx: 0,
+        endIdx: 1,
+        cues: [
+          { time: 0, idx: 0 },
+          { time: 15.0, idx: 1 }
+        ]
+      },
+      {
+        clip: 'guard',
+        startIdx: 2,
+        endIdx: 2,
+        cues: [
+          { time: 0, idx: 2 }
+        ]
+      }
+    ]
   }
 };
 
