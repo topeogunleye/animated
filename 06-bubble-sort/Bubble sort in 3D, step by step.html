@@ -362,6 +362,169 @@ const WALKTHROUGHS = {
         ]
       }
     ]
+  },
+  reverseSorted: {
+    id: 'reverseSorted',
+    name: 'Reverse sorted (worst case)',
+    match: function(cfg){
+      return cfg && !cfg.descending && Array.isArray(cfg.nums) && cfg.nums.length === 5 &&
+        cfg.nums[0] === 5 && cfg.nums[1] === 4 && cfg.nums[2] === 3 && cfg.nums[3] === 2 && cfg.nums[4] === 1;
+    },
+    clips: {
+      pass1: makeAudio('../audio-walkthroughs/bubble-sort/reverse-sorted/01-setup-and-pass-one.mp3'),
+      pass2: makeAudio('../audio-walkthroughs/bubble-sort/reverse-sorted/02-pass-two-bubbling-four.mp3'),
+      pass3: makeAudio('../audio-walkthroughs/bubble-sort/reverse-sorted/03-pass-three-bubbling-three.mp3'),
+      pass4: makeAudio('../audio-walkthroughs/bubble-sort/reverse-sorted/04-pass-four-and-worst-case.mp3')
+    },
+    mapping: [
+      {
+        clip: 'pass1',
+        startIdx: 0,
+        endIdx: 11,
+        cues: [
+          { time: 0, idx: 0 },
+          { time: 11.5, idx: 1 },
+          { time: 15.0, idx: 2 },
+          { time: 18.5, idx: 3 },
+          { time: 21.0, idx: 4 },
+          { time: 23.0, idx: 5 },
+          { time: 25.5, idx: 6 },
+          { time: 27.5, idx: 7 },
+          { time: 30.0, idx: 8 },
+          { time: 32.0, idx: 9 },
+          { time: 34.5, idx: 10 },
+          { time: 37.0, idx: 11 }
+        ]
+      },
+      {
+        clip: 'pass2',
+        startIdx: 12,
+        endIdx: 19,
+        cues: [
+          { time: 0, idx: 12 },
+          { time: 4.5, idx: 13 },
+          { time: 7.0, idx: 14 },
+          { time: 9.0, idx: 15 },
+          { time: 11.5, idx: 16 },
+          { time: 13.5, idx: 17 },
+          { time: 16.0, idx: 18 },
+          { time: 18.5, idx: 19 }
+        ]
+      },
+      {
+        clip: 'pass3',
+        startIdx: 20,
+        endIdx: 25,
+        cues: [
+          { time: 0, idx: 20 },
+          { time: 4.0, idx: 21 },
+          { time: 6.5, idx: 22 },
+          { time: 8.5, idx: 23 },
+          { time: 11.0, idx: 24 },
+          { time: 13.0, idx: 25 }
+        ]
+      },
+      {
+        clip: 'pass4',
+        startIdx: 26,
+        endIdx: 31,
+        cues: [
+          { time: 0, idx: 26 },
+          { time: 4.0, idx: 27 },
+          { time: 7.0, idx: 28 },
+          { time: 11.0, idx: 29 },
+          { time: 14.0, idx: 30 },
+          { time: 21.0, idx: 31 }
+        ]
+      }
+    ]
+  },
+  descending: {
+    id: 'descending',
+    name: 'Descending order (bonus)',
+    match: function(cfg){
+      return cfg && cfg.descending && Array.isArray(cfg.nums) && cfg.nums.length === 5 &&
+        cfg.nums[0] === 5 && cfg.nums[1] === 1 && cfg.nums[2] === 4 && cfg.nums[3] === 2 && cfg.nums[4] === 8;
+    },
+    clips: {
+      pass1: makeAudio('../audio-walkthroughs/bubble-sort/descending/01-setup-and-pass-one.mp3'),
+      pass2and3: makeAudio('../audio-walkthroughs/bubble-sort/descending/02-pass-two-and-three.mp3'),
+      pass4: makeAudio('../audio-walkthroughs/bubble-sort/descending/03-pass-four-and-completion.mp3')
+    },
+    mapping: [
+      {
+        clip: 'pass1',
+        startIdx: 0,
+        endIdx: 10,
+        cues: [
+          { time: 0, idx: 0 },
+          { time: 11.0, idx: 1 },
+          { time: 18.0, idx: 2 },
+          { time: 21.0, idx: 3 },
+          { time: 24.5, idx: 4 },
+          { time: 27.0, idx: 5 },
+          { time: 28.5, idx: 6 },
+          { time: 30.5, idx: 7 },
+          { time: 32.0, idx: 8 },
+          { time: 34.0, idx: 9 },
+          { time: 36.5, idx: 10 }
+        ]
+      },
+      {
+        clip: 'pass2and3',
+        startIdx: 11,
+        endIdx: 21,
+        cues: [
+          { time: 0, idx: 11 },
+          { time: 3.5, idx: 12 },
+          { time: 5.5, idx: 13 },
+          { time: 7.5, idx: 14 },
+          { time: 10.0, idx: 15 },
+          { time: 12.0, idx: 16 },
+          { time: 14.0, idx: 17 },
+          { time: 16.5, idx: 18 },
+          { time: 18.5, idx: 19 },
+          { time: 21.0, idx: 20 },
+          { time: 23.5, idx: 21 }
+        ]
+      },
+      {
+        clip: 'pass4',
+        startIdx: 22,
+        endIdx: 27,
+        cues: [
+          { time: 0, idx: 22 },
+          { time: 3.5, idx: 23 },
+          { time: 6.5, idx: 24 },
+          { time: 9.0, idx: 25 },
+          { time: 12.0, idx: 26 },
+          { time: 15.0, idx: 27 }
+        ]
+      }
+    ]
+  },
+  emptyList: {
+    id: 'emptyList',
+    name: 'Empty list',
+    match: function(cfg){
+      return cfg && Array.isArray(cfg.nums) && cfg.nums.length === 0;
+    },
+    clips: {
+      empty: makeAudio('../audio-walkthroughs/bubble-sort/empty-list/01-empty-list-and-base-case.mp3')
+    },
+    mapping: [
+      {
+        clip: 'empty',
+        startIdx: 0,
+        endIdx: 3,
+        cues: [
+          { time: 0, idx: 0 },
+          { time: 4.0, idx: 1 },
+          { time: 7.5, idx: 2 },
+          { time: 14.0, idx: 3 }
+        ]
+      }
+    ]
   }
 };
 
