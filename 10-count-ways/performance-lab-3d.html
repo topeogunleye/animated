@@ -63,6 +63,8 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
 .row{display:flex;min-width:max-content;white-space:pre;padding-right:12px;border-left:4px solid transparent}
 .ln{flex:0 0 2.4em;text-align:right;padding-right:12px;color:var(--muted);user-select:none}
 .row.active{background:var(--hl-bg);border-left-color:var(--hl-bar)}
+.narration-status{margin:6px 2px 0;min-height:1.25em;font-size:.82rem;color:var(--muted)}
+button.active{background:var(--hl-bg);border-color:var(--hl-bar);font-weight:600}
 </style>
 </head>
 <body>
@@ -82,7 +84,10 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
         <button id="bPlay" type="button">Play</button>
         <button id="bNext" type="button">Next</button>
         <button id="bReset" type="button">Reset</button>
+        <button id="bNarration" type="button" aria-pressed="false">Narration: Off</button>
         <button id="bSkip" type="button" hidden title="Jump to the first recursive call and pause">Skip setup</button>
+        <label class="sr" for="voice">Voice</label>
+        <select id="voice"><option value="auto">Voice: Lauren (recorded) / System</option></select>
         <label class="sr" for="preset">Input</label>
         <select id="preset"></select>
         <label class="sr" for="speed">Speed</label>
@@ -93,6 +98,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
           <option value="220">Very fast</option>
         </select>
       </div>
+      <p class="narration-status" id="narrationStatus" role="status" aria-live="polite"></p>
       <form class="custom-input" id="customForm">
         <h2>Try Count Pairs with your own input</h2>
         <div class="input-fields">
@@ -157,6 +163,7 @@ function simulateCustomPairs(nums, target){
 const $ = function(id){ return document.getElementById(id); };
 const $cv = $('cv'), $stage = $('stage'), $cap = $('caption'), $tag = $('tag'), $err = $('err'), $code = $('code');
 const $back = $('bBack'), $play = $('bPlay'), $next = $('bNext'), $reset = $('bReset'), $preset = $('preset'), $speed = $('speed');
+const $narration = $('bNarration'), $voice = $('voice'), $narrationStatus = $('narrationStatus');
 const $skip = $('bSkip');
 const $customForm = $('customForm'), $customNums = $('customNums'), $customTarget = $('customTarget'), $inputStatus = $('inputStatus');
 const RM = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches:false };
@@ -351,8 +358,954 @@ if (gl){
   $cv.addEventListener('dblclick', function(){ view.yaw = YAW0; view.pitch = PITCH0; updateCamera(); });
 }
 
+/* ---------- voice narration and recorded audio ---------- */
+const speechAvailable = typeof window !== "undefined" && "speechSynthesis" in window && typeof SpeechSynthesisUtterance !== "undefined";
+const audioAvailable = typeof Audio !== "undefined";
+const narrationAvailable = speechAvailable || audioAvailable;
+let availableVoices = [];
+
+function voiceScore(v){
+  let s = 0;
+  const lang = (v.lang || "").toLowerCase();
+  const name = (v.name || "").toLowerCase();
+  if (lang.indexOf("en") === 0) s += 100;
+  if (lang.indexOf("en-us") === 0 || lang.indexOf("en_us") === 0) s += 40;
+  if (name.indexOf("natural") >= 0) s += 60;
+  if (name.indexOf("premium") >= 0) s += 50;
+  if (name.indexOf("neural") >= 0) s += 50;
+  if (name.indexOf("google") >= 0) s += 30;
+  if (name.indexOf("samantha") >= 0) s += 25;
+  if (name.indexOf("karen") >= 0) s += 20;
+  return s;
+}
+
+function refreshVoices(){
+  if (!speechAvailable) return;
+  try {
+    availableVoices = window.speechSynthesis.getVoices() || [];
+  } catch (e) {
+    availableVoices = [];
+  }
+  const selected = $voice.value || "auto";
+  $voice.innerHTML = "";
+  const automatic = document.createElement("option");
+  automatic.value = "auto";
+  automatic.textContent = "Voice: Lauren (recorded) / System";
+  $voice.appendChild(automatic);
+  availableVoices.slice().sort(function(a, b){
+    return voiceScore(b) - voiceScore(a) || a.name.localeCompare(b.name);
+  }).forEach(function(voice){
+    const option = document.createElement("option");
+    option.value = voice.voiceURI;
+    option.textContent = voice.name + " (" + voice.lang + ")" + (voiceScore(voice) >= 180 ? " · natural" : "");
+    $voice.appendChild(option);
+  });
+  $voice.value = Array.from($voice.options).some(function(option){ return option.value === selected; }) ? selected : "auto";
+  S.voiceURI = $voice.value;
+}
+
+function makeAudio(src){
+  const a = new Audio();
+  a.preload = "auto";
+  a.src = src;
+  return a;
+}
+
+const WALKTHROUGHS = {
+  coinsNaive5: {
+    id: "coinsNaive5",
+    name: "Coins · naive · 5",
+    match: function(cfg){
+      return cfg && (cfg.presetIndex === 0 || cfg.name === "Coins \u00b7 naive \u00b7 5");
+    },
+    clips: {
+      setupAndAllOnes: makeAudio("../audio-walkthroughs/count-ways/coins-naive-5/01-setup-and-all-ones-path.mp3"),
+      coinTwoCombinations: makeAudio("../audio-walkthroughs/count-ways/coins-naive-5/02-coin-two-combinations.mp3"),
+      exploringSubtrees: makeAudio("../audio-walkthroughs/count-ways/coins-naive-5/03-exploring-subtrees-and-overlap.mp3"),
+      coinFiveAndCompletion: makeAudio("../audio-walkthroughs/count-ways/coins-naive-5/04-coin-five-and-completion.mp3")
+    },
+    mapping: [
+      {
+        clip: "setupAndAllOnes",
+        startIdx: 0,
+        endIdx: 34,
+        cues: [
+          { time: 0.0, idx: 0 },
+          { time: 14.0, idx: 1 },
+          { time: 17.0, idx: 2 },
+          { time: 19.5, idx: 3 },
+          { time: 21.5, idx: 4 },
+          { time: 23.5, idx: 5 },
+          { time: 25.5, idx: 6 },
+          { time: 27.5, idx: 7 },
+          { time: 29.5, idx: 8 },
+          { time: 31.5, idx: 9 },
+          { time: 33.5, idx: 10 },
+          { time: 35.5, idx: 11 },
+          { time: 37.5, idx: 12 },
+          { time: 39.5, idx: 13 },
+          { time: 41.5, idx: 14 },
+          { time: 43.5, idx: 15 },
+          { time: 46.0, idx: 16 },
+          { time: 49.0, idx: 17 },
+          { time: 51.0, idx: 18 },
+          { time: 53.0, idx: 19 },
+          { time: 55.0, idx: 20 },
+          { time: 56.0, idx: 21 },
+          { time: 57.0, idx: 22 },
+          { time: 58.0, idx: 23 },
+          { time: 59.0, idx: 24 },
+          { time: 60.0, idx: 25 },
+          { time: 61.0, idx: 26 },
+          { time: 62.0, idx: 27 },
+          { time: 63.0, idx: 28 },
+          { time: 64.0, idx: 29 },
+          { time: 65.0, idx: 30 },
+          { time: 66.0, idx: 31 },
+          { time: 67.5, idx: 32 },
+          { time: 70.0, idx: 33 },
+          { time: 72.5, idx: 34 }
+        ]
+      },
+      {
+        clip: "coinTwoCombinations",
+        startIdx: 35,
+        endIdx: 80,
+        cues: [
+          { time: 0.0, idx: 35 },
+          { time: 1.2, idx: 36 },
+          { time: 2.4, idx: 37 },
+          { time: 3.6, idx: 38 },
+          { time: 4.8, idx: 39 },
+          { time: 6.0, idx: 40 },
+          { time: 8.0, idx: 41 },
+          { time: 8.7, idx: 42 },
+          { time: 9.3, idx: 43 },
+          { time: 10.0, idx: 44 },
+          { time: 10.7, idx: 45 },
+          { time: 11.3, idx: 46 },
+          { time: 12.0, idx: 47 },
+          { time: 14.0, idx: 48 },
+          { time: 15.3, idx: 49 },
+          { time: 16.7, idx: 50 },
+          { time: 18.0, idx: 51 },
+          { time: 20.0, idx: 52 },
+          { time: 21.0, idx: 53 },
+          { time: 22.0, idx: 54 },
+          { time: 23.0, idx: 55 },
+          { time: 23.8, idx: 56 },
+          { time: 24.6, idx: 57 },
+          { time: 25.4, idx: 58 },
+          { time: 26.2, idx: 59 },
+          { time: 27.0, idx: 60 },
+          { time: 29.5, idx: 61 },
+          { time: 30.3, idx: 62 },
+          { time: 31.0, idx: 63 },
+          { time: 31.8, idx: 64 },
+          { time: 32.5, idx: 65 },
+          { time: 33.3, idx: 66 },
+          { time: 34.0, idx: 67 },
+          { time: 36.0, idx: 68 },
+          { time: 36.7, idx: 69 },
+          { time: 37.3, idx: 70 },
+          { time: 38.0, idx: 71 },
+          { time: 40.0, idx: 72 },
+          { time: 41.0, idx: 73 },
+          { time: 42.0, idx: 74 },
+          { time: 43.5, idx: 75 },
+          { time: 43.9, idx: 76 },
+          { time: 44.3, idx: 77 },
+          { time: 44.7, idx: 78 },
+          { time: 45.1, idx: 79 },
+          { time: 45.5, idx: 80 }
+        ]
+      },
+      {
+        clip: "exploringSubtrees",
+        startIdx: 81,
+        endIdx: 150,
+        cues: [
+          { time: 0.0, idx: 81 },
+          { time: 1.0, idx: 82 },
+          { time: 2.0, idx: 83 },
+          { time: 3.0, idx: 84 },
+          { time: 4.0, idx: 85 },
+          { time: 4.6, idx: 86 },
+          { time: 5.3, idx: 87 },
+          { time: 5.9, idx: 88 },
+          { time: 6.6, idx: 89 },
+          { time: 7.2, idx: 90 },
+          { time: 7.9, idx: 91 },
+          { time: 8.5, idx: 92 },
+          { time: 9.3, idx: 93 },
+          { time: 10.0, idx: 94 },
+          { time: 10.8, idx: 95 },
+          { time: 11.5, idx: 96 },
+          { time: 12.3, idx: 97 },
+          { time: 13.0, idx: 98 },
+          { time: 13.6, idx: 99 },
+          { time: 14.3, idx: 100 },
+          { time: 14.9, idx: 101 },
+          { time: 15.6, idx: 102 },
+          { time: 16.2, idx: 103 },
+          { time: 16.9, idx: 104 },
+          { time: 17.5, idx: 105 },
+          { time: 18.1, idx: 106 },
+          { time: 18.8, idx: 107 },
+          { time: 19.4, idx: 108 },
+          { time: 20.1, idx: 109 },
+          { time: 20.7, idx: 110 },
+          { time: 21.4, idx: 111 },
+          { time: 22.0, idx: 112 },
+          { time: 22.5, idx: 113 },
+          { time: 23.0, idx: 114 },
+          { time: 23.5, idx: 115 },
+          { time: 24.0, idx: 116 },
+          { time: 24.5, idx: 117 },
+          { time: 25.0, idx: 118 },
+          { time: 25.5, idx: 119 },
+          { time: 26.0, idx: 120 },
+          { time: 28.0, idx: 121 },
+          { time: 28.6, idx: 122 },
+          { time: 29.1, idx: 123 },
+          { time: 29.7, idx: 124 },
+          { time: 30.3, idx: 125 },
+          { time: 30.9, idx: 126 },
+          { time: 31.4, idx: 127 },
+          { time: 32.0, idx: 128 },
+          { time: 32.5, idx: 129 },
+          { time: 33.0, idx: 130 },
+          { time: 33.5, idx: 131 },
+          { time: 34.0, idx: 132 },
+          { time: 34.5, idx: 133 },
+          { time: 35.0, idx: 134 },
+          { time: 35.4, idx: 135 },
+          { time: 35.7, idx: 136 },
+          { time: 36.1, idx: 137 },
+          { time: 36.4, idx: 138 },
+          { time: 36.8, idx: 139 },
+          { time: 37.1, idx: 140 },
+          { time: 37.5, idx: 141 },
+          { time: 37.8, idx: 142 },
+          { time: 38.1, idx: 143 },
+          { time: 38.4, idx: 144 },
+          { time: 38.6, idx: 145 },
+          { time: 38.9, idx: 146 },
+          { time: 39.2, idx: 147 },
+          { time: 39.5, idx: 148 },
+          { time: 40.0, idx: 149 },
+          { time: 40.5, idx: 150 }
+        ]
+      },
+      {
+        clip: "coinFiveAndCompletion",
+        startIdx: 151,
+        endIdx: 202,
+        cues: [
+          { time: 0.0, idx: 151 },
+          { time: 0.7, idx: 152 },
+          { time: 1.4, idx: 153 },
+          { time: 2.1, idx: 154 },
+          { time: 2.8, idx: 155 },
+          { time: 3.5, idx: 156 },
+          { time: 4.2, idx: 157 },
+          { time: 4.9, idx: 158 },
+          { time: 5.6, idx: 159 },
+          { time: 6.3, idx: 160 },
+          { time: 7.0, idx: 161 },
+          { time: 7.7, idx: 162 },
+          { time: 8.4, idx: 163 },
+          { time: 9.1, idx: 164 },
+          { time: 9.9, idx: 165 },
+          { time: 10.6, idx: 166 },
+          { time: 11.3, idx: 167 },
+          { time: 12.0, idx: 168 },
+          { time: 13.0, idx: 169 },
+          { time: 14.0, idx: 170 },
+          { time: 15.0, idx: 171 },
+          { time: 16.0, idx: 172 },
+          { time: 16.6, idx: 173 },
+          { time: 17.1, idx: 174 },
+          { time: 17.7, idx: 175 },
+          { time: 18.2, idx: 176 },
+          { time: 18.8, idx: 177 },
+          { time: 19.3, idx: 178 },
+          { time: 19.9, idx: 179 },
+          { time: 20.4, idx: 180 },
+          { time: 21.0, idx: 181 },
+          { time: 21.7, idx: 182 },
+          { time: 22.3, idx: 183 },
+          { time: 23.0, idx: 184 },
+          { time: 23.7, idx: 185 },
+          { time: 24.3, idx: 186 },
+          { time: 25.0, idx: 187 },
+          { time: 26.0, idx: 188 },
+          { time: 27.0, idx: 189 },
+          { time: 28.0, idx: 190 },
+          { time: 29.5, idx: 191 },
+          { time: 31.0, idx: 192 },
+          { time: 33.0, idx: 193 },
+          { time: 34.0, idx: 194 },
+          { time: 35.0, idx: 195 },
+          { time: 36.0, idx: 196 },
+          { time: 37.5, idx: 197 },
+          { time: 39.0, idx: 198 },
+          { time: 40.3, idx: 199 },
+          { time: 41.5, idx: 200 },
+          { time: 42.5, idx: 201 },
+          { time: 43.5, idx: 202 }
+        ]
+      }
+    ]
+  },
+  coinsCached3: {
+    id: "coinsCached3",
+    name: "Coins · cached · 3",
+    match: function(cfg){
+      return cfg && (cfg.presetIndex === 1 || cfg.name === "Coins \u00b7 cached \u00b7 3");
+    },
+    clips: {
+      decoratorSetupAndAllOnes: makeAudio("../audio-walkthroughs/count-ways/coins-cached-3/01-decorator-setup-and-all-ones.mp3"),
+      branchingAndStoringSubproblems: makeAudio("../audio-walkthroughs/count-ways/coins-cached-3/02-branching-and-storing-subproblems.mp3"),
+      cacheHitAndFinalAccounting: makeAudio("../audio-walkthroughs/count-ways/coins-cached-3/03-cache-hit-and-final-accounting.mp3")
+    },
+    mapping: [
+      {
+        clip: "decoratorSetupAndAllOnes",
+        startIdx: 0,
+        endIdx: 50,
+        cues: [
+          { time: 0.0, idx: 0 },
+          { time: 0.7, idx: 1 },
+          { time: 1.4, idx: 2 },
+          { time: 2.1, idx: 3 },
+          { time: 2.8, idx: 4 },
+          { time: 3.5, idx: 5 },
+          { time: 4.2, idx: 6 },
+          { time: 4.9, idx: 7 },
+          { time: 5.6, idx: 8 },
+          { time: 6.3, idx: 9 },
+          { time: 7.0, idx: 10 },
+          { time: 7.7, idx: 11 },
+          { time: 8.4, idx: 12 },
+          { time: 9.1, idx: 13 },
+          { time: 9.8, idx: 14 },
+          { time: 10.5, idx: 15 },
+          { time: 11.2, idx: 16 },
+          { time: 11.9, idx: 17 },
+          { time: 12.6, idx: 18 },
+          { time: 13.3, idx: 19 },
+          { time: 14.0, idx: 20 },
+          { time: 18.0, idx: 21 },
+          { time: 19.5, idx: 22 },
+          { time: 21.0, idx: 23 },
+          { time: 22.5, idx: 24 },
+          { time: 24.0, idx: 25 },
+          { time: 24.8, idx: 26 },
+          { time: 25.6, idx: 27 },
+          { time: 26.4, idx: 28 },
+          { time: 27.2, idx: 29 },
+          { time: 28.0, idx: 30 },
+          { time: 28.8, idx: 31 },
+          { time: 29.6, idx: 32 },
+          { time: 30.4, idx: 33 },
+          { time: 31.2, idx: 34 },
+          { time: 32.0, idx: 35 },
+          { time: 32.8, idx: 36 },
+          { time: 33.6, idx: 37 },
+          { time: 34.4, idx: 38 },
+          { time: 35.2, idx: 39 },
+          { time: 36.0, idx: 40 },
+          { time: 36.8, idx: 41 },
+          { time: 37.6, idx: 42 },
+          { time: 38.4, idx: 43 },
+          { time: 39.2, idx: 44 },
+          { time: 40.0, idx: 45 },
+          { time: 41.8, idx: 46 },
+          { time: 43.6, idx: 47 },
+          { time: 45.4, idx: 48 },
+          { time: 47.2, idx: 49 },
+          { time: 49.0, idx: 50 }
+        ]
+      },
+      {
+        clip: "branchingAndStoringSubproblems",
+        startIdx: 51,
+        endIdx: 147,
+        cues: [
+          { time: 0.0, idx: 51 },
+          { time: 0.4, idx: 52 },
+          { time: 0.8, idx: 53 },
+          { time: 1.2, idx: 54 },
+          { time: 1.6, idx: 55 },
+          { time: 2.0, idx: 56 },
+          { time: 2.4, idx: 57 },
+          { time: 2.8, idx: 58 },
+          { time: 3.2, idx: 59 },
+          { time: 3.6, idx: 60 },
+          { time: 4.0, idx: 61 },
+          { time: 4.4, idx: 62 },
+          { time: 4.8, idx: 63 },
+          { time: 5.2, idx: 64 },
+          { time: 5.6, idx: 65 },
+          { time: 6.0, idx: 66 },
+          { time: 6.4, idx: 67 },
+          { time: 6.8, idx: 68 },
+          { time: 7.2, idx: 69 },
+          { time: 7.6, idx: 70 },
+          { time: 8.0, idx: 71 },
+          { time: 8.4, idx: 72 },
+          { time: 8.7, idx: 73 },
+          { time: 9.1, idx: 74 },
+          { time: 9.5, idx: 75 },
+          { time: 9.8, idx: 76 },
+          { time: 10.2, idx: 77 },
+          { time: 10.6, idx: 78 },
+          { time: 10.9, idx: 79 },
+          { time: 11.3, idx: 80 },
+          { time: 11.7, idx: 81 },
+          { time: 12.1, idx: 82 },
+          { time: 12.4, idx: 83 },
+          { time: 12.8, idx: 84 },
+          { time: 13.2, idx: 85 },
+          { time: 13.5, idx: 86 },
+          { time: 13.9, idx: 87 },
+          { time: 14.3, idx: 88 },
+          { time: 14.6, idx: 89 },
+          { time: 15.0, idx: 90 },
+          { time: 15.5, idx: 91 },
+          { time: 16.0, idx: 92 },
+          { time: 16.5, idx: 93 },
+          { time: 17.0, idx: 94 },
+          { time: 17.5, idx: 95 },
+          { time: 18.0, idx: 96 },
+          { time: 18.5, idx: 97 },
+          { time: 19.0, idx: 98 },
+          { time: 19.5, idx: 99 },
+          { time: 20.0, idx: 100 },
+          { time: 20.4, idx: 101 },
+          { time: 20.7, idx: 102 },
+          { time: 21.1, idx: 103 },
+          { time: 21.4, idx: 104 },
+          { time: 21.8, idx: 105 },
+          { time: 22.1, idx: 106 },
+          { time: 22.4, idx: 107 },
+          { time: 22.8, idx: 108 },
+          { time: 23.1, idx: 109 },
+          { time: 23.5, idx: 110 },
+          { time: 23.9, idx: 111 },
+          { time: 24.2, idx: 112 },
+          { time: 24.6, idx: 113 },
+          { time: 24.9, idx: 114 },
+          { time: 25.3, idx: 115 },
+          { time: 25.6, idx: 116 },
+          { time: 25.9, idx: 117 },
+          { time: 26.3, idx: 118 },
+          { time: 26.6, idx: 119 },
+          { time: 27.0, idx: 120 },
+          { time: 27.3, idx: 121 },
+          { time: 27.6, idx: 122 },
+          { time: 27.9, idx: 123 },
+          { time: 28.2, idx: 124 },
+          { time: 28.5, idx: 125 },
+          { time: 28.8, idx: 126 },
+          { time: 29.1, idx: 127 },
+          { time: 29.4, idx: 128 },
+          { time: 29.7, idx: 129 },
+          { time: 30.0, idx: 130 },
+          { time: 30.3, idx: 131 },
+          { time: 30.6, idx: 132 },
+          { time: 30.9, idx: 133 },
+          { time: 31.2, idx: 134 },
+          { time: 31.5, idx: 135 },
+          { time: 31.8, idx: 136 },
+          { time: 32.1, idx: 137 },
+          { time: 32.4, idx: 138 },
+          { time: 32.7, idx: 139 },
+          { time: 33.0, idx: 140 },
+          { time: 33.5, idx: 141 },
+          { time: 34.0, idx: 142 },
+          { time: 34.5, idx: 143 },
+          { time: 35.0, idx: 144 },
+          { time: 35.5, idx: 145 },
+          { time: 36.0, idx: 146 },
+          { time: 36.5, idx: 147 }
+        ]
+      },
+      {
+        clip: "cacheHitAndFinalAccounting",
+        startIdx: 148,
+        endIdx: 192,
+        cues: [
+          { time: 0.0, idx: 148 },
+          { time: 2.5, idx: 149 },
+          { time: 5.0, idx: 150 },
+          { time: 6.0, idx: 151 },
+          { time: 7.0, idx: 152 },
+          { time: 8.0, idx: 153 },
+          { time: 9.0, idx: 154 },
+          { time: 10.0, idx: 155 },
+          { time: 11.0, idx: 156 },
+          { time: 12.0, idx: 157 },
+          { time: 15.0, idx: 158 },
+          { time: 15.5, idx: 159 },
+          { time: 15.9, idx: 160 },
+          { time: 16.4, idx: 161 },
+          { time: 16.9, idx: 162 },
+          { time: 17.4, idx: 163 },
+          { time: 17.8, idx: 164 },
+          { time: 18.3, idx: 165 },
+          { time: 18.8, idx: 166 },
+          { time: 19.2, idx: 167 },
+          { time: 19.7, idx: 168 },
+          { time: 20.2, idx: 169 },
+          { time: 20.6, idx: 170 },
+          { time: 21.1, idx: 171 },
+          { time: 21.6, idx: 172 },
+          { time: 22.1, idx: 173 },
+          { time: 22.5, idx: 174 },
+          { time: 23.0, idx: 175 },
+          { time: 23.6, idx: 176 },
+          { time: 24.2, idx: 177 },
+          { time: 24.8, idx: 178 },
+          { time: 25.4, idx: 179 },
+          { time: 26.0, idx: 180 },
+          { time: 26.6, idx: 181 },
+          { time: 27.2, idx: 182 },
+          { time: 27.8, idx: 183 },
+          { time: 28.4, idx: 184 },
+          { time: 29.0, idx: 185 },
+          { time: 30.0, idx: 186 },
+          { time: 31.0, idx: 187 },
+          { time: 32.0, idx: 188 },
+          { time: 33.0, idx: 189 },
+          { time: 34.0, idx: 190 },
+          { time: 35.0, idx: 191 },
+          { time: 36.0, idx: 192 }
+        ]
+      }
+    ]
+  },
+  fibonacciCached4: {
+    id: "fibonacciCached4",
+    name: "Fibonacci · cached · 4",
+    match: function(cfg){
+      return cfg && (cfg.presetIndex === 2 || cfg.name === "Fibonacci \u00b7 cached \u00b7 4");
+    },
+    clips: {
+      memoizedCallsAndBaseCases: makeAudio("../audio-walkthroughs/count-ways/fibonacci-cached-4/01-memoized-calls-and-base-cases.mp3"),
+      cacheHitsAndCompletion: makeAudio("../audio-walkthroughs/count-ways/fibonacci-cached-4/02-cache-hits-and-completion.mp3")
+    },
+    mapping: [
+      {
+        clip: "memoizedCallsAndBaseCases",
+        startIdx: 0,
+        endIdx: 49,
+        cues: [
+          { time: 0.0, idx: 0 },
+          { time: 0.8, idx: 1 },
+          { time: 1.6, idx: 2 },
+          { time: 2.4, idx: 3 },
+          { time: 3.2, idx: 4 },
+          { time: 4.0, idx: 5 },
+          { time: 4.8, idx: 6 },
+          { time: 5.6, idx: 7 },
+          { time: 6.4, idx: 8 },
+          { time: 7.2, idx: 9 },
+          { time: 8.0, idx: 10 },
+          { time: 9.0, idx: 11 },
+          { time: 10.0, idx: 12 },
+          { time: 11.0, idx: 13 },
+          { time: 12.0, idx: 14 },
+          { time: 13.0, idx: 15 },
+          { time: 13.8, idx: 16 },
+          { time: 14.6, idx: 17 },
+          { time: 15.4, idx: 18 },
+          { time: 16.2, idx: 19 },
+          { time: 17.0, idx: 20 },
+          { time: 17.8, idx: 21 },
+          { time: 18.6, idx: 22 },
+          { time: 19.4, idx: 23 },
+          { time: 20.2, idx: 24 },
+          { time: 21.0, idx: 25 },
+          { time: 21.8, idx: 26 },
+          { time: 22.6, idx: 27 },
+          { time: 23.4, idx: 28 },
+          { time: 24.2, idx: 29 },
+          { time: 25.0, idx: 30 },
+          { time: 25.8, idx: 31 },
+          { time: 26.6, idx: 32 },
+          { time: 27.4, idx: 33 },
+          { time: 28.2, idx: 34 },
+          { time: 29.0, idx: 35 },
+          { time: 29.9, idx: 36 },
+          { time: 30.8, idx: 37 },
+          { time: 31.7, idx: 38 },
+          { time: 32.6, idx: 39 },
+          { time: 33.5, idx: 40 },
+          { time: 34.4, idx: 41 },
+          { time: 35.3, idx: 42 },
+          { time: 36.2, idx: 43 },
+          { time: 37.1, idx: 44 },
+          { time: 38.0, idx: 45 },
+          { time: 40.0, idx: 46 },
+          { time: 42.0, idx: 47 },
+          { time: 44.0, idx: 48 },
+          { time: 46.0, idx: 49 }
+        ]
+      },
+      {
+        clip: "cacheHitsAndCompletion",
+        startIdx: 50,
+        endIdx: 85,
+        cues: [
+          { time: 0.0, idx: 50 },
+          { time: 1.0, idx: 51 },
+          { time: 2.0, idx: 52 },
+          { time: 3.0, idx: 53 },
+          { time: 4.0, idx: 54 },
+          { time: 5.0, idx: 55 },
+          { time: 6.3, idx: 56 },
+          { time: 7.5, idx: 57 },
+          { time: 8.8, idx: 58 },
+          { time: 10.0, idx: 59 },
+          { time: 13.0, idx: 60 },
+          { time: 13.8, idx: 61 },
+          { time: 14.6, idx: 62 },
+          { time: 15.4, idx: 63 },
+          { time: 16.2, idx: 64 },
+          { time: 17.0, idx: 65 },
+          { time: 17.8, idx: 66 },
+          { time: 18.6, idx: 67 },
+          { time: 19.4, idx: 68 },
+          { time: 20.2, idx: 69 },
+          { time: 21.0, idx: 70 },
+          { time: 22.7, idx: 71 },
+          { time: 24.3, idx: 72 },
+          { time: 26.0, idx: 73 },
+          { time: 29.0, idx: 74 },
+          { time: 29.7, idx: 75 },
+          { time: 30.4, idx: 76 },
+          { time: 31.1, idx: 77 },
+          { time: 31.8, idx: 78 },
+          { time: 32.5, idx: 79 },
+          { time: 33.2, idx: 80 },
+          { time: 33.9, idx: 81 },
+          { time: 34.6, idx: 82 },
+          { time: 35.3, idx: 83 },
+          { time: 36.0, idx: 84 },
+          { time: 39.0, idx: 85 }
+        ]
+      }
+    ]
+  },
+  consecutiveMixed: {
+    id: "consecutiveMixed",
+    name: "Consecutive · mixed",
+    match: function(cfg){
+      return cfg && (cfg.presetIndex === 3 || cfg.name === "Consecutive \u00b7 mixed");
+    },
+    clips: {
+      hashTableSetupAndIsolatedStreaks: makeAudio("../audio-walkthroughs/count-ways/consecutive-mixed/01-hash-table-setup-and-isolated-streaks.mp3"),
+      longestStreakAndSkips: makeAudio("../audio-walkthroughs/count-ways/consecutive-mixed/02-longest-streak-and-skips.mp3")
+    },
+    mapping: [
+      {
+        clip: "hashTableSetupAndIsolatedStreaks",
+        startIdx: 0,
+        endIdx: 32,
+        cues: [
+          { time: 0.0, idx: 0 },
+          { time: 1.2, idx: 1 },
+          { time: 2.4, idx: 2 },
+          { time: 3.6, idx: 3 },
+          { time: 4.8, idx: 4 },
+          { time: 6.0, idx: 5 },
+          { time: 7.2, idx: 6 },
+          { time: 8.4, idx: 7 },
+          { time: 9.6, idx: 8 },
+          { time: 10.8, idx: 9 },
+          { time: 12.0, idx: 10 },
+          { time: 13.7, idx: 11 },
+          { time: 15.3, idx: 12 },
+          { time: 17.0, idx: 13 },
+          { time: 18.7, idx: 14 },
+          { time: 20.3, idx: 15 },
+          { time: 22.0, idx: 16 },
+          { time: 28.0, idx: 17 },
+          { time: 30.0, idx: 18 },
+          { time: 32.0, idx: 19 },
+          { time: 34.0, idx: 20 },
+          { time: 36.0, idx: 21 },
+          { time: 38.0, idx: 22 },
+          { time: 41.0, idx: 23 },
+          { time: 44.0, idx: 24 },
+          { time: 47.0, idx: 25 },
+          { time: 50.0, idx: 26 },
+          { time: 51.4, idx: 27 },
+          { time: 52.8, idx: 28 },
+          { time: 54.2, idx: 29 },
+          { time: 55.6, idx: 30 },
+          { time: 57.0, idx: 31 },
+          { time: 60.0, idx: 32 }
+        ]
+      },
+      {
+        clip: "longestStreakAndSkips",
+        startIdx: 33,
+        endIdx: 52,
+        cues: [
+          { time: 0.0, idx: 33 },
+          { time: 3.0, idx: 34 },
+          { time: 6.0, idx: 35 },
+          { time: 7.6, idx: 36 },
+          { time: 9.2, idx: 37 },
+          { time: 10.8, idx: 38 },
+          { time: 12.4, idx: 39 },
+          { time: 14.0, idx: 40 },
+          { time: 16.3, idx: 41 },
+          { time: 18.5, idx: 42 },
+          { time: 20.8, idx: 43 },
+          { time: 23.0, idx: 44 },
+          { time: 26.0, idx: 45 },
+          { time: 29.0, idx: 46 },
+          { time: 31.5, idx: 47 },
+          { time: 34.0, idx: 48 },
+          { time: 35.5, idx: 49 },
+          { time: 37.0, idx: 50 },
+          { time: 38.5, idx: 51 },
+          { time: 40.0, idx: 52 }
+        ]
+      }
+    ]
+  },
+  pairsDuplicates: {
+    id: "pairsDuplicates",
+    name: "Pairs · duplicates",
+    match: function(cfg){
+      if (!cfg) return false;
+      if (cfg.presetIndex === 4 || (cfg.name && cfg.name.indexOf("Pairs") === 0)) return true;
+      if (cfg.name === "Custom Count Pairs" && Array.isArray(cfg.nums) && cfg.nums.join(",") === "1,5,7,-1,5" && cfg.target === 6) return true;
+      return false;
+    },
+    clips: {
+      firstPair: makeAudio("../audio-walkthroughs/count-ways/pairs-duplicates/01-frequency-map-and-first-pair.mp3"),
+      duplicatePair: makeAudio("../audio-walkthroughs/count-ways/pairs-duplicates/02-negative-complement-and-duplicate-pair.mp3")
+    },
+    mapping: [
+      {
+        clip: "firstPair",
+        startIdx: 0,
+        endIdx: 11,
+        cues: [
+          { time: 0.0, idx: 0 },
+          { time: 15.0, idx: 1 },
+          { time: 18.0, idx: 2 },
+          { time: 21.0, idx: 3 },
+          { time: 25.0, idx: 4 },
+          { time: 30.0, idx: 5 },
+          { time: 34.0, idx: 6 },
+          { time: 38.0, idx: 7 },
+          { time: 43.0, idx: 8 },
+          { time: 47.0, idx: 9 },
+          { time: 49.5, idx: 10 },
+          { time: 52.0, idx: 11 }
+        ]
+      },
+      {
+        clip: "duplicatePair",
+        startIdx: 12,
+        endIdx: 21,
+        cues: [
+          { time: 0.0, idx: 12 },
+          { time: 4.0, idx: 13 },
+          { time: 9.0, idx: 14 },
+          { time: 15.0, idx: 15 },
+          { time: 18.5, idx: 16 },
+          { time: 24.0, idx: 17 },
+          { time: 29.0, idx: 18 },
+          { time: 32.5, idx: 19 },
+          { time: 35.0, idx: 20 },
+          { time: 38.0, idx: 21 }
+        ]
+      }
+    ]
+  }
+};
+
+function getActiveWalkthrough(cfg){
+  if (!cfg) return null;
+  const keys = Object.keys(WALKTHROUGHS);
+  for (let i = 0; i < keys.length; i++){
+    const wt = WALKTHROUGHS[keys[i]];
+    if (wt.match(cfg)) return wt;
+  }
+  return null;
+}
+
+function narrationStatusMessage(cfg){
+  const wt = getActiveWalkthrough(cfg);
+  if (wt){
+    return "Narration enabled (using recorded voice walkthrough for " + wt.name + ").";
+  }
+  return "Narration enabled (using browser speech synthesis for custom/other inputs).";
+}
+
+function tutorNarration(frame){
+  if (!frame) return "";
+  return frame.msg;
+}
+
+function speakTutor(frame, token, onComplete){
+  if (!speechAvailable || !S.narration || token !== S.narrationToken){
+    if (onComplete) onComplete();
+    return;
+  }
+  try { window.speechSynthesis.cancel(); } catch(e){}
+  const text = tutorNarration(frame);
+  if (!text){
+    if (onComplete) onComplete();
+    return;
+  }
+  const u = new SpeechSynthesisUtterance(text);
+  if (S.voiceURI && S.voiceURI !== "auto"){
+    const chosen = availableVoices.find(function(v){ return v.voiceURI === S.voiceURI; });
+    if (chosen) u.voice = chosen;
+  }
+  u.onend = function(){
+    if (token === S.narrationToken && onComplete) onComplete();
+  };
+  u.onerror = function(){
+    if (token === S.narrationToken && onComplete) onComplete();
+  };
+  try {
+    window.speechSynthesis.speak(u);
+  } catch(e){
+    if (onComplete) onComplete();
+  }
+}
+
+function clearCueTimers(){
+  while (S.cueTimers.length){
+    clearTimeout(S.cueTimers.pop());
+  }
+}
+
+function cancelNarration(){
+  const wasPending = S.narrationPending;
+  S.narrationToken += 1;
+  S.narrationPending = false;
+  clearCueTimers();
+  S.currentClip = null;
+  Object.keys(WALKTHROUGHS).forEach(function(wKey){
+    const clips = WALKTHROUGHS[wKey].clips;
+    Object.keys(clips).forEach(function(k){
+      const c = clips[k];
+      c.pause();
+      c.currentTime = 0;
+      c.onended = null;
+      c.onerror = null;
+    });
+  });
+  if (speechAvailable && wasPending){
+    try { window.speechSynthesis.cancel(); } catch(e){}
+  }
+}
+
+function speakFrame(frame){
+  const wt = getActiveWalkthrough(S.cfg);
+  let milestone = null;
+  if (wt){
+    milestone = wt.mapping.find(function(m){ return S.idx >= m.startIdx && S.idx <= m.endIdx; });
+  }
+
+  const expectedClip = (wt && milestone) ? wt.clips[milestone.clip] : null;
+  if (expectedClip && S.currentClip === expectedClip && !expectedClip.paused && !expectedClip.ended){
+    return;
+  }
+
+  cancelNarration();
+  if (!S.narration || !narrationAvailable) return;
+
+  const token = S.narrationToken;
+  const finish = function(){
+    if (token !== S.narrationToken) return;
+    S.narrationPending = false;
+    S.currentClip = null;
+    clearCueTimers();
+    if (S.state === "playing"){
+      if (S.idx >= S.frames.length - 1){
+        S.state = "ended";
+        updateButtons();
+      } else {
+        schedule();
+      }
+    }
+  };
+  S.narrationPending = true;
+
+  if (wt && audioAvailable && milestone){
+    const clip = wt.clips[milestone.clip];
+    S.currentClip = clip;
+    let fellBack = false;
+    const fallback = function(){
+      if (fellBack || token !== S.narrationToken) return;
+      fellBack = true;
+      clip.onended = null;
+      clip.onerror = null;
+      S.currentClip = null;
+      clearCueTimers();
+      $narrationStatus.textContent = "A recorded narration clip could not play; using browser speech instead.";
+      speakTutor(frame, token, finish);
+    };
+
+    clip.onended = finish;
+    clip.onerror = fallback;
+
+    let currentCue = null;
+    for (let c = milestone.cues.length - 1; c >= 0; c--){
+      if (S.idx >= milestone.cues[c].idx){
+        currentCue = milestone.cues[c];
+        break;
+      }
+    }
+    if (!currentCue) currentCue = milestone.cues[0];
+
+    try { clip.currentTime = currentCue.time; } catch(e){}
+
+    if (S.state === "playing"){
+      milestone.cues.forEach(function(cue){
+        if (cue.time > currentCue.time){
+          const delay = (cue.time - currentCue.time) * 1000;
+          const tid = setTimeout(function(){
+            if (token === S.narrationToken && S.state === "playing"){
+              show(cue.idx, true);
+            }
+          }, delay);
+          S.cueTimers.push(tid);
+        }
+      });
+    }
+
+    try {
+      const playPromise = clip.play();
+      if (playPromise && typeof playPromise.catch === "function"){
+        playPromise.catch(function(err){
+          console.warn("Audio playback error, falling back to speech synthesis:", err);
+          fallback();
+        });
+      }
+    } catch(err){
+      fallback();
+    }
+  } else {
+    speakTutor(frame, token, finish);
+  }
+}
+
 /* ---------- playback state ---------- */
-const S = { cfg:null, frames:[], idx:0, state:'paused', timer:0, speed:1300, shown:-1 };
+const S = { cfg:null, frames:[], idx:0, state:'paused', timer:0, speed:1300, shown:-1,
+  narration:false, voiceURI:'auto', narrationPending:false, narrationToken:0, currentClip:null, cueTimers:[] };
 
 function tweenDur(f){ return S.state === 'playing' ? Math.max(120, Math.min(600, S.speed * f.hold * 0.5)) : 450; }
 function easeProp(get, set, to, animate, f){
@@ -427,12 +1380,16 @@ function show(i, animate){
   applyScene(f, animate && Math.abs(i - S.shown) === 1);
   S.shown = i;
   updateButtons();
+  if (S.narration){
+    speakFrame(f);
+  }
 }
 
 function clearTimer(){ if (S.timer){ clearTimeout(S.timer); S.timer = 0; } }
 function schedule(){
   clearTimer();
   if (S.state !== 'playing') return;
+  if (S.narration && S.narrationPending) return;
   S.timer = setTimeout(tick, S.speed * S.frames[S.idx].hold);
 }
 function tick(){
@@ -443,11 +1400,58 @@ function tick(){
   if (S.idx >= S.frames.length - 1){ S.state = 'ended'; updateButtons(); return; }
   schedule();
 }
-function pause(){ clearTimer(); settle(); if (S.state === 'playing' || S.state === 'ended') S.state = 'paused'; updateButtons(); }
+function pause(){
+  clearTimer();
+  settle();
+  if (S.currentClip && !S.currentClip.paused){
+    S.currentClip.pause();
+  }
+  clearCueTimers();
+  if (speechAvailable && S.narrationPending){
+    try { window.speechSynthesis.cancel(); } catch(e){}
+    S.narrationPending = false;
+  }
+  if (S.state === 'playing' || S.state === 'ended') S.state = 'paused';
+  updateButtons();
+}
 function play(){
   if (S.state === 'playing'){ pause(); return; }
   if (S.idx >= S.frames.length - 1) show(0, false);
-  S.state = 'playing'; updateButtons(); schedule();
+  S.state = 'playing';
+  updateButtons();
+  if (S.narration){
+    if (S.currentClip && S.currentClip.paused && !S.currentClip.ended){
+      S.narrationPending = true;
+      const wt = getActiveWalkthrough(S.cfg);
+      const milestone = wt ? wt.mapping.find(function(m){ return S.idx >= m.startIdx && S.idx <= m.endIdx; }) : null;
+      if (milestone){
+        const token = S.narrationToken;
+        const curTime = S.currentClip.currentTime;
+        milestone.cues.forEach(function(cue){
+          if (cue.time > curTime){
+            const delay = (cue.time - curTime) * 1000;
+            const tid = setTimeout(function(){
+              if (token === S.narrationToken && S.state === 'playing'){
+                show(cue.idx, true);
+              }
+            }, delay);
+            S.cueTimers.push(tid);
+          }
+        });
+      }
+      try {
+        const p = S.currentClip.play();
+        if (p && p.catch) p.catch(function(){ schedule(); });
+      } catch(e){
+        schedule();
+      }
+    } else {
+      speakFrame(S.frames[S.idx]);
+      schedule();
+    }
+  } else {
+    schedule();
+  }
 }
 function step(d){
   pause();
@@ -455,16 +1459,34 @@ function step(d){
   if (j < 0 || j >= S.frames.length) return;
   show(j, true);
 }
-function reset(){ pause(); show(0, false); }
+function reset(){ pause(); cancelNarration(); show(0, false); }
+function toggleNarration(){
+  S.narration = !S.narration;
+  $narration.setAttribute('aria-pressed', S.narration ? 'true' : 'false');
+  $narration.textContent = S.narration ? 'Narration: On' : 'Narration: Off';
+  $narration.classList.toggle('active', S.narration);
+  if (S.narration){
+    $narrationStatus.textContent = narrationStatusMessage(S.cfg);
+    speakFrame(S.frames[S.idx]);
+  } else {
+    cancelNarration();
+    $narrationStatus.textContent = 'Narration paused.';
+    if (S.state === 'playing') schedule();
+  }
+}
 function loadPreset(i){
   pause();
+  cancelNarration();
   const p = PRESETS[i];
   const trace=TRACES[i];
-  S.cfg = { name:p.name, nums:Array(trace.slots).fill(trace.maxValue), skipIndex:trace.skipIndex };
+  S.cfg = { name:p.name, nums:Array(trace.slots).fill(trace.maxValue), skipIndex:trace.skipIndex, presetIndex:i };
   rows.forEach((row,index)=>row.hidden=!trace.visible.includes(index));
   S.frames = simulate.apply(null, p.args).frames; S.shown = -1; S.idx = 0;
   build(S.cfg);
   show(0, false);
+  if (S.narration){
+    $narrationStatus.textContent = narrationStatusMessage(S.cfg);
+  }
 }
 
 $back.addEventListener('click', function(){ step(-1); });
@@ -495,12 +1517,16 @@ $customForm.addEventListener('submit', function(e){
   }
   const trace = simulateCustomPairs(nums, target);
   pause();
-  S.cfg = { name:'Custom Count Pairs', nums:nums.slice(), skipIndex:-1 };
+  cancelNarration();
+  S.cfg = { name:'Custom Count Pairs', nums:nums.slice(), target:target, skipIndex:-1 };
   rows.forEach(function(row, index){ row.hidden = index < 64 || index > 70; });
   S.frames = trace.frames; S.shown = -1; S.idx = 0;
   $inputStatus.textContent = 'Running Count Pairs for [' + nums.join(', ') + '] with target ' + target + ' (result: ' + trace.result + ').';
   build(S.cfg);
   show(0, false);
+  if (S.narration){
+    $narrationStatus.textContent = narrationStatusMessage(S.cfg);
+  }
 });
 $speed.addEventListener('change', function(){
   S.speed = Number($speed.value);
@@ -526,6 +1552,23 @@ try {
   if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', retheme);
 } catch (e) { /* older browsers: theme refresh on reload */ }
 new MutationObserver(retheme).observe(document.documentElement, { attributes:true, attributeFilter:['data-theme'] });
+
+$narration.addEventListener('click', toggleNarration);
+$voice.addEventListener('change', function(){
+  S.voiceURI = $voice.value;
+  if (S.narration){
+    cancelNarration();
+    speakFrame(S.frames[S.idx]);
+  }
+});
+if (speechAvailable){
+  refreshVoices();
+  if (typeof window.speechSynthesis.addEventListener === 'function'){
+    window.speechSynthesis.addEventListener('voiceschanged', refreshVoices);
+  } else {
+    window.speechSynthesis.onvoiceschanged = refreshVoices;
+  }
+}
 
 loadPreset(0);
 })();
