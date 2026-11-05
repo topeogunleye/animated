@@ -6,8 +6,9 @@ A collection of standalone, browser-based algorithm visualizations. Open
 ## Run locally
 
 No build tools or package installation are needed. Open `index.html` in a browser,
-or serve the project directory with any static file server. Some visualizations
-load Three.js from a CDN, so an internet connection is needed for those pages.
+or serve the project directory with any static file server. The homepage includes
+both iterative and recursive leftmost binary search visualizations. Some pages load
+Three.js from a CDN, so an internet connection is needed for those visualizations.
 
 ## Publish with GitHub Pages
 
