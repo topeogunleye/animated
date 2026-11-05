@@ -622,6 +622,218 @@ var WALKTHROUGHS = {
         ]
       }
     ]
+  },
+  twoItems: {
+    id: 'twoItems',
+    name: '[1, 2]',
+    match: function(cfg){
+      return cfg && Array.isArray(cfg.items) && cfg.items.join(',') === '1,2';
+    },
+    clips: {
+      skipOne: makeAudio('../audio-walkthroughs/subsets/two-items/01-skip-one-branch.mp3'),
+      includeOne: makeAudio('../audio-walkthroughs/subsets/two-items/02-include-one-and-finish.mp3')
+    },
+    mapping: [
+      {
+        clip: 'skipOne',
+        startIdx: 0,
+        endIdx: 9,
+        cues: [
+          { time: 0, idx: 0 },
+          { time: 5.0, idx: 1 },
+          { time: 7.5, idx: 2 },
+          { time: 10.5, idx: 3 },
+          { time: 12.5, idx: 4 },
+          { time: 14.5, idx: 5 },
+          { time: 18.0, idx: 6 },
+          { time: 21.5, idx: 7 },
+          { time: 24.5, idx: 8 },
+          { time: 26.5, idx: 9 }
+        ]
+      },
+      {
+        clip: 'includeOne',
+        startIdx: 10,
+        endIdx: 20,
+        cues: [
+          { time: 0, idx: 10 },
+          { time: 4.0, idx: 11 },
+          { time: 5.5, idx: 12 },
+          { time: 7.5, idx: 13 },
+          { time: 10.5, idx: 14 },
+          { time: 13.0, idx: 15 },
+          { time: 15.5, idx: 16 },
+          { time: 17.0, idx: 17 },
+          { time: 18.5, idx: 18 },
+          { time: 20.0, idx: 19 },
+          { time: 21.5, idx: 20 }
+        ]
+      }
+    ]
+  },
+  singleFive: {
+    id: 'singleFive',
+    name: 'Single [5]',
+    match: function(cfg){
+      return cfg && Array.isArray(cfg.items) && cfg.items.join(',') === '5';
+    },
+    clips: {
+      singleElement: makeAudio('../audio-walkthroughs/subsets/single-five/01-single-element-choices.mp3')
+    },
+    mapping: [
+      {
+        clip: 'singleElement',
+        startIdx: 0,
+        endIdx: 8,
+        cues: [
+          { time: 0, idx: 0 },
+          { time: 4.5, idx: 1 },
+          { time: 7.0, idx: 2 },
+          { time: 9.5, idx: 3 },
+          { time: 13.5, idx: 4 },
+          { time: 17.5, idx: 5 },
+          { time: 21.0, idx: 6 },
+          { time: 23.5, idx: 7 },
+          { time: 25.5, idx: 8 }
+        ]
+      }
+    ]
+  },
+  fourItems: {
+    id: 'fourItems',
+    name: '[1, 2, 3, 4]',
+    match: function(cfg){
+      return cfg && Array.isArray(cfg.items) && cfg.items.join(',') === '1,2,3,4';
+    },
+    clips: {
+      skipOneAndTwo: makeAudio('../audio-walkthroughs/subsets/four-items/01-skip-one-and-two.mp3'),
+      includeTwo: makeAudio('../audio-walkthroughs/subsets/four-items/02-include-two-branch.mp3'),
+      includeOneSkipTwo: makeAudio('../audio-walkthroughs/subsets/four-items/03-include-one-skip-two.mp3'),
+      includeOneAndTwoFinish: makeAudio('../audio-walkthroughs/subsets/four-items/04-include-one-and-two-finish.mp3')
+    },
+    mapping: [
+      {
+        clip: 'skipOneAndTwo',
+        startIdx: 0,
+        endIdx: 23,
+        cues: [
+          { time: 0, idx: 0 },
+          { time: 14.0, idx: 1 },
+          { time: 15.5, idx: 2 },
+          { time: 16.5, idx: 3 },
+          { time: 17.5, idx: 4 },
+          { time: 19.0, idx: 5 },
+          { time: 20.0, idx: 6 },
+          { time: 21.0, idx: 7 },
+          { time: 22.0, idx: 8 },
+          { time: 23.0, idx: 9 },
+          { time: 24.5, idx: 10 },
+          { time: 25.5, idx: 11 },
+          { time: 27.0, idx: 12 },
+          { time: 28.0, idx: 13 },
+          { time: 29.0, idx: 14 },
+          { time: 30.0, idx: 15 },
+          { time: 31.0, idx: 16 },
+          { time: 32.0, idx: 17 },
+          { time: 33.5, idx: 18 },
+          { time: 34.5, idx: 19 },
+          { time: 36.0, idx: 20 },
+          { time: 37.0, idx: 21 },
+          { time: 38.0, idx: 22 },
+          { time: 39.5, idx: 23 }
+        ]
+      },
+      {
+        clip: 'includeTwo',
+        startIdx: 24,
+        endIdx: 45,
+        cues: [
+          { time: 0, idx: 24 },
+          { time: 4.0, idx: 25 },
+          { time: 5.0, idx: 26 },
+          { time: 6.0, idx: 27 },
+          { time: 7.0, idx: 28 },
+          { time: 8.0, idx: 29 },
+          { time: 10.0, idx: 30 },
+          { time: 11.0, idx: 31 },
+          { time: 12.5, idx: 32 },
+          { time: 13.5, idx: 33 },
+          { time: 14.5, idx: 34 },
+          { time: 15.5, idx: 35 },
+          { time: 16.5, idx: 36 },
+          { time: 17.5, idx: 37 },
+          { time: 19.5, idx: 38 },
+          { time: 20.5, idx: 39 },
+          { time: 22.0, idx: 40 },
+          { time: 23.0, idx: 41 },
+          { time: 24.0, idx: 42 },
+          { time: 25.0, idx: 43 },
+          { time: 26.0, idx: 44 },
+          { time: 27.5, idx: 45 }
+        ]
+      },
+      {
+        clip: 'includeOneSkipTwo',
+        startIdx: 46,
+        endIdx: 67,
+        cues: [
+          { time: 0, idx: 46 },
+          { time: 4.0, idx: 47 },
+          { time: 5.0, idx: 48 },
+          { time: 6.0, idx: 49 },
+          { time: 7.0, idx: 50 },
+          { time: 8.0, idx: 51 },
+          { time: 9.0, idx: 52 },
+          { time: 10.0, idx: 53 },
+          { time: 11.5, idx: 54 },
+          { time: 12.5, idx: 55 },
+          { time: 14.0, idx: 56 },
+          { time: 15.0, idx: 57 },
+          { time: 16.0, idx: 58 },
+          { time: 17.0, idx: 59 },
+          { time: 18.0, idx: 60 },
+          { time: 19.0, idx: 61 },
+          { time: 20.5, idx: 62 },
+          { time: 21.5, idx: 63 },
+          { time: 23.0, idx: 64 },
+          { time: 24.0, idx: 65 },
+          { time: 25.0, idx: 66 },
+          { time: 26.0, idx: 67 }
+        ]
+      },
+      {
+        clip: 'includeOneAndTwoFinish',
+        startIdx: 68,
+        endIdx: 92,
+        cues: [
+          { time: 0, idx: 68 },
+          { time: 4.0, idx: 69 },
+          { time: 5.0, idx: 70 },
+          { time: 6.0, idx: 71 },
+          { time: 7.0, idx: 72 },
+          { time: 8.0, idx: 73 },
+          { time: 9.5, idx: 74 },
+          { time: 10.5, idx: 75 },
+          { time: 12.0, idx: 76 },
+          { time: 13.0, idx: 77 },
+          { time: 14.0, idx: 78 },
+          { time: 15.0, idx: 79 },
+          { time: 16.0, idx: 80 },
+          { time: 17.0, idx: 81 },
+          { time: 19.0, idx: 82 },
+          { time: 20.0, idx: 83 },
+          { time: 21.5, idx: 84 },
+          { time: 22.5, idx: 85 },
+          { time: 23.5, idx: 86 },
+          { time: 24.5, idx: 87 },
+          { time: 25.5, idx: 88 },
+          { time: 26.5, idx: 89 },
+          { time: 27.5, idx: 90 },
+          { time: 28.5, idx: 91 },
+          { time: 29.5, idx: 92 }
+        ]
+      }
+    ]
   }
 };
 
