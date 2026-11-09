@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Insertion sort in 3D: step by step</title>
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --ink:#18212b; --muted:#5b6876; --line:#d5dbe3;
+  --hl-bg:#fff3bf; --hl-bar:#d99a00; --stage:#eef1f5;
+  --plate:#c3ccd7; --accent:#e8a900;
+  --btn:#ffffff; --btnHover:#eef1f5;
+  color-scheme:light;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1318; --panel:#171c23; --ink:#e8edf3; --muted:#9aa7b6; --line:#2c3440;
+    --hl-bg:#4a3d0a; --hl-bar:#ffc400; --stage:#141a21;
+    --plate:#3a4452; --accent:#ffc400;
+    --btn:#1d2430; --btnHover:#27303b; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1318; --panel:#171c23; --ink:#e8edf3; --muted:#9aa7b6; --line:#2c3440;
+  --hl-bg:#4a3d0a; --hl-bar:#ffc400; --stage:#141a21;
+  --plate:#3a4452; --accent:#ffc400;
+  --btn:#1d2430; --btnHover:#27303b; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+main{max-width:1120px;margin:0 auto;padding:12px 14px 22px}
+h1{font-size:1.15rem;margin:4px 0 12px;font-weight:650}
+.wrap{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:760px){.wrap{grid-template-columns:minmax(0,1fr)}}
+.stagebox{position:relative;background:var(--stage);border:1px solid var(--line);border-radius:12px;overflow:hidden;aspect-ratio:4/3;min-height:260px;max-height:64vh;width:100%}
+#cv{display:block;width:100%;height:100%;touch-action:pan-y;cursor:grab}
+#cv:active{cursor:grabbing}
+.hint{position:absolute;right:10px;bottom:8px;font-size:11px;color:var(--muted);pointer-events:none}
+.tag{position:absolute;top:8px;left:10px;right:10px;width:max-content;max-width:calc(100% - 20px);font:600 12px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--panel);border:1px solid var(--line);padding:2px 9px;border-radius:999px}
+.err{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;color:var(--ink);background:var(--stage)}
+.err[hidden]{display:none}
+#caption{margin:12px 2px 10px;min-height:3em;font-size:1rem}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button,select{font:inherit;font-size:.9rem;color:var(--ink);background:var(--btn);border:1px solid var(--line);border-radius:8px;padding:6px 12px;min-height:36px}
+button{cursor:pointer;min-width:64px}
+button:hover:not(:disabled){background:var(--btnHover)}
+button:disabled{opacity:.45;cursor:default}
+button:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.narration-status{font-size:0.85rem;color:var(--muted);min-height:1.25rem;margin:6px 2px 0}
+button.active{background:var(--accent);color:#000;border-color:var(--accent);font-weight:600}
+#code{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 0;overflow:auto;max-height:70vh;font:13px/1.7 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+@media (max-width:420px){#code{font-size:12px}}
+.row{display:flex;min-width:max-content;white-space:pre;padding-right:12px;border-left:4px solid transparent}
+.ln{flex:0 0 2.4em;text-align:right;padding-right:12px;color:var(--muted);user-select:none}
+.row.active{background:var(--hl-bg);border-left-color:var(--hl-bar)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Insertion sort in 3D, step by step</h1>
+  <div class="wrap">
+    <div>
+      <div class="stagebox" id="stage">
+        <canvas id="cv" role="img" aria-label="3D row of pillars being insertion sorted, with i, j and key markers"></canvas>
+        <div class="tag" id="tag"></div>
+        <div class="hint">drag to rotate · double-click to reset</div>
+        <div class="err" id="err" hidden></div>
+      </div>
+      <p id="caption" role="status" aria-live="polite"></p>
+      <div class="controls" role="group" aria-label="Playback controls">
+        <button id="bBack" type="button">Back</button>
+        <button id="bPlay" type="button">Play</button>
+        <button id="bNext" type="button">Next</button>
+        <button id="bReset" type="button">Reset</button>
+        <button id="bNarration" type="button" aria-pressed="false" title="Toggle spoken narration">Narration: Off</button>
+        <label class="sr" for="voice">Narration voice</label>
+        <select id="voice" title="Speech synthesis voice">
+          <option value="auto">Default voice</option>
+        </select>
+        <label class="sr" for="preset">Input</label>
+        <select id="preset"></select>
+        <label class="sr" for="speed">Speed</label>
+        <select id="speed">
+          <option value="1300">Slow</option>
+          <option value="850">Normal</option>
+          <option value="450">Fast</option>
+          <option value="220">Very fast</option>
+        </select>
+      </div>
+      <div class="narration-status" id="narrationStatus" role="status" aria-live="polite"></div>
+    </div>
+    <div id="code" role="region" aria-label="Python source code"></div>
+  </div>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+
+/* SOURCE:BEGIN */
+/* Displayed code: comments and blank lines stripped, indentation kept. Index = 0-based line used by frames. */
+const SRC = [
+  'def insertion_sort(nums):',                // 0
+  '    comparisons = 0',                      // 1
+  '    shifts = 0',                           // 2
+  '    for i in range(1, len(nums)):',        // 3
+  '        key = nums[i]',                    // 4
+  '        j = i - 1',                        // 5
+  '        while j >= 0:',                    // 6
+  '            comparisons += 1',             // 7
+  '            if nums[j] > key:',            // 8
+  '                nums[j + 1] = nums[j]',    // 9
+  '                shifts += 1',              // 10
+  '                j -= 1',                   // 11
+  '            else:',                        // 12
+  '                break',                    // 13
+  '        nums[j + 1] = key',                // 14
+  '    return comparisons, shifts'            // 15
+];
+
+/* SOURCE:END */
+
+/* PRESETS:BEGIN */
+const PRESETS = [
+  { name:'[5, 2, 4, 1]',        args:[[5,2,4,1]] },
+  { name:'Already sorted (4)',  args:[[1,2,3,4]] },
+  { name:'Reversed (4)',        args:[[4,3,2,1]] },
+  { name:'Empty list',          args:[[]] },
+  { name:'Reversed (10)',       args:[[10,9,8,7,6,5,4,3,2,1]] }
+];
+/* PRESETS:END */
+
+/* SIMULATE:BEGIN */
+/* Pure function: no DOM, no three.js. Every frame is an independent snapshot of plain values. */
+function simulate(nums){
+  const n = nums.length;
+  const a = nums.slice();
+  const ids = a.map(function(_, k){ return k; });
+  const frames = [];
+  let comps = 0, shifts = 0, i = null, j = null, keyId = -1, held = false, gap = -1;
+  let se = n > 0 ? 0 : -1, cmpSlot = null, cmp = null, done = false;
+  const MINUS = '\u2212';
+  const pl = function(k, w){ return k + ' ' + w + (k === 1 ? '' : 's'); };
+
+  function snap(lines, msg, kind, hold){
+    const pos = [], slots = [];
+    for (let k = 0; k < n; k++){ pos.push(0); slots.push(held && k === gap ? null : a[k]); }
+    for (let k = 0; k < n; k++){ if (!(held && k === gap)) pos[ids[k]] = k; }
+    if (held) pos[keyId] = gap;
+    frames.push({ lines: lines.slice(), msg: msg, kind: kind, hold: hold,
+      pos: pos, slots: slots, held: held, keyId: held ? keyId : -1,
+      iSlot: i, jSlot: (j !== null && j >= 0) ? j : null, cmpSlot: cmpSlot, cmp: cmp,
+      sortedEnd: se, comps: comps, shifts: shifts, done: done });
+  }
+
+  snap([], 'Key idea: lift each key out, slide bigger items one place right, then drop the key into the gap. We count every compare and shift.', 'start', 1.5);
+  snap([0, 1, 2], n === 0
+    ? 'Start with comparisons = 0 and shifts = 0. The list is empty, so there is nothing to sort.'
+    : 'Start with comparisons = 0 and shifts = 0. The first item alone is already a sorted prefix.', 'init', 1.4);
+
+  for (let ii = 1; ii < n; ii++){
+    i = ii; keyId = ids[i]; j = i - 1; held = true; gap = i; se = i - 1; cmpSlot = null; cmp = null;
+    const key = a[i];
+    snap([3, 4, 5], 'i = ' + i + ': lift key = ' + key + ' out of slot ' + i + '. j = ' + j + ' marks the last sorted item.', 'pick', 1.1);
+    while (j >= 0){
+      comps += 1; cmpSlot = j;
+      if (a[j] > key){
+        cmp = 'gt';
+        snap([6, 7, 8], 'Compare ' + a[j] + ' with key ' + key + ' (comparison ' + comps + '): ' + a[j] + ' > ' + key + ', so it moves right.', 'step', 1.3);
+        const moved = a[j];
+        a[j + 1] = a[j]; ids[j + 1] = ids[j]; shifts += 1; j -= 1; gap = j + 1; se = i; cmpSlot = null; cmp = null;
+        snap([9, 10, 11], 'Shift ' + moved + ' one place right (shift ' + shifts + '). j becomes ' + (j < 0 ? MINUS + '1' : j) + '.', 'move', 1.2);
+      } else {
+        cmp = 'le';
+        snap([6, 7, 8, 12, 13], 'Compare ' + a[j] + ' with key ' + key + ' (comparison ' + comps + '): ' + a[j] + ' is not bigger, so sliding stops.', 'step', 1.3);
+        break;
+      }
+    }
+    if (j < 0){
+      cmpSlot = null; cmp = null;
+      snap([6], 'j = ' + MINUS + '1: nothing is left to compare, so no comparison is counted.', 'step', 1.1);
+    }
+    a[j + 1] = key; ids[j + 1] = keyId; held = false; gap = -1; se = i; cmpSlot = null; cmp = null;
+    snap([14], 'Drop key ' + key + ' into slot ' + (j + 1) + '. The sorted prefix now has ' + (i + 1) + ' items.', 'move', 1.2);
+    keyId = -1;
+  }
+
+  i = null; j = null; keyId = -1; held = false; gap = -1; se = n - 1; cmpSlot = null; cmp = null;
+  snap([3], n < 2
+    ? 'range(1, ' + n + ') is empty, so the loop body never runs.'
+    : 'i has run past the end of the list, so the for loop is finished.', 'step', 1.1);
+  done = true;
+  snap([15], 'Return (' + comps + ', ' + shifts + '): ' + pl(comps, 'comparison') + ', ' + pl(shifts, 'shift') + '. The list is now [' + a.join(', ') + '].', 'end', 1.7);
+  return { frames: frames, result: [comps, shifts], sorted: a };
+}
+/* SIMULATE:END */
+
+/* ---------- DOM ---------- */
+const $ = function(id){ return document.getElementById(id); };
+const $cv = $('cv'), $stage = $('stage'), $cap = $('caption'), $tag = $('tag'), $err = $('err'), $code = $('code');
+const $back = $('bBack'), $play = $('bPlay'), $next = $('bNext'), $reset = $('bReset'), $preset = $('preset'), $speed = $('speed');
+const $narration = $('bNarration'), $narrationStatus = $('narrationStatus'), $voice = $('voice');
+const RM = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches:false };
+
+const rows = SRC.map(function(txt, i){
+  const r = document.createElement('div'); r.className = 'row';
+  const n = document.createElement('span'); n.className = 'ln'; n.textContent = String(i + 1);
+  const c = document.createElement('span'); c.textContent = txt;
+  r.appendChild(n); r.appendChild(c); $code.appendChild(r);
+  return r;
+});
+PRESETS.forEach(function(p, i){
+  const o = document.createElement('option'); o.value = String(i); o.textContent = p.name; $preset.appendChild(o);
+});
+
+/* ---------- three.js scene (perspective 3D) ---------- */
+const SP = 1.0, BAR_W = 0.78, BAR_COL = '#3b82c4', RES_COL = '#2e9e5b', RES_DARK = '#16683a';
+const LOW_COL = '#2563a8', HIGH_COL = '#c46a14', MID_COL = '#e8a900', LIFT = 0.8;
+const LOW_Z = 1.2, HIGH_Z = 2.2, FLOOR_Z0 = -0.8, FLOOR_Z1 = 2.9, FOCUS_Z = (FLOOR_Z0 + FLOOR_Z1) / 2;
+const YAW0 = -0.22, PITCH0 = 0.46, YAW_MAX = 0.55, FOV = 32;
+let gl = false, renderer = null, scene = null, camera = null;
+let world = null, bars = [], vals = [], cur = [], keyShown = -1, ptr = {}, slab = null, resLabel = null, emptyLabel = null;
+let dims = { halfW:7, halfY:3, ty:2, maxTop:3, scale:1 };
+const view = { yaw:YAW0, pitch:PITCH0, dist:20 };
+const C = {};
+const texCache = new Map();
+const tweens = [];
+let raf = 0, drag = null;
+
+function showError(msg){ $err.hidden = false; $err.textContent = msg; }
+function readTheme(){
+  const cs = getComputedStyle(document.documentElement);
+  ['ink','muted','plate','accent'].forEach(function(k){ C[k] = cs.getPropertyValue('--' + k).trim() || '#888888'; });
+}
+try {
+  if (typeof THREE === 'undefined') throw new Error('three.js did not load');
+  renderer = new THREE.WebGLRenderer({ canvas:$cv, antialias:true, alpha:true });
+  renderer.setClearColor(0x000000, 0);
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(FOV, 4 / 3, 0.1, 200);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.58));
+  const dl = new THREE.DirectionalLight(0xffffff, 0.85); dl.position.set(-5, 10, 8); scene.add(dl);
+  gl = true;
+} catch (e) {
+  showError('The 3D view could not start (' + (e && e.message ? e.message : 'WebGL unavailable') + '). Check your connection or browser WebGL support. The code panel and captions still step through the trace.');
+}
+
+function textTex(text, style){
+  const key = text + '|' + style.color + '|' + style.font;
+  let t = texCache.get(key);
+  if (t) return t;
+  const cv = document.createElement('canvas'), ctx = cv.getContext('2d');
+  ctx.font = style.font;
+  const w = Math.max(24, Math.ceil(ctx.measureText(text).width) + 16), h = 64;
+  cv.width = w; cv.height = h;
+  ctx.font = style.font; ctx.fillStyle = style.color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, w / 2, h / 2 + 2);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.minFilter = THREE.LinearFilter; tex.generateMipmaps = false;
+  t = { tex:tex, aspect:w / h };
+  texCache.set(key, t);
+  return t;
+}
+function clearTexCache(){ texCache.forEach(function(t){ t.tex.dispose(); }); texCache.clear(); }
+function makeSprite(){
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ transparent:true, depthTest:false }));
+  s.renderOrder = 10; s.visible = false; return s;
+}
+function setText(s, text, style, worldH, x){
+  if (!text){ s.visible = false; return; }
+  const t = textTex(text, style);
+  s.material.map = t.tex; s.material.needsUpdate = true;
+  s.scale.set(worldH * t.aspect, worldH, 1);
+  if (x !== undefined) s.position.x = x;
+  s.visible = true;
+}
+const SANS = '700 48px system-ui, -apple-system, "Segoe UI", sans-serif';
+function slotX(i, n){ return (i - (n - 1) / 2) * SP; }
+function barH(v){ return Math.max(v * dims.scale, 0.12); }
+
+function clearWorld(){
+  tweens.length = 0;
+  if (!world) return;
+  world.traverse(function(o){
+    if (o.geometry) o.geometry.dispose();
+    if (o.material) o.material.dispose();
+  });
+  scene.remove(world); world = null; bars = []; vals = []; cur = []; keyShown = -1; ptr = {}; slab = null; resLabel = null; emptyLabel = null;
+}
+
+function makePointer(name, color, up, coneY, labelY, z){
+  const g = new THREE.Group();
+  const cone = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.5, 20), new THREE.MeshLambertMaterial({ color:color }));
+  cone.position.y = coneY;
+  if (!up) cone.rotation.z = Math.PI;
+  const lab = makeSprite(); lab.position.y = labelY;
+  setText(lab, name, { font:SANS, color:color }, 0.4, 0);
+  g.add(cone); g.add(lab); g.position.z = z; g.visible = false;
+  return g;
+}
+
+function syncKey(){
+  if (!ptr.key) return;
+  if (keyShown < 0 || !bars[keyShown]){ ptr.key.visible = false; return; }
+  const c = cur[keyShown], b = bars[keyShown];
+  ptr.key.visible = true;
+  ptr.key.position.x = c.x; ptr.key.position.y = b.h + c.y + 0.9;
+}
+function place(id){
+  const c = cur[id], b = bars[id];
+  b.body.position.set(c.x, b.h / 2 + c.y, 0);
+  b.outline.position.set(c.x, b.h / 2 + c.y, 0);
+  vals[id].position.set(c.x, b.h + c.y + 0.32, 0);
+  if (id === keyShown) syncKey();
+}
+
+function build(cfg, keepView){
+  if (!gl) return;
+  clearWorld(); readTheme();
+  world = new THREE.Group(); scene.add(world);
+  const nums = cfg.nums, n = nums.length;
+  let maxAbs = 1; nums.forEach(function(v){ maxAbs = Math.max(maxAbs, Math.abs(v)); });
+  dims.scale = 3 / maxAbs;
+  let maxTop = 0; nums.forEach(function(v){ maxTop = Math.max(maxTop, barH(v)); });
+  dims.maxTop = maxTop; dims.halfW = (n + 2) * SP / 2 + 0.7; dims.halfY = (maxTop + LIFT + 2.1) / 2; dims.ty = (maxTop + LIFT + 1.7) / 2;
+
+  if (n > 0){
+    const floor = new THREE.Mesh(new THREE.BoxGeometry(n * SP + 0.9, 0.14, FLOOR_Z1 - FLOOR_Z0), new THREE.MeshLambertMaterial({ color:C.plate }));
+    floor.position.set(0, -0.07, FOCUS_Z); world.add(floor);
+  } else {
+    emptyLabel = makeSprite(); emptyLabel.position.set(0, 1.0, 0.5); world.add(emptyLabel);
+    setText(emptyLabel, 'empty', { font:SANS, color:C.muted }, 0.6, 0);
+  }
+  nums.forEach(function(v, i){
+    const h = barH(v), x = slotX(i, n);
+    const body = new THREE.Mesh(new THREE.BoxGeometry(BAR_W, h, BAR_W), new THREE.MeshLambertMaterial({ color:BAR_COL, transparent:true }));
+    const outline = new THREE.Mesh(new THREE.BoxGeometry(BAR_W + 0.14, h + 0.14, BAR_W + 0.14), new THREE.MeshBasicMaterial({ color:C.accent, side:THREE.BackSide }));
+    outline.visible = false;
+    world.add(outline); world.add(body);
+    bars.push({ body:body, outline:outline, h:h });
+    cur.push({ x:x, y:0 });
+    const val = makeSprite();
+    setText(val, String(v), { font:SANS, color:C.ink }, 0.5, x); world.add(val); vals.push(val);
+    place(i);
+    const idx = makeSprite(); idx.position.set(x, 0.3, 0.98);
+    setText(idx, String(i), { font:SANS, color:C.muted }, 0.34, x); world.add(idx);
+  });
+  ptr.i = makePointer('i', LOW_COL, true, 0.28, 0.95, LOW_Z);
+  ptr.j = makePointer('j', HIGH_COL, true, 0.28, 0.95, HIGH_Z);
+  ptr.key = makePointer('key', MID_COL, false, 0, 0.62, 0);
+  [ptr.i, ptr.j, ptr.key].forEach(function(g){ world.add(g); });
+  slab = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color:BAR_COL, transparent:true, opacity:0.12, depthWrite:false }));
+  slab.add(new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1)), new THREE.LineBasicMaterial({ color:C.accent })));
+  slab.visible = false; world.add(slab);
+  resLabel = makeSprite(); world.add(resLabel);
+  if (!keepView){ view.yaw = YAW0; view.pitch = PITCH0; }
+  fitCamera();
+}
+
+function updateCamera(){
+  if (!gl) return;
+  const cp = Math.cos(view.pitch), sp = Math.sin(view.pitch);
+  camera.position.set(Math.sin(view.yaw) * cp * view.dist, dims.ty + sp * view.dist, FOCUS_Z + Math.cos(view.yaw) * cp * view.dist);
+  camera.lookAt(0, dims.ty, FOCUS_Z);
+  requestRender();
+}
+function fitCamera(){
+  if (!gl) return;
+  const w = $stage.clientWidth, h = $stage.clientHeight;
+  if (!w || !h) return;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(w, h, false);
+  const aspect = w / h, t = Math.tan(FOV * Math.PI / 360), halfZ = (FLOOR_Z1 - FLOOR_Z0) / 2;
+  camera.aspect = aspect; camera.updateProjectionMatrix();
+  const vExt = dims.halfY * Math.cos(PITCH0) + halfZ * Math.sin(PITCH0);
+  const hExt = dims.halfW * Math.cos(YAW_MAX) + halfZ * Math.sin(YAW_MAX);
+  view.dist = Math.max(vExt / t, hExt / (t * aspect)) * 1.2;
+  updateCamera();
+}
+
+/* ---------- tweens and render loop ---------- */
+function settle(){ tweens.splice(0).forEach(function(tw){ tw.upd(1); }); }
+function requestRender(){ if (gl && !raf) raf = requestAnimationFrame(loop); }
+function loop(){
+  raf = 0;
+  const now = performance.now();
+  for (let i = tweens.length - 1; i >= 0; i--){
+    const tw = tweens[i];
+    const u = Math.max(0, Math.min(1, (now - tw.t0) / tw.dur));
+    tw.upd(u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2);
+    if (u >= 1) tweens.splice(i, 1);
+  }
+  renderer.render(scene, camera);
+  if (tweens.length) requestRender();
+}
+
+/* drag left or right to turn the scene; double-click resets the view */
+if (gl){
+  $cv.addEventListener('pointerdown', function(e){
+    drag = { x:e.clientX, yaw:view.yaw };
+    try { $cv.setPointerCapture(e.pointerId); } catch (err) { /* not needed for the drag to work */ }
+  });
+  $cv.addEventListener('pointermove', function(e){
+    if (!drag) return;
+    view.yaw = Math.max(-YAW_MAX, Math.min(YAW_MAX, drag.yaw + (e.clientX - drag.x) * 0.008));
+    updateCamera();
+  });
+  ['pointerup', 'pointercancel'].forEach(function(t){ $cv.addEventListener(t, function(){ drag = null; }); });
+  $cv.addEventListener('dblclick', function(){ view.yaw = YAW0; view.pitch = PITCH0; updateCamera(); });
+}
+
+/* ---------- spoken narration & recorded walkthroughs ---------- */
+const speechAvailable = typeof window !== 'undefined' && 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined';
+const audioAvailable = typeof Audio !== 'undefined';
+const narrationAvailable = speechAvailable || audioAvailable;
+let availableVoices = [];
+
+function voiceScore(v){
+  let score = 0;
+  const lang = (v.lang || '').toLowerCase();
+  const name = (v.name || '').toLowerCase();
+  if (lang.startsWith('en')) score += 10;
+  if (lang === 'en-us') score += 5;
+  if (name.includes('natural') || name.includes('online') || name.includes('neural')) score += 5;
+  if (name.includes('google') || name.includes('samantha') || name.includes('karen')) score += 2;
+  return score;
+}
+
+function refreshVoices(){
+  if (!speechAvailable) return;
+  availableVoices = window.speechSynthesis.getVoices().slice();
+  availableVoices.sort(function(a, b){ return voiceScore(b) - voiceScore(a); });
+  $voice.innerHTML = '<option value="auto">Default voice</option>';
+  availableVoices.forEach(function(v){
+    const o = document.createElement('option');
+    o.value = v.voiceURI;
+    o.textContent = v.name + (v.lang ? ' (' + v.lang + ')' : '');
+    $voice.appendChild(o);
+  });
+}
+
+function makeAudio(url){
+  if (!audioAvailable) return null;
+  const a = new Audio(url);
+  a.preload = 'auto';
+  return a;
+}
+
+const WALKTHROUGHS = {
+  example5241: {
+    id: 'example5241',
+    name: '[5, 2, 4, 1]',
+    match: function(cfg){
+      return cfg && Array.isArray(cfg.nums) && cfg.nums.join(',') === '5,2,4,1';
+    },
+    clips: {
+      setupAndInsertTwo: makeAudio('../audio-walkthroughs/insertion-sort/example-5-2-4-1/01-setup-and-insert-two.mp3'),
+      insertFour: makeAudio('../audio-walkthroughs/insertion-sort/example-5-2-4-1/02-insert-four.mp3'),
+      insertOneAndFinish: makeAudio('../audio-walkthroughs/insertion-sort/example-5-2-4-1/03-insert-one-and-completion.mp3')
+    },
+    mapping: [
+      {
+        clip: 'setupAndInsertTwo',
+        startIdx: 0,
+        endIdx: 6,
+        cues: [
+          { time: 0, idx: 0 },
+          { time: 13.5, idx: 1 },
+          { time: 24.0, idx: 2 },
+          { time: 33.0, idx: 3 },
+          { time: 38.5, idx: 4 },
+          { time: 43.0, idx: 5 },
+          { time: 47.5, idx: 6 }
+        ]
+      },
+      {
+        clip: 'insertFour',
+        startIdx: 7,
+        endIdx: 11,
+        cues: [
+          { time: 0, idx: 7 },
+          { time: 5.5, idx: 8 },
+          { time: 11.5, idx: 9 },
+          { time: 15.5, idx: 10 },
+          { time: 25.0, idx: 11 }
+        ]
+      },
+      {
+        clip: 'insertOneAndFinish',
+        startIdx: 12,
+        endIdx: 22,
+        cues: [
+          { time: 0, idx: 12 },
+          { time: 5.5, idx: 13 },
+          { time: 8.0, idx: 14 },
+          { time: 11.5, idx: 15 },
+          { time: 14.0, idx: 16 },
+          { time: 17.5, idx: 17 },
+          { time: 20.0, idx: 18 },
+          { time: 23.5, idx: 19 },
+          { time: 27.5, idx: 20 },
+          { time: 32.0, idx: 21 },
+          { time: 34.5, idx: 22 }
+        ]
+      }
+    ]
+  },
+  alreadySorted: {
+    id: 'alreadySorted',
+    name: 'Already sorted (4)',
+    match: function(cfg){
+      return cfg && Array.isArray(cfg.nums) && cfg.nums.join(',') === '1,2,3,4';
+    },
+    clips: {
+      insertTwoAndThree: makeAudio('../audio-walkthroughs/insertion-sort/already-sorted/01-setup-and-insert-two-and-three.mp3'),
+      insertFourAndBestCase: makeAudio('../audio-walkthroughs/insertion-sort/already-sorted/02-insert-four-and-best-case.mp3')
+    },
+    mapping: [
+      {
+        clip: 'insertTwoAndThree',
+        startIdx: 0,
+        endIdx: 7,
+        cues: [
+          { time: 0, idx: 0 },
+          { time: 10.0, idx: 1 },
+          { time: 16.5, idx: 2 },
+          { time: 20.0, idx: 3 },
+          { time: 28.0, idx: 4 },
+          { time: 31.5, idx: 5 },
+          { time: 35.0, idx: 6 },
+          { time: 38.5, idx: 7 }
+        ]
+      },
+      {
+        clip: 'insertFourAndBestCase',
+        startIdx: 8,
+        endIdx: 12,
+        cues: [
+          { time: 0, idx: 8 },
+          { time: 4.0, idx: 9 },
+          { time: 9.5, idx: 10 },
+          { time: 13.5, idx: 11 },
+          { time: 16.0, idx: 12 }
+        ]
+      }
+    ]
+  },
+  reverseSorted: {
+    id: 'reverseSorted',
+    name: 'Reversed (4)',
+    match: function(cfg){
+      return cfg && Array.isArray(cfg.nums) && cfg.nums.join(',') === '4,3,2,1';
+    },
+    clips: {
+      insertThreeAndTwo: makeAudio('../audio-walkthroughs/insertion-sort/reverse-sorted/01-setup-and-insert-three-and-two.mp3'),
+      insertOneAndWorstCase: makeAudio('../audio-walkthroughs/insertion-sort/reverse-sorted/02-insert-one-and-worst-case.mp3')
+    },
+    mapping: [
+      {
+        clip: 'insertThreeAndTwo',
+        startIdx: 0,
+        endIdx: 13,
+        cues: [
+          { time: 0, idx: 0 },
+          { time: 7.5, idx: 1 },
+          { time: 11.0, idx: 2 },
+          { time: 14.0, idx: 3 },
+          { time: 16.5, idx: 4 },
+          { time: 18.5, idx: 5 },
+          { time: 20.0, idx: 6 },
+          { time: 22.5, idx: 7 },
+          { time: 26.0, idx: 8 },
+          { time: 28.5, idx: 9 },
+          { time: 30.0, idx: 10 },
+          { time: 32.5, idx: 11 },
+          { time: 34.0, idx: 12 },
+          { time: 35.5, idx: 13 }
+        ]
+      },
+      {
+        clip: 'insertOneAndWorstCase',
+        startIdx: 14,
+        endIdx: 24,
+        cues: [
+          { time: 0, idx: 14 },
+          { time: 3.0, idx: 15 },
+          { time: 5.0, idx: 16 },
+          { time: 7.0, idx: 17 },
+          { time: 9.0, idx: 18 },
+          { time: 11.0, idx: 19 },
+          { time: 13.0, idx: 20 },
+          { time: 15.0, idx: 21 },
+          { time: 16.5, idx: 22 },
+          { time: 19.5, idx: 23 },
+          { time: 21.5, idx: 24 }
+        ]
+      }
+    ]
+  },
+  emptyList: {
+    id: 'emptyList',
+    name: 'Empty list',
+    match: function(cfg){
+      return cfg && Array.isArray(cfg.nums) && cfg.nums.length === 0;
+    },
+    clips: {
+      emptyBaseCase: makeAudio('../audio-walkthroughs/insertion-sort/empty-list/01-empty-list-and-base-case.mp3')
+    },
+    mapping: [
+      {
+        clip: 'emptyBaseCase',
+        startIdx: 0,
+        endIdx: 3,
+        cues: [
+          { time: 0, idx: 0 },
+          { time: 5.0, idx: 1 },
+          { time: 9.0, idx: 2 },
+          { time: 15.5, idx: 3 }
+        ]
+      }
+    ]
+  }
+};
+
+function getActiveWalkthrough(cfg){
+  if (!cfg) return null;
+  const keys = Object.keys(WALKTHROUGHS);
+  for (let i = 0; i < keys.length; i++){
+    const wt = WALKTHROUGHS[keys[i]];
+    if (wt.match(cfg)) return wt;
+  }
+  return null;
+}
+
+function narrationStatusMessage(cfg){
+  const wt = getActiveWalkthrough(cfg);
+  if (wt){
+    return 'Narration enabled (using recorded voice walkthrough for ' + wt.name + ').';
+  }
+  return 'Narration enabled (using browser speech synthesis for custom/other inputs).';
+}
+
+function tutorNarration(frame){
+  if (!frame) return '';
+  return frame.msg;
+}
+
+function speakTutor(frame, token, onComplete){
+  if (!speechAvailable || !S.narration || token !== S.narrationToken){
+    if (onComplete) onComplete();
+    return;
+  }
+  try { window.speechSynthesis.cancel(); } catch(e){}
+  const text = tutorNarration(frame);
+  if (!text){
+    if (onComplete) onComplete();
+    return;
+  }
+  const u = new SpeechSynthesisUtterance(text);
+  if (S.voiceURI && S.voiceURI !== 'auto'){
+    const chosen = availableVoices.find(function(v){ return v.voiceURI === S.voiceURI; });
+    if (chosen) u.voice = chosen;
+  }
+  u.onend = function(){
+    if (token === S.narrationToken && onComplete) onComplete();
+  };
+  u.onerror = function(){
+    if (token === S.narrationToken && onComplete) onComplete();
+  };
+  try {
+    window.speechSynthesis.speak(u);
+  } catch(e){
+    if (onComplete) onComplete();
+  }
+}
+
+function clearCueTimers(){
+  while (S.cueTimers.length){
+    clearTimeout(S.cueTimers.pop());
+  }
+}
+
+function cancelNarration(){
+  const wasPending = S.narrationPending;
+  S.narrationToken += 1;
+  S.narrationPending = false;
+  clearCueTimers();
+  S.currentClip = null;
+  Object.keys(WALKTHROUGHS).forEach(function(wKey){
+    const clips = WALKTHROUGHS[wKey].clips;
+    Object.keys(clips).forEach(function(k){
+      const c = clips[k];
+      c.pause();
+      c.currentTime = 0;
+      c.onended = null;
+      c.onerror = null;
+    });
+  });
+  if (speechAvailable && wasPending){
+    try { window.speechSynthesis.cancel(); } catch(e){}
+  }
+}
+
+function speakFrame(frame){
+  const wt = getActiveWalkthrough(S.cfg);
+  let milestone = null;
+  if (wt){
+    milestone = wt.mapping.find(function(m){ return S.idx >= m.startIdx && S.idx <= m.endIdx; });
+  }
+
+  const expectedClip = (wt && milestone) ? wt.clips[milestone.clip] : null;
+  if (expectedClip && S.currentClip === expectedClip && !expectedClip.paused && !expectedClip.ended){
+    return;
+  }
+
+  cancelNarration();
+  if (!S.narration || !narrationAvailable) return;
+
+  const token = S.narrationToken;
+  const finish = function(){
+    if (token !== S.narrationToken) return;
+    S.narrationPending = false;
+    S.currentClip = null;
+    clearCueTimers();
+    if (S.state === 'playing'){
+      if (S.idx >= S.frames.length - 1){
+        S.state = 'ended';
+        updateButtons();
+      } else {
+        schedule();
+      }
+    }
+  };
+  S.narrationPending = true;
+
+  if (wt && audioAvailable && milestone){
+    const clip = wt.clips[milestone.clip];
+    S.currentClip = clip;
+    let fellBack = false;
+    const fallback = function(){
+      if (fellBack || token !== S.narrationToken) return;
+      fellBack = true;
+      clip.onended = null;
+      clip.onerror = null;
+      S.currentClip = null;
+      clearCueTimers();
+      $narrationStatus.textContent = 'A recorded narration clip could not play; using browser speech instead.';
+      speakTutor(frame, token, finish);
+    };
+
+    clip.onended = finish;
+    clip.onerror = fallback;
+
+    let currentCue = null;
+    for (let c = milestone.cues.length - 1; c >= 0; c--){
+      if (S.idx >= milestone.cues[c].idx){
+        currentCue = milestone.cues[c];
+        break;
+      }
+    }
+    if (!currentCue) currentCue = milestone.cues[0];
+
+    try { clip.currentTime = currentCue.time; } catch(e){}
+
+    if (S.state === 'playing'){
+      milestone.cues.forEach(function(cue){
+        if (cue.time > currentCue.time){
+          const delay = (cue.time - currentCue.time) * 1000;
+          const tid = setTimeout(function(){
+            if (token === S.narrationToken && S.state === 'playing'){
+              show(cue.idx, true);
+            }
+          }, delay);
+          S.cueTimers.push(tid);
+        }
+      });
+    }
+
+    const playPromise = clip.play();
+    if (playPromise !== undefined){
+      playPromise.catch(function(err){
+        if (err && err.name === 'NotAllowedError'){
+          $narrationStatus.textContent = 'Audio playback was blocked by browser autoplay policy. Click Play or Next to enable sound.';
+          fallback();
+        } else {
+          fallback();
+        }
+      });
+    }
+  } else {
+    speakTutor(frame, token, finish);
+  }
+}
+
+/* ---------- playback state ---------- */
+const S = { cfg:null, frames:[], idx:0, state:'paused', timer:0, speed:1300, shown:-1, narration:false, voiceURI:'auto', narrationPending:false, narrationToken:0, currentClip:null, cueTimers:[] };
+
+function tweenDur(f){ return S.state === 'playing' ? Math.max(120, Math.min(600, S.speed * f.hold * 0.5)) : 450; }
+function easeProp(get, set, to, animate, f){
+  const from = get();
+  if (animate && !RM.matches && Math.abs(from - to) > 1e-6){
+    tweens.push({ t0:performance.now(), dur:tweenDur(f), upd:function(e){ set(from + (to - from) * e); } });
+  } else {
+    set(to);
+  }
+}
+function applyScene(f, animate){
+  if (!gl || !world) return;
+  const n = S.cfg.nums.length;
+  keyShown = f.held ? f.keyId : -1;
+  bars.forEach(function(b, id){
+    const c = cur[id];
+    const slot = f.pos[id];
+    const isKey = f.held && id === f.keyId;
+    const isCmp = !isKey && f.cmpSlot !== null && slot === f.cmpSlot;
+    const tx = slotX(slot, n), ty = isKey ? LIFT : 0;
+    easeProp(function(){ return c.x; }, function(v){ c.x = v; place(id); }, tx, animate, f);
+    easeProp(function(){ return c.y; }, function(v){ c.y = v; place(id); }, ty, animate, f);
+    const alive = f.done || slot <= f.sortedEnd || isKey;
+    const a = alive ? 1 : 0.25;
+    b.body.material.opacity = a; vals[id].material.opacity = a;
+    b.body.material.color.set(f.done ? RES_COL : BAR_COL);
+    b.body.material.emissive.set(isKey ? '#5a4300' : '#000000');
+    b.outline.visible = isKey || isCmp || f.done;
+    b.outline.material.color.set(f.done ? RES_DARK : (isKey ? C.accent : HIGH_COL));
+  });
+  const wasVisible = { i:ptr.i.visible, j:ptr.j.visible };
+  [['i', f.iSlot], ['j', f.jSlot]].forEach(function(p){
+    const g = ptr[p[0]];
+    if (p[1] === null){ g.visible = false; return; }
+    const x = slotX(p[1], n);
+    if (!wasVisible[p[0]]) g.position.x = x;
+    g.visible = true;
+    easeProp(function(){ return g.position.x; }, function(v){ g.position.x = v; }, x, animate && wasVisible[p[0]], f);
+  });
+  syncKey();
+  const showSlab = n > 0 && f.sortedEnd >= 0;
+  if (showSlab){
+    const x0 = slotX(0, n), x1 = slotX(f.sortedEnd, n), cx = (x0 + x1) / 2, w = (f.sortedEnd + 1) * SP + 0.08;
+    const y0 = -0.05, y1 = dims.maxTop + 0.55;
+    const was = slab.visible;
+    slab.visible = true; slab.scale.y = y1 - y0; slab.scale.z = 1.5; slab.position.y = (y0 + y1) / 2;
+    if (!was){ slab.position.x = cx; slab.scale.x = w; }
+    easeProp(function(){ return slab.position.x; }, function(v){ slab.position.x = v; }, cx, animate && was, f);
+    easeProp(function(){ return slab.scale.x; }, function(v){ slab.scale.x = v; }, w, animate && was, f);
+  } else {
+    slab.visible = false;
+  }
+  if (f.done && n > 0){
+    resLabel.position.set(0, dims.maxTop + 0.9, 0);
+    setText(resLabel, 'sorted', { font:SANS, color:RES_COL }, 0.42, 0);
+  } else {
+    resLabel.visible = false;
+  }
+  requestRender();
+}
+
+function renderCode(f){
+  let firstActive = -1;
+  rows.forEach(function(r, i){
+    const a = f.lines.indexOf(i) >= 0;
+    r.classList.toggle('active', a);
+    if (a && firstActive < 0) firstActive = i;
+  });
+  if (firstActive >= 0){
+    const r = rows[firstActive];
+    if (r.offsetTop < $code.scrollTop) $code.scrollTop = r.offsetTop;
+    else if (r.offsetTop + r.offsetHeight > $code.scrollTop + $code.clientHeight) $code.scrollTop = r.offsetTop + r.offsetHeight - $code.clientHeight;
+  }
+}
+function describe(f){
+  const nums = S.cfg.nums;
+  if (nums.length === 0) return 'Empty list. Comparisons ' + f.comps + ', shifts ' + f.shifts + '.';
+  const items = f.slots.map(function(v){ return v === null ? 'gap' : v; });
+  return 'Slots [' + items.join(', ') + ']. ' + (f.held ? 'Key ' + nums[f.keyId] + ' lifted. ' : '') +
+    'Comparisons ' + f.comps + ', shifts ' + f.shifts + (f.done ? '. Sorted.' : '.');
+}
+function updateButtons(){
+  const last = S.frames.length - 1;
+  $back.disabled = S.idx <= 0;
+  $next.disabled = S.idx >= last;
+  $play.textContent = S.state === 'playing' ? 'Pause' : (S.idx >= last ? 'Replay' : 'Play');
+}
+function show(i, animate){
+  const f = S.frames[i]; if (!f) return;
+  settle();
+  S.idx = i;
+  $cap.textContent = f.msg;
+  $tag.textContent = (S.cfg.nums.length === 0 ? 'empty list \u00b7 ' : '') + (f.held ? 'key ' + S.cfg.nums[f.keyId] + ' \u00b7 ' : '') + 'comparisons ' + f.comps + ' \u00b7 shifts ' + f.shifts;
+  $cv.setAttribute('aria-label', describe(f));
+  renderCode(f);
+  applyScene(f, animate && Math.abs(i - S.shown) === 1);
+  speakFrame(f);
+  S.shown = i;
+  updateButtons();
+}
+
+function clearTimer(){ if (S.timer){ clearTimeout(S.timer); S.timer = 0; } }
+function schedule(){
+  clearTimer();
+  if (S.state !== 'playing' || S.narrationPending) return;
+  S.timer = setTimeout(tick, S.speed * S.frames[S.idx].hold);
+}
+function tick(){
+  S.timer = 0;
+  if (S.state !== 'playing') return;
+  if (S.idx >= S.frames.length - 1){ S.state = 'ended'; updateButtons(); return; }
+  show(S.idx + 1, true);
+  if (S.idx >= S.frames.length - 1){ S.state = 'ended'; updateButtons(); return; }
+  schedule();
+}
+function pause(){
+  clearTimer();
+  clearCueTimers();
+  if (S.currentClip && !S.currentClip.paused){
+    S.currentClip.pause();
+  } else {
+    cancelNarration();
+  }
+  settle();
+  if (S.state === 'playing' || S.state === 'ended') S.state = 'paused';
+  updateButtons();
+}
+function play(){
+  if (S.state === 'playing'){ pause(); return; }
+  if (S.idx >= S.frames.length - 1) show(0, false);
+  S.state = 'playing'; updateButtons();
+  if (S.narration){
+    const wt = getActiveWalkthrough(S.cfg);
+    if (wt && S.currentClip && S.currentClip.paused && !S.currentClip.ended){
+      const token = S.narrationToken;
+      const milestone = wt.mapping.find(function(m){ return S.idx >= m.startIdx && S.idx <= m.endIdx; });
+      if (milestone){
+        clearCueTimers();
+        const curTime = S.currentClip.currentTime;
+        milestone.cues.forEach(function(cue){
+          if (cue.time > curTime){
+            const delay = (cue.time - curTime) * 1000;
+            const tid = setTimeout(function(){
+              if (token === S.narrationToken && S.state === 'playing'){
+                show(cue.idx, true);
+              }
+            }, delay);
+            S.cueTimers.push(tid);
+          }
+        });
+      }
+      S.narrationPending = true;
+      S.currentClip.play().catch(function(){ speakFrame(S.frames[S.idx]); });
+    } else {
+      speakFrame(S.frames[S.idx]);
+    }
+  }
+  schedule();
+}
+function step(d){
+  cancelNarration();
+  pause();
+  const j = S.idx + d;
+  if (j < 0 || j >= S.frames.length) return;
+  show(j, true);
+}
+function reset(){
+  cancelNarration();
+  pause();
+  show(0, false);
+}
+function loadPreset(i){
+  cancelNarration();
+  pause();
+  const p = PRESETS[i];
+  S.cfg = { name:p.name, nums:p.args[0] };
+  S.frames = simulate.apply(null, p.args).frames; S.shown = -1; S.idx = 0;
+  build(S.cfg);
+  if (S.narration){
+    $narrationStatus.textContent = narrationStatusMessage(S.cfg);
+  }
+  show(0, false);
+}
+
+function toggleNarration(){
+  if (!narrationAvailable){
+    $narrationStatus.textContent = 'Voice narration is unavailable in this environment.';
+    return;
+  }
+  S.narration = !S.narration;
+  $narration.textContent = S.narration ? 'Narration: On' : 'Narration: Off';
+  $narration.setAttribute('aria-pressed', S.narration ? 'true' : 'false');
+  if (S.narration){
+    $narrationStatus.textContent = narrationStatusMessage(S.cfg);
+    speakFrame(S.frames[S.idx]);
+  } else {
+    cancelNarration();
+    $narrationStatus.textContent = 'Narration muted.';
+    if (S.state === 'playing') schedule();
+  }
+  updateButtons();
+}
+
+$back.addEventListener('click', function(){ step(-1); });
+$next.addEventListener('click', function(){ step(1); });
+$play.addEventListener('click', play);
+$reset.addEventListener('click', reset);
+$narration.addEventListener('click', toggleNarration);
+$voice.addEventListener('change', function(){
+  S.voiceURI = $voice.value;
+  if (S.narration && !getActiveWalkthrough(S.cfg)) speakFrame(S.frames[S.idx]);
+});
+$narration.disabled = !narrationAvailable;
+if (speechAvailable){
+  refreshVoices();
+  window.speechSynthesis.onvoiceschanged = refreshVoices;
+} else {
+  $voice.disabled = true;
+}
+$preset.addEventListener('change', function(){ loadPreset(Number($preset.value)); });
+$speed.addEventListener('change', function(){
+  S.speed = Number($speed.value);
+  if (S.state === 'playing') schedule();
+});
+document.addEventListener('keydown', function(e){
+  const t = e.target && e.target.tagName;
+  if (t === 'BUTTON' || t === 'SELECT' || t === 'INPUT' || t === 'TEXTAREA') return;
+  if (e.key === ' '){ e.preventDefault(); play(); }
+  else if (e.key === 'ArrowRight'){ step(1); }
+  else if (e.key === 'ArrowLeft'){ step(-1); }
+});
+document.addEventListener('visibilitychange', function(){ if (document.hidden && S.state === 'playing') pause(); });
+
+if (typeof ResizeObserver !== 'undefined') new ResizeObserver(fitCamera).observe($stage);
+else window.addEventListener('resize', fitCamera);
+
+function retheme(){
+  if (!gl) return;
+  clearTexCache(); readTheme(); build(S.cfg, true); S.shown = -1; show(S.idx, false);
+}
+try {
+  if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', retheme);
+} catch (e) { /* older browsers: theme refresh on reload */ }
+new MutationObserver(retheme).observe(document.documentElement, { attributes:true, attributeFilter:['data-theme'] });
+
+loadPreset(0);
+})();
+</script>
+</body>
+</html>
