@@ -71,16 +71,71 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
 .row{display:flex;min-width:max-content;white-space:pre;padding-right:12px;border-left:4px solid transparent}
 .ln{flex:0 0 2.4em;text-align:right;padding-right:12px;color:var(--muted);user-select:none}
 .row.active{background:var(--hl-bg);border-left-color:var(--hl-bar)}
+
+/* ---------- top navigation bar ---------- */
+.top-nav{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 0 10px;margin-bottom:10px;border-bottom:1px solid var(--line);font-size:0.875rem}
+.top-nav a{color:var(--ink);text-decoration:none;display:inline-flex;align-items:center;gap:6px;font-weight:550;padding:4px 8px;border-radius:6px;transition:background 120ms ease,color 120ms ease}
+.top-nav a:hover{background:var(--btnHover);color:var(--accent)}
+.top-nav a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.nav-back{display:inline-flex;align-items:center;gap:6px;font-weight:600}
+.nav-back .nav-arrow{font-size:1.05em;transition:transform 120ms ease}
+.nav-back:hover .nav-arrow{transform:translateX(-2px)}
+.nav-sequence{display:inline-flex;align-items:center;gap:6px}
+.nav-btn{background:var(--btn);border:1px solid var(--line);padding:3px 9px;border-radius:6px;color:var(--ink);text-decoration:none;display:inline-flex;align-items:center;gap:4px;font-size:0.82rem;font-weight:550}
+.nav-btn:hover:not(.disabled){background:var(--btnHover);border-color:var(--accent);color:var(--accent)}
+.nav-btn.disabled{opacity:0.35;cursor:not-allowed;pointer-events:none}
+.nav-indicator{font-size:0.8rem;color:var(--muted);padding:0 6px;font-variant-numeric:tabular-nums;user-select:none;font-weight:600}
+.nav-arrow{font-size:1em;line-height:1}
+@media (max-width:540px){
+  .top-nav{flex-wrap:wrap;gap:8px}
+  .nav-back span:not(.nav-arrow){font-size:0.82rem}
+}
+
+/* ---------- collapsible code pane & full-width mode ---------- */
+.wrap{transition:grid-template-columns 180ms ease}
+.wrap.code-hidden{grid-template-columns:minmax(0,1fr)}
+.wrap.code-hidden .code-pane{display:none}
+
+.code-pane{display:flex;flex-direction:column;min-width:0}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:5px 12px;background:var(--panel);border:1px solid var(--line);border-bottom:none;border-radius:12px 12px 0 0;font-size:0.8rem;font-weight:600;color:var(--muted)}
+.code-header .code-title{text-transform:uppercase;letter-spacing:0.06em;font-size:0.75rem}
+.code-pane #code{border-top-left-radius:0;border-top-right-radius:0}
+
+.btn-toggle-code{background:transparent;border:1px solid transparent;color:var(--muted);padding:2px 8px;border-radius:6px;font:inherit;font-size:0.78rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;min-height:unset;min-width:unset;transition:background 120ms ease,color 120ms ease,border-color 120ms ease}
+.btn-toggle-code:hover{background:var(--btnHover);color:var(--ink);border-color:var(--line)}
+.btn-toggle-code:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn-toggle-code .eye-icon{font-size:1em;line-height:1}
+
+.btn-show-code{display:inline-flex;align-items:center;gap:5px}
+.btn-show-code[hidden]{display:none!important}
+
+.stage-code-btn{position:absolute;top:8px;right:10px;z-index:2;background:var(--panel);border:1px solid var(--line);color:var(--ink);padding:4px 10px;border-radius:999px;font:inherit;font-size:0.78rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;box-shadow:0 2px 6px rgba(0,0,0,0.18);transition:background 120ms ease,border-color 120ms ease;min-height:unset;min-width:unset}
+.stage-code-btn:hover{background:var(--btnHover);border-color:var(--accent);color:var(--accent)}
+.stage-code-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.stage-code-btn[hidden]{display:none!important}
 </style>
 </head>
 <body>
 <main>
+    <nav class="top-nav" aria-label="Visualizations navigation">
+    <a class="nav-back" href="../index.html" title="Return to all algorithm visualizations">
+      <span class="nav-arrow" aria-hidden="true">←</span>
+      <span>All Visualizations</span>
+    </a>
+    <div class="nav-sequence">
+      <button id="bShowCodeNav" type="button" class="nav-btn btn-show-code" title="Show code panel (C)" aria-label="Show code panel" hidden><span class="eye-icon" aria-hidden="true">👁</span><span class="nav-label">Show Code</span></button>
+      <span class="nav-btn prev disabled" aria-disabled="true"><span class="nav-arrow" aria-hidden="true">‹</span><span class="nav-label">Prev</span></span>
+      <span class="nav-indicator" aria-label="Visualization 1 of 12" title="Visualization 1 of 12">1 / 12</span>
+      <a class="nav-btn next" href="../02-run-length-round-trip/Run-Length%20Round%20Trip.html" title="Next visualization: Run-Length Round Trip"><span class="nav-label">Next</span><span class="nav-arrow" aria-hidden="true">›</span></a>
+    </div>
+  </nav>
   <h1>Leftmost binary search in 3D, step by step</h1>
-  <div class="wrap">
+  <div class="wrap" id="wrap">
     <div>
       <div class="stagebox" id="stage">
         <canvas id="cv" role="img" aria-label="3D sorted list with low, mid and high pointers"></canvas>
         <div class="tag" id="tag"></div>
+        <button id="bShowCode" type="button" class="stage-code-btn" title="Show code panel (C)" aria-label="Show code panel" hidden><span class="eye-icon" aria-hidden="true">👁</span><span>Show Code</span></button>
         <div class="hint">drag to rotate · double-click to reset</div>
         <div class="err" id="err" hidden></div>
       </div>
@@ -125,7 +180,16 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
         <p class="input-status" id="inputStatus" role="status" aria-live="polite"></p>
       </form>
     </div>
-    <div id="code" role="region" aria-label="Python source code"></div>
+    <div class="code-pane" id="codePane">
+        <div class="code-header">
+          <span class="code-title">Python</span>
+          <button id="bHideCode" type="button" class="btn-toggle-code" title="Hide code panel (C)" aria-label="Hide code panel" aria-expanded="true">
+            <span class="eye-icon" aria-hidden="true">👁</span>
+            <span class="toggle-label">Hide</span>
+          </button>
+        </div>
+        <div id="code" role="region" aria-label="Python source code"></div>
+      </div>
   </div>
 </main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -206,6 +270,7 @@ function simulate(cfg){
 /* ---------- DOM ---------- */
 const $ = function(id){ return document.getElementById(id); };
 const $cv = $('cv'), $stage = $('stage'), $cap = $('caption'), $tag = $('tag'), $err = $('err'), $code = $('code');
+const $wrap = $('wrap'), $bHideCode = $('bHideCode'), $bShowCode = $('bShowCode'), $bShowCodeNav = $('bShowCodeNav');
 const $back = $('bBack'), $tour = $('bTour'), $next = $('bNext'), $reset = $('bReset');
 const $mute = $('bMute'), $preset = $('preset'), $speed = $('speed');
 const $tourIcon = $tour ? $tour.querySelector('.tour-icon') : null;
@@ -627,7 +692,7 @@ if (gl){
   $cv.addEventListener('dblclick', function(){ view.yaw = YAW0; view.pitch = PITCH0; updateCamera(); });
 }
 
-const S = { cfg:PRESETS[0], frames:[], idx:0, state:'paused', timer:0, speed:850, shown:-1, audioMuted:false, currentClip:null, currentMilestoneIdx:-1, cueTimers:[], tourToken:0 };
+const S = { cfg:PRESETS[0], frames:[], idx:0, state:'paused', timer:0, speed:850, shown:-1, audioMuted:false, currentClip:null, currentMilestoneIdx:-1, cueTimers:[], tourToken:0 , codeHidden: false};
 
 function tweenDur(f){ return S.state === 'playing' ? Math.max(120, Math.min(600, S.speed * f.hold * 0.5)) : 450; }
 function easeProp(get, set, to, animate, f){
@@ -701,6 +766,28 @@ function describe(f){
     (f.low === null ? 'Search not started.' : 'low ' + f.low + ', high ' + f.high + (f.mid !== null ? ', mid ' + f.mid : '') + '.') +
     ' Comparisons ' + f.comps + '. Result ' + f.result + '.';
 }
+
+const STORAGE_KEY = 'animated_solutions_hide_code';
+function setCodeHidden(hidden){
+  S.codeHidden = !!hidden;
+  try {
+    localStorage.setItem(STORAGE_KEY, S.codeHidden ? 'true' : 'false');
+  } catch(e){}
+  if ($wrap) $wrap.classList.toggle('code-hidden', S.codeHidden);
+  if ($bHideCode) $bHideCode.setAttribute('aria-expanded', String(!S.codeHidden));
+  if ($bShowCode) $bShowCode.hidden = !S.codeHidden;
+  if ($bShowCodeNav) $bShowCodeNav.hidden = !S.codeHidden;
+  if (typeof fitCamera === 'function') fitCamera();
+  if (typeof requestRender === 'function') requestRender();
+  setTimeout(function(){
+    if (typeof fitCamera === 'function') fitCamera();
+    if (typeof requestRender === 'function') requestRender();
+  }, 60);
+}
+function toggleCodeHidden(){
+  setCodeHidden(!S.codeHidden);
+}
+
 function updateButtons(){
   const last = S.frames.length - 1;
   $back.disabled = S.idx <= 0;
@@ -1018,6 +1105,16 @@ $tour.addEventListener('click', play);
 $back.addEventListener('click', function(){ step(-1); });
 $next.addEventListener('click', function(){ step(1); });
 $reset.addEventListener('click', reset);
+
+if ($bHideCode) $bHideCode.addEventListener('click', toggleCodeHidden);
+if ($bShowCode) $bShowCode.addEventListener('click', toggleCodeHidden);
+if ($bShowCodeNav) $bShowCodeNav.addEventListener('click', toggleCodeHidden);
+if ($wrap){
+  $wrap.addEventListener('transitionend', function(){
+    if (typeof fitCamera === 'function') fitCamera();
+    if (typeof requestRender === 'function') requestRender();
+  });
+}
 $mute.addEventListener('click', toggleMute);
 $preset.addEventListener('change', function(){ loadPreset(Number($preset.value)); });
 $customForm.addEventListener('submit', function(e){
@@ -1052,6 +1149,7 @@ document.addEventListener('keydown', function(e){
   else if (e.key === 'ArrowRight'){ step(1); }
   else if (e.key === 'ArrowLeft'){ step(-1); }
   else if (e.key === 'm' || e.key === 'M'){ toggleMute(); }
+  else if (e.key === 'c' || e.key === 'C'){ toggleCodeHidden(); }
 });
 document.addEventListener('visibilitychange', function(){ if (document.hidden && S.state === 'playing') pause(); });
 
@@ -1068,6 +1166,12 @@ try {
 new MutationObserver(retheme).observe(document.documentElement, { attributes:true, attributeFilter:['data-theme'] });
 
 loadPreset(0);
+
+try {
+  if (localStorage.getItem(STORAGE_KEY) === 'true'){
+    setCodeHidden(true);
+  }
+} catch(e){}
 })();
 </script>
 </body>

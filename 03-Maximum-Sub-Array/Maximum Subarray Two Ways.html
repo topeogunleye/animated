@@ -1,4 +1,5 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}
+</style></head><body>
 <title>Maximum Subarray Two Ways</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <style>
@@ -44,6 +45,17 @@ button{cursor:pointer;min-width:64px}
 button:hover:not(:disabled){background:var(--btnHover)}
 button:disabled{opacity:.45;cursor:default}
 button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+.btn-tour{background:var(--accent);color:#111;font-weight:700;border:1px solid rgba(0,0,0,0.18);display:inline-flex;align-items:center;gap:6px;padding:6px 14px}
+.btn-tour:hover:not(:disabled){filter:brightness(1.08)}
+.btn-tour.playing{background:var(--btn);color:var(--ink);border-color:var(--accent)}
+.tour-icon{font-size:0.95em}
+.btn-mute{min-width:40px;padding:6px 10px;font-size:1rem;display:inline-flex;align-items:center;justify-content:center}
+.tour-status{display:flex;align-items:center;gap:8px;font-size:0.85rem;color:var(--muted);min-height:1.6rem;margin:8px 2px 0;padding:4px 10px;background:var(--panel);border:1px solid var(--line);border-radius:999px;width:fit-content;max-width:100%}
+.tour-badge{display:inline-block;font-size:0.75rem;font-weight:700;letter-spacing:0.02em;text-transform:uppercase;color:var(--ink);background:var(--stage);padding:2px 8px;border-radius:999px;border:1px solid var(--line);white-space:nowrap}
+.tour-msg{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:600px){.tour-status{border-radius:8px;flex-wrap:wrap}.tour-msg{white-space:normal}}
+
 .custom-input{margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
 .custom-input h2{font-size:1rem;margin:0 0 8px}
 .input-fields{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
@@ -58,30 +70,85 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
 .row{display:flex;min-width:max-content;white-space:pre;padding-right:12px;border-left:4px solid transparent}
 .ln{flex:0 0 2.4em;text-align:right;padding-right:12px;color:var(--muted);user-select:none}
 .row.active{background:var(--hl-bg);border-left-color:var(--hl-bar)}
+/* ---------- top navigation bar ---------- */
+.top-nav{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 0 10px;margin-bottom:10px;border-bottom:1px solid var(--line);font-size:0.875rem}
+.top-nav a{color:var(--ink);text-decoration:none;display:inline-flex;align-items:center;gap:6px;font-weight:550;padding:4px 8px;border-radius:6px;transition:background 120ms ease,color 120ms ease}
+.top-nav a:hover{background:var(--btnHover);color:var(--accent)}
+.top-nav a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.nav-back{display:inline-flex;align-items:center;gap:6px;font-weight:600}
+.nav-back .nav-arrow{font-size:1.05em;transition:transform 120ms ease}
+.nav-back:hover .nav-arrow{transform:translateX(-2px)}
+.nav-sequence{display:inline-flex;align-items:center;gap:6px}
+.nav-btn{background:var(--btn);border:1px solid var(--line);padding:3px 9px;border-radius:6px;color:var(--ink);text-decoration:none;display:inline-flex;align-items:center;gap:4px;font-size:0.82rem;font-weight:550}
+.nav-btn:hover:not(.disabled){background:var(--btnHover);border-color:var(--accent);color:var(--accent)}
+.nav-btn.disabled{opacity:0.35;cursor:not-allowed;pointer-events:none}
+.nav-indicator{font-size:0.8rem;color:var(--muted);padding:0 6px;font-variant-numeric:tabular-nums;user-select:none;font-weight:600}
+.nav-arrow{font-size:1em;line-height:1}
+@media (max-width:540px){
+  .top-nav{flex-wrap:wrap;gap:8px}
+  .nav-back span:not(.nav-arrow){font-size:0.82rem}
+}
+
+/* ---------- collapsible code pane & full-width mode ---------- */
+.wrap{transition:grid-template-columns 180ms ease}
+.wrap.code-hidden{grid-template-columns:minmax(0,1fr)}
+.wrap.code-hidden .code-pane{display:none}
+
+.code-pane{display:flex;flex-direction:column;min-width:0}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:5px 12px;background:var(--panel);border:1px solid var(--line);border-bottom:none;border-radius:12px 12px 0 0;font-size:0.8rem;font-weight:600;color:var(--muted)}
+.code-header .code-title{text-transform:uppercase;letter-spacing:0.06em;font-size:0.75rem}
+.code-pane #code{border-top-left-radius:0;border-top-right-radius:0}
+
+.btn-toggle-code{background:transparent;border:1px solid transparent;color:var(--muted);padding:2px 8px;border-radius:6px;font:inherit;font-size:0.78rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;min-height:unset;min-width:unset;transition:background 120ms ease,color 120ms ease,border-color 120ms ease}
+.btn-toggle-code:hover{background:var(--btnHover);color:var(--ink);border-color:var(--line)}
+.btn-toggle-code:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn-toggle-code .eye-icon{font-size:1em;line-height:1}
+
+.btn-show-code{display:inline-flex;align-items:center;gap:5px}
+.btn-show-code[hidden]{display:none!important}
+
+.stage-code-btn{position:absolute;top:8px;right:10px;z-index:2;background:var(--panel);border:1px solid var(--line);color:var(--ink);padding:4px 10px;border-radius:999px;font:inherit;font-size:0.78rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;box-shadow:0 2px 6px rgba(0,0,0,0.18);transition:background 120ms ease,border-color 120ms ease;min-height:unset;min-width:unset}
+.stage-code-btn:hover{background:var(--btnHover);border-color:var(--accent);color:var(--accent)}
+.stage-code-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.stage-code-btn[hidden]{display:none!important}
 </style>
 <main>
+    <nav class="top-nav" aria-label="Visualizations navigation">
+    <a class="nav-back" href="../index.html" title="Return to all algorithm visualizations">
+      <span class="nav-arrow" aria-hidden="true">←</span>
+      <span>All Visualizations</span>
+    </a>
+    <div class="nav-sequence">
+      <button id="bShowCodeNav" type="button" class="nav-btn btn-show-code" title="Show code panel (C)" aria-label="Show code panel" hidden><span class="eye-icon" aria-hidden="true">👁</span><span class="nav-label">Show Code</span></button>
+      <a class="nav-btn prev" href="../02-run-length-round-trip/Run-Length%20Round%20Trip.html" title="Previous visualization: Run-Length Round Trip"><span class="nav-arrow" aria-hidden="true">‹</span><span class="nav-label">Prev</span></a>
+      <span class="nav-indicator" aria-label="Visualization 3 of 12" title="Visualization 3 of 12">3 / 12</span>
+      <a class="nav-btn next" href="../04-Integer-to-roman/Integer%20to%20Roman%20in%203D%2C%20step%20by%20step.html" title="Next visualization: Integer to Roman"><span class="nav-label">Next</span><span class="nav-arrow" aria-hidden="true">›</span></a>
+    </div>
+  </nav>
   <h1>Maximum subarray in 3D, step by step</h1>
-  <div class="wrap">
+  <div class="wrap" id="wrap">
     <div>
       <div class="stagebox" id="stage">
         <canvas id="cv" role="img" aria-label="3D list of positive and negative numbers with the current slice and the best slice"></canvas>
         <div class="tag" id="tag"></div>
+        <button id="bShowCode" type="button" class="stage-code-btn" title="Show code panel (C)" aria-label="Show code panel" hidden><span class="eye-icon" aria-hidden="true">👁</span><span>Show Code</span></button>
         <div class="hint">drag to rotate · double-click to reset</div>
         <div class="err" id="err" hidden></div>
       </div>
       <p id="caption" role="status" aria-live="polite"></p>
       <div class="controls" role="group" aria-label="Playback controls">
-        <button id="bBack" type="button">Back</button>
-        <button id="bPlay" type="button">Play</button>
-        <button id="bNext" type="button">Next</button>
-        <button id="bReset" type="button">Reset</button>
-        <button id="bNarration" type="button" aria-pressed="false" title="Toggle voice walkthrough / speech narration (N)">Narration: Off</button>
+        <button id="bTour" type="button" class="btn-tour" title="Start guided audio tour (Space)">
+          <span class="tour-icon" aria-hidden="true">▶</span>
+          <span class="tour-label">Audio Tour</span>
+        </button>
+        <button id="bBack" type="button" title="Previous step (Left Arrow)">Back</button>
+        <button id="bNext" type="button" title="Next step (Right Arrow)">Next</button>
+        <button id="bReset" type="button" title="Reset to beginning">Reset</button>
+        <button id="bMute" type="button" class="btn-mute" aria-pressed="false" title="Mute voiceover (Silent animation)">
+          <span class="mute-icon" aria-hidden="true">🔊</span>
+        </button>
         <label class="sr" for="preset">Input</label>
         <select id="preset"></select>
-        <label class="sr" for="vVoice">Voice</label>
-        <select id="vVoice" title="Text-to-speech voice">
-          <option value="auto">Default voice</option>
-        </select>
         <label class="sr" for="speed">Speed</label>
         <select id="speed">
           <option value="1300">Slow</option>
@@ -90,7 +157,10 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
           <option value="220">Very fast</option>
         </select>
       </div>
-      <div class="narration-status" id="narrationStatus" role="status" aria-live="polite">Narration is off. Recorded clips play automatically on supported presets when enabled.</div>
+      <div class="tour-status" id="tourStatus" role="status" aria-live="polite">
+        <span class="tour-badge" id="tourBadge">Milestone 1/N</span>
+        <span class="tour-msg" id="tourMsg">Ready to start guided audio tour.</span>
+      </div>
       <form class="custom-input" id="customForm">
         <h2>Play with your own input</h2>
         <div class="input-fields">
@@ -103,7 +173,16 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
         <p class="input-status" id="inputStatus" role="status" aria-live="polite"></p>
       </form>
     </div>
-    <div id="code" role="region" aria-label="Python source code"></div>
+    <div class="code-pane" id="codePane">
+        <div class="code-header">
+          <span class="code-title">Python</span>
+          <button id="bHideCode" type="button" class="btn-toggle-code" title="Hide code panel (C)" aria-label="Hide code panel" aria-expanded="true">
+            <span class="eye-icon" aria-hidden="true">👁</span>
+            <span class="toggle-label">Hide</span>
+          </button>
+        </div>
+        <div id="code" role="region" aria-label="Python source code"></div>
+      </div>
   </div>
 </main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -283,40 +362,17 @@ function simulate(nums){
 /* ---------- DOM ---------- */
 const $ = function(id){ return document.getElementById(id); };
 const $cv = $('cv'), $stage = $('stage'), $cap = $('caption'), $tag = $('tag'), $err = $('err'), $code = $('code');
-const $back = $('bBack'), $play = $('bPlay'), $next = $('bNext'), $reset = $('bReset'), $preset = $('preset'), $speed = $('speed');
+const $wrap = $('wrap'), $bHideCode = $('bHideCode'), $bShowCode = $('bShowCode'), $bShowCodeNav = $('bShowCodeNav');
+const $back = $('bBack'), $tour = $('bTour'), $mute = $('bMute'), $next = $('bNext'), $reset = $('bReset'), $preset = $('preset'), $speed = $('speed');
+const $tourIcon = $tour ? $tour.querySelector('.tour-icon') : null;
+const $tourLabel = $tour ? $tour.querySelector('.tour-label') : null;
+const $muteIcon = $mute ? $mute.querySelector('.mute-icon') : null;
+const $tourStatus = $('tourStatus'), $tourBadge = $('tourBadge'), $tourMsg = $('tourMsg');
+
 const $customForm = $('customForm'), $customNums = $('customNums'), $inputStatus = $('inputStatus');
-const $narration = $('bNarration'), $voice = $('vVoice'), $narrationStatus = $('narrationStatus');
 const RM = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches:false };
 
-const speechAvailable = typeof window !== 'undefined' && 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined';
 const audioAvailable = typeof window !== 'undefined' && typeof Audio !== 'undefined';
-const narrationAvailable = speechAvailable || audioAvailable;
-
-let availableVoices = [];
-function refreshVoices(){
-  if (!speechAvailable) return;
-  availableVoices = window.speechSynthesis.getVoices().filter(function(v){ return !v.lang || v.lang.toLowerCase().startsWith('en'); });
-  const oldVal = $voice.value;
-  $voice.innerHTML = '<option value="auto">Default voice</option>';
-  availableVoices.forEach(function(voice){
-    const opt = document.createElement('option');
-    opt.value = voice.voiceURI;
-    opt.textContent = voice.name + (voice.lang ? ' (' + voice.lang + ')' : '');
-    $voice.appendChild(opt);
-  });
-  if (oldVal && Array.from($voice.options).some(function(o){ return o.value === oldVal; })){
-    $voice.value = oldVal;
-  }
-}
-function preferredVoice(){
-  if (!speechAvailable || !availableVoices.length) return null;
-  const pref = ['samantha', 'victoria', 'karen', 'serena', 'zira', 'jenny', 'aria'];
-  for (let i = 0; i < pref.length; i++){
-    const match = availableVoices.find(function(v){ return v.name.toLowerCase().includes(pref[i]); });
-    if (match) return match;
-  }
-  return availableVoices[0];
-}
 
 function makeAudio(src){
   const a = new Audio();
@@ -611,23 +667,31 @@ function getActiveWalkthrough(cfg){
   const keys = Object.keys(WALKTHROUGHS);
   for (let i = 0; i < keys.length; i++){
     const wt = WALKTHROUGHS[keys[i]];
-    if (wt.match(cfg)) return wt;
+    if (wt.match && wt.match(cfg)){
+      if (!wt._normalizedMilestones){
+        const list = wt.milestones || wt.mapping || [];
+        wt._normalizedMilestones = list.map(function(m, idx){
+          const clipObj = (typeof m.clip === 'string' && wt.clips) ? wt.clips[m.clip] : m.clip;
+          const cuesList = (m.cues || []).map(function(c){
+            return {
+              time: c.time,
+              frameIdx: c.frameIdx !== undefined ? c.frameIdx : c.idx
+            };
+          });
+          return {
+            title: m.title || (wt.name + ' — Milestone ' + (idx + 1)),
+            clip: clipObj,
+            startIdx: m.startIdx,
+            endIdx: m.endIdx,
+            cues: cuesList
+          };
+        });
+      }
+      return wt;
+    }
   }
   return null;
-}
-
-function narrationStatusMessage(cfg){
-  const wt = getActiveWalkthrough(cfg);
-  if (wt){
-    return 'Narration enabled (using recorded voice walkthrough for ' + wt.name + ').';
-  }
-  if (speechAvailable){
-    return 'Narration enabled (using browser speech synthesis for custom/other inputs).';
-  }
-  return 'Recorded voice walkthrough is not available for this input.';
-}
-
-const rows = SRC.map(function(txt, i){
+}const rows = SRC.map(function(txt, i){
   const r = document.createElement('div'); r.className = 'row';
   const n = document.createElement('span'); n.className = 'ln'; n.textContent = String(i + 1);
   const c = document.createElement('span'); c.textContent = txt;
@@ -820,9 +884,8 @@ if (gl){
 /* ---------- playback state ---------- */
 const S = {
   cfg: null, frames: [], idx: 0, state: 'paused', timer: 0, speed: 1300, shown: -1,
-  narration: false, narrationPending: false, narrationToken: 0, voiceURI: 'auto',
-  currentClip: null, cueTimers: []
-};
+  audioMuted: false, currentClip: null, currentMilestoneIdx: -1, cueTimers: [], tourToken: 0
+, codeHidden: false};
 
 function tweenDur(f){ return S.state === 'playing' ? Math.max(120, Math.min(600, S.speed * f.hold * 0.5)) : 450; }
 function easeProp(get, set, to, animate, f){
@@ -901,168 +964,233 @@ function describe(f){
     (f.high !== null ? ' ' + f.highName + ' at index ' + f.high + '.' : '') +
     (f.best !== null ? ' Best slice is indexes ' + f.best[0] + ' to ' + f.best[1] + '.' : '');
 }
-function clearCueTimers(){
-  if (S.cueTimers && S.cueTimers.length){
-    S.cueTimers.forEach(function(t){ clearTimeout(t); });
-    S.cueTimers = [];
-  }
-}
 
-function cancelNarration(){
-  const wasPending = S.narrationPending;
-  S.narrationToken += 1;
-  S.narrationPending = false;
-  S.currentClip = null;
-  clearCueTimers();
-  Object.keys(WALKTHROUGHS).forEach(function(key){
-    const clips = WALKTHROUGHS[key].clips;
-    Object.keys(clips).forEach(function(k){
-      const c = clips[k];
-      c.pause();
-      c.currentTime = 0;
-      c.onended = null;
-      c.onerror = null;
-    });
-  });
-  if (speechAvailable && wasPending){
-    try { window.speechSynthesis.cancel(); } catch(e){}
-  }
-}
 
-function tutorNarration(frame){
-  return frame.msg
-    .replace(/["']/g, '')
-    .replace(/==/g, 'equals')
-    .replace(/!=/g, 'is not')
-    .replace(/<=/g, 'less than or equal to')
-    .replace(/>=/g, 'greater than or equal to')
-    .replace(/\+/g, 'plus')
-    .replace(/\*/g, 'times');
-}
-
-function speakTutor(frame, token, finish){
-  if (!speechAvailable){
-    S.narrationPending = false;
-    $narrationStatus.textContent = 'Browser speech is unavailable; captions still guide each step.';
-    if (S.state === 'playing') schedule();
-    return;
-  }
-  const utterance = new SpeechSynthesisUtterance(tutorNarration(frame));
-  utterance.lang = document.documentElement.lang || 'en';
-  utterance.rate = S.speed >= 1100 ? 0.85 : S.speed >= 700 ? 1 : S.speed >= 400 ? 1.25 : 1.4;
-  utterance.voice = S.voiceURI === 'auto'
-    ? preferredVoice()
-    : availableVoices.find(function(voice){ return voice.voiceURI === S.voiceURI; }) || null;
-  utterance.onend = finish;
-  utterance.onerror = finish;
+const STORAGE_KEY = 'animated_solutions_hide_code';
+function setCodeHidden(hidden){
+  S.codeHidden = !!hidden;
   try {
-    window.speechSynthesis.speak(utterance);
-  } catch (e) {
-    if (token !== S.narrationToken) return;
-    S.narrationPending = false;
-    $narrationStatus.textContent = 'Browser speech could not be started.';
-    if (S.state === 'playing') schedule();
-  }
+    localStorage.setItem(STORAGE_KEY, S.codeHidden ? 'true' : 'false');
+  } catch(e){}
+  if ($wrap) $wrap.classList.toggle('code-hidden', S.codeHidden);
+  if ($bHideCode) $bHideCode.setAttribute('aria-expanded', String(!S.codeHidden));
+  if ($bShowCode) $bShowCode.hidden = !S.codeHidden;
+  if ($bShowCodeNav) $bShowCodeNav.hidden = !S.codeHidden;
+  if (typeof fitCamera === 'function') fitCamera();
+  if (typeof requestRender === 'function') requestRender();
+  setTimeout(function(){
+    if (typeof fitCamera === 'function') fitCamera();
+    if (typeof requestRender === 'function') requestRender();
+  }, 60);
 }
-
-function speakFrame(frame){
-  const wt = getActiveWalkthrough(S.cfg);
-  let milestone = null;
-  if (wt){
-    milestone = wt.mapping.find(function(m){ return S.idx >= m.startIdx && S.idx <= m.endIdx; });
-  }
-
-  const expectedClip = (wt && milestone) ? wt.clips[milestone.clip] : null;
-  if (expectedClip && S.currentClip === expectedClip && !expectedClip.paused && !expectedClip.ended){
-    return;
-  }
-
-  cancelNarration();
-  if (!S.narration || !narrationAvailable) return;
-
-  const token = S.narrationToken;
-  const finish = function(){
-    if (token !== S.narrationToken) return;
-    S.narrationPending = false;
-    S.currentClip = null;
-    clearCueTimers();
-    if (S.state === 'playing'){
-      if (S.idx >= S.frames.length - 1){
-        S.state = 'ended';
-        updateButtons();
-      } else {
-        schedule();
-      }
-    }
-  };
-  S.narrationPending = true;
-
-  if (wt && audioAvailable && milestone){
-    const clip = wt.clips[milestone.clip];
-    S.currentClip = clip;
-    let fellBack = false;
-    const fallback = function(){
-      if (fellBack || token !== S.narrationToken) return;
-      fellBack = true;
-      clip.onended = null;
-      clip.onerror = null;
-      S.currentClip = null;
-      clearCueTimers();
-      $narrationStatus.textContent = 'A recorded narration clip could not play; using browser speech instead.';
-      speakTutor(frame, token, finish);
-    };
-
-    clip.onended = finish;
-    clip.onerror = fallback;
-
-    let currentCue = null;
-    for (let c = milestone.cues.length - 1; c >= 0; c--){
-      if (S.idx >= milestone.cues[c].idx){
-        currentCue = milestone.cues[c];
-        break;
-      }
-    }
-    if (!currentCue) currentCue = milestone.cues[0];
-
-    try { clip.currentTime = currentCue.time; } catch(e){}
-
-    if (S.state === 'playing'){
-      milestone.cues.forEach(function(cue){
-        if (cue.time > currentCue.time){
-          const delay = (cue.time - currentCue.time) * 1000;
-          const tid = setTimeout(function(){
-            if (token === S.narrationToken && S.state === 'playing'){
-              show(cue.idx, true);
-            }
-          }, delay);
-          S.cueTimers.push(tid);
-        }
-      });
-    }
-
-    const playPromise = clip.play();
-    if (playPromise !== undefined){
-      playPromise.catch(function(err){
-        if (err && err.name === 'NotAllowedError'){
-          $narrationStatus.textContent = 'Audio playback was blocked by browser autoplay policy. Click Play or Next to enable sound.';
-          fallback();
-        } else {
-          fallback();
-        }
-      });
-    }
-  } else {
-    speakTutor(frame, token, finish);
-  }
+function toggleCodeHidden(){
+  setCodeHidden(!S.codeHidden);
 }
 
 function updateButtons(){
   const last = S.frames.length - 1;
   $back.disabled = S.idx <= 0;
   $next.disabled = S.idx >= last;
-  $play.textContent = S.state === 'playing' ? 'Pause' : (S.idx >= last ? 'Replay' : 'Play');
+  if (S.state === 'playing'){
+    $tour.classList.add('playing');
+    if ($tourIcon) $tourIcon.textContent = '⏸';
+    if ($tourLabel) $tourLabel.textContent = 'Pause Tour';
+    $tour.title = 'Pause guided tour (Space)';
+  } else {
+    $tour.classList.remove('playing');
+    if (S.idx >= last){
+      if ($tourIcon) $tourIcon.textContent = '↺';
+      if ($tourLabel) $tourLabel.textContent = 'Replay Tour';
+      $tour.title = 'Replay guided tour from start (Space)';
+    } else if (S.idx > 0){
+      if ($tourIcon) $tourIcon.textContent = '▶';
+      if ($tourLabel) $tourLabel.textContent = 'Resume Tour';
+      $tour.title = 'Resume guided tour (Space)';
+    } else {
+      if ($tourIcon) $tourIcon.textContent = '▶';
+      if ($tourLabel) $tourLabel.textContent = 'Audio Tour';
+      $tour.title = 'Start guided audio tour (Space)';
+    }
+  }
 }
-function show(i, animate){
+
+function updateTourStatus(){
+  if (!$tourStatus) return;
+  const wt = getActiveWalkthrough(S.cfg);
+  if (wt){
+    const milestones = wt._normalizedMilestones || wt.milestones || wt.mapping || [];
+    let mIdx = 0;
+    for (let i = 0; i < milestones.length; i++){
+      const m = milestones[i];
+      if (S.idx >= m.startIdx && S.idx <= m.endIdx){
+        mIdx = i;
+        break;
+      }
+    }
+    const totalM = milestones.length;
+    if (S.state === 'ended'){
+      $tourBadge.textContent = 'Complete';
+      $tourMsg.textContent = 'Tour complete for ' + wt.name + '.';
+    } else if (S.state === 'playing'){
+      $tourBadge.textContent = 'Milestone ' + (mIdx + 1) + '/' + totalM;
+      $tourMsg.textContent = S.audioMuted ? 'Playing silently (voiceover muted).' : (milestones[mIdx].title || (wt.name + ' — Milestone ' + (mIdx + 1)));
+    } else {
+      $tourBadge.textContent = 'Milestone ' + (mIdx + 1) + '/' + totalM;
+      if (S.idx === 0){
+        $tourMsg.textContent = 'Ready to start guided audio tour for ' + wt.name + '.';
+      } else {
+        $tourMsg.textContent = 'Tour paused at step ' + (S.idx + 1) + ' of ' + S.frames.length + '.';
+      }
+    }
+  } else {
+    $tourBadge.textContent = 'Custom';
+    if (S.state === 'ended'){
+      $tourMsg.textContent = 'Simulation complete.';
+    } else if (S.state === 'playing'){
+      $tourMsg.textContent = 'Playing custom simulation (silent mode).';
+    } else {
+      $tourMsg.textContent = 'Ready to run custom input.';
+    }
+  }
+}
+
+function updateMuteButton(){
+  $mute.setAttribute('aria-pressed', String(S.audioMuted));
+  if ($muteIcon) $muteIcon.textContent = S.audioMuted ? '🔇' : '🔊';
+  $mute.title = S.audioMuted ? 'Unmute voiceover (Space or M)' : 'Mute voiceover (Silent animation)';
+}
+
+function clearCueTimers(){
+  S.cueTimers.forEach(function(t){ clearTimeout(t); });
+  S.cueTimers = [];
+}
+function stopAudio(){
+  clearCueTimers();
+  S.tourToken++;
+  if (S.currentClip){
+    try {
+      S.currentClip.pause();
+      S.currentClip.currentTime = 0;
+      S.currentClip.onended = null;
+      S.currentClip.onerror = null;
+    } catch(e){}
+    S.currentClip = null;
+  }
+}
+function pauseAudio(){
+  clearCueTimers();
+  S.tourToken++;
+  if (S.currentClip){
+    try {
+      S.currentClip.pause();
+    } catch(e){}
+  }
+}
+
+function startMilestone(mIdx, fromTime){
+  const wt = getActiveWalkthrough(S.cfg);
+  const milestones = wt ? (wt._normalizedMilestones || wt.milestones || wt.mapping) : null;
+  if (!wt || !milestones || mIdx >= milestones.length){
+    S.state = 'ended';
+    S.currentClip = null;
+    updateButtons();
+    updateTourStatus();
+    return;
+  }
+
+  stopAudio();
+  const m = milestones[mIdx];
+  const clip = (typeof m.clip === 'string' && wt.clips) ? wt.clips[m.clip] : m.clip;
+  S.currentMilestoneIdx = mIdx;
+  S.currentClip = clip;
+
+  const token = ++S.tourToken;
+  updateTourStatus();
+
+  clip.onended = function(){
+    if (token !== S.tourToken || S.state !== 'playing') return;
+    if (mIdx + 1 < milestones.length){
+      startMilestone(mIdx + 1, 0);
+    } else {
+      S.state = 'ended';
+      S.currentClip = null;
+      updateButtons();
+      updateTourStatus();
+    }
+  };
+
+  clip.onerror = function(){
+    if (token !== S.tourToken) return;
+    console.warn('Audio clip failed to play, switching to silent mode.');
+    $tourMsg.textContent = 'Audio clips unavailable; running in silent mode.';
+    S.audioMuted = true;
+    updateMuteButton();
+    if (S.state === 'playing') schedule();
+  };
+
+  try {
+    clip.currentTime = fromTime || 0;
+  } catch(e){}
+
+  m.cues.forEach(function(cue){
+    if (cue.time >= (fromTime || 0)){
+      const delayMs = Math.max(0, (cue.time - (fromTime || 0)) * 1000);
+      const targetIdx = cue.frameIdx !== undefined ? cue.frameIdx : cue.idx;
+      const timerId = setTimeout(function(){
+        if (token === S.tourToken && S.state === 'playing'){
+          show(targetIdx, true);
+        }
+      }, delayMs);
+      S.cueTimers.push(timerId);
+    }
+  });
+
+  const playPromise = clip.play();
+  if (playPromise !== undefined){
+    playPromise.catch(function(err){
+      if (token !== S.tourToken) return;
+      if (err && err.name === 'NotAllowedError'){
+        $tourMsg.textContent = 'Click Audio Tour to allow sound in your browser.';
+      } else {
+        $tourMsg.textContent = 'Audio clips unavailable; running in silent mode.';
+      }
+      if (S.state === 'playing') schedule();
+    });
+  }
+}
+
+function playMilestoneForFrame(frameIdx){
+  const wt = getActiveWalkthrough(S.cfg);
+  if (!wt || !audioAvailable || S.audioMuted) return;
+
+  const milestones = wt._normalizedMilestones || wt.milestones || wt.mapping || [];
+  let mIdx = -1;
+  for (let i = 0; i < milestones.length; i++){
+    const m = milestones[i];
+    if (frameIdx >= m.startIdx && frameIdx <= m.endIdx){
+      mIdx = i;
+      break;
+    }
+  }
+  if (mIdx < 0) return;
+
+  const m = milestones[mIdx];
+  const clip = (typeof m.clip === 'string' && wt.clips) ? wt.clips[m.clip] : m.clip;
+  let fromTime = 0;
+  for (let c = m.cues.length - 1; c >= 0; c--){
+    const targetIdx = m.cues[c].frameIdx !== undefined ? m.cues[c].frameIdx : m.cues[c].idx;
+    if (frameIdx >= targetIdx){
+      fromTime = m.cues[c].time;
+      break;
+    }
+  }
+
+  if (S.currentClip === clip && !clip.ended && clip.currentTime > fromTime){
+    fromTime = clip.currentTime;
+  }
+
+  startMilestone(mIdx, fromTime);
+}function show(i, animate){
   const f = S.frames[i]; if (!f) return;
   settle();
   S.idx = i;
@@ -1071,122 +1199,120 @@ function show(i, animate){
   $cv.setAttribute('aria-label', describe(f));
   renderCode(f);
   applyScene(f, animate && Math.abs(i - S.shown) === 1);
-  speakFrame(f);
+  
   S.shown = i;
   updateButtons();
-}
-
-function clearTimer(){ if (S.timer){ clearTimeout(S.timer); S.timer = 0; } }
+  updateTourStatus();
+}function clearTimer(){ if (S.timer){ clearTimeout(S.timer); S.timer = 0; } }
 function schedule(){
   clearTimer();
-  if (S.state !== 'playing' || S.narrationPending) return;
-  S.timer = setTimeout(tick, S.speed * S.frames[S.idx].hold);
+  if (S.state !== 'playing') return;
+  const wt = getActiveWalkthrough(S.cfg);
+  if (wt && audioAvailable && !S.audioMuted && S.currentClip && !S.currentClip.paused){
+    return;
+  }
+  const f = S.frames[S.idx];
+  const hold = (f && typeof f.hold === 'number') ? f.hold : 1;
+  S.timer = setTimeout(tick, Math.max(140, S.speed * hold));
 }
 function tick(){
   S.timer = 0;
   if (S.state !== 'playing') return;
-  if (S.idx >= S.frames.length - 1){ S.state = 'ended'; updateButtons(); return; }
+  if (S.idx >= S.frames.length - 1){
+    S.state = 'ended';
+    updateButtons();
+    updateTourStatus();
+    return;
+  }
   show(S.idx + 1, true);
-  if (S.idx >= S.frames.length - 1){ S.state = 'ended'; updateButtons(); return; }
+  if (S.idx >= S.frames.length - 1){
+    S.state = 'ended';
+    updateButtons();
+    updateTourStatus();
+    return;
+  }
   schedule();
 }
 function pause(){
   clearTimer();
-  clearCueTimers();
-  if (S.currentClip && !S.currentClip.paused){
-    S.currentClip.pause();
-  } else {
-    cancelNarration();
-  }
+  pauseAudio();
   settle();
   if (S.state === 'playing' || S.state === 'ended') S.state = 'paused';
   updateButtons();
+  updateTourStatus();
 }
 function play(){
-  if (S.state === 'playing'){ pause(); return; }
-  if (S.idx >= S.frames.length - 1) show(0, false);
-  S.state = 'playing'; updateButtons();
-  if (S.narration){
-    const wt = getActiveWalkthrough(S.cfg);
-    if (wt && S.currentClip && S.currentClip.paused && !S.currentClip.ended){
-      const token = S.narrationToken;
-      const milestone = wt.mapping.find(function(m){ return S.idx >= m.startIdx && S.idx <= m.endIdx; });
-      if (milestone){
-        clearCueTimers();
-        const curTime = S.currentClip.currentTime;
-        milestone.cues.forEach(function(cue){
-          if (cue.time > curTime){
-            const delay = (cue.time - curTime) * 1000;
-            const tid = setTimeout(function(){
-              if (token === S.narrationToken && S.state === 'playing'){
-                show(cue.idx, true);
-              }
-            }, delay);
-            S.cueTimers.push(tid);
-          }
-        });
-      }
-      S.narrationPending = true;
-      S.currentClip.play().catch(function(){ speakFrame(S.frames[S.idx]); });
-    } else {
-      speakFrame(S.frames[S.idx]);
-    }
+  if (S.state === 'playing'){
+    pause();
+    return;
   }
-  schedule();
+  if (S.idx >= S.frames.length - 1){
+    show(0, false);
+  }
+  S.state = 'playing';
+  updateButtons();
+
+  const wt = getActiveWalkthrough(S.cfg);
+  if (wt && audioAvailable && !S.audioMuted){
+    playMilestoneForFrame(S.idx);
+  } else {
+    updateTourStatus();
+    schedule();
+  }
 }
 function step(d){
-  cancelNarration();
+  stopAudio();
   pause();
   const j = S.idx + d;
   if (j < 0 || j >= S.frames.length) return;
   show(j, true);
 }
 function reset(){
-  cancelNarration();
+  stopAudio();
   pause();
   show(0, false);
 }
-function loadInput(nums, name){
-  cancelNarration();
+function toggleMute(){
+  S.audioMuted = !S.audioMuted;
+  updateMuteButton();
+  if (S.audioMuted){
+    pauseAudio();
+    if (S.state === 'playing') schedule();
+  } else {
+    clearTimer();
+    if (S.state === 'playing') playMilestoneForFrame(S.idx);
+  }
+  updateTourStatus();
+}function loadInput(nums, name){
+  stopAudio();
   pause();
   S.cfg = { name:name, nums:nums };
   S.frames = simulate(nums).frames; S.shown = -1; S.idx = 0;
   $customNums.value = nums.join(', ');
   build(S.cfg);
   show(0, false);
-  if (S.narration){
-    $narrationStatus.textContent = narrationStatusMessage(S.cfg);
-  }
+  updateTourStatus();
 }
 function loadPreset(i){
+  $preset.value = String(i);
   const p = PRESETS[i];
   loadInput(p.args[0], p.name);
-}
-
-function toggleNarration(){
-  S.narration = !S.narration;
-  $narration.textContent = S.narration ? 'Narration: On' : 'Narration: Off';
-  $narration.setAttribute('aria-pressed', S.narration ? 'true' : 'false');
-  if (!S.narration){
-    cancelNarration();
-    $narrationStatus.textContent = 'Narration muted.';
-    if (S.state === 'playing') schedule();
-  } else {
-    $narrationStatus.textContent = narrationStatusMessage(S.cfg);
-    speakFrame(S.frames[S.idx]);
-  }
-  updateButtons();
-}
-
-$back.addEventListener('click', function(){ step(-1); });
+  updateTourStatus();
+}$back.addEventListener('click', function(){ step(-1); });
 $next.addEventListener('click', function(){ step(1); });
-$play.addEventListener('click', play);
+$tour.addEventListener('click', play);
 $reset.addEventListener('click', reset);
-$narration.addEventListener('click', toggleNarration);
-$voice.addEventListener('change', function(){
-  S.voiceURI = $voice.value;
-  if (S.narration && !getActiveWalkthrough(S.cfg)) speakFrame(S.frames[S.idx]);
-});
+
+if ($bHideCode) $bHideCode.addEventListener('click', toggleCodeHidden);
+if ($bShowCode) $bShowCode.addEventListener('click', toggleCodeHidden);
+if ($bShowCodeNav) $bShowCodeNav.addEventListener('click', toggleCodeHidden);
+if ($wrap){
+  $wrap.addEventListener('transitionend', function(){
+    if (typeof fitCamera === 'function') fitCamera();
+    if (typeof requestRender === 'function') requestRender();
+  });
+}
+$mute.addEventListener('click', toggleMute);
 $preset.addEventListener('change', function(){ loadPreset(Number($preset.value)); });
 $customForm.addEventListener('submit', function(e){
   e.preventDefault();
@@ -1212,23 +1338,10 @@ document.addEventListener('keydown', function(e){
   if (e.key === ' '){ e.preventDefault(); play(); }
   else if (e.key === 'ArrowRight'){ step(1); }
   else if (e.key === 'ArrowLeft'){ step(-1); }
-  else if (e.key === 'n' || e.key === 'N'){ toggleNarration(); }
+  else if (e.key === 'm' || e.key === 'M'){ toggleMute(); }
+  else if (e.key === 'c' || e.key === 'C'){ toggleCodeHidden(); }
 });
 document.addEventListener('visibilitychange', function(){ if (document.hidden && S.state === 'playing') pause(); });
-
-$narration.disabled = !narrationAvailable;
-$voice.disabled = !speechAvailable;
-if (!narrationAvailable){
-  $narrationStatus.textContent = 'Narration is not supported in this browser.';
-} else if (!speechAvailable){
-  $narrationStatus.textContent = 'Recorded narration clips are available; browser speech is not supported.';
-}
-if (speechAvailable){
-  refreshVoices();
-  window.speechSynthesis.onvoiceschanged = refreshVoices;
-} else {
-  $voice.disabled = true;
-}
 
 if (typeof ResizeObserver !== 'undefined') new ResizeObserver(fitCamera).observe($stage);
 else window.addEventListener('resize', fitCamera);
@@ -1243,6 +1356,12 @@ try {
 new MutationObserver(retheme).observe(document.documentElement, { attributes:true, attributeFilter:['data-theme'] });
 
 loadPreset(0);
+
+try {
+  if (localStorage.getItem(STORAGE_KEY) === 'true'){
+    setCodeHidden(true);
+  }
+} catch(e){}
 })();
 </script>
 
