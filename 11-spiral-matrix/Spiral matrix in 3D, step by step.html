@@ -1,0 +1,1626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Spiral matrix in 3D, step by step</title>
+<style>
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --ink: #18212b; --muted: #5b6876; --line: #d5dbe3;
+  --hl-bg: #fff3bf; --hl-bar: #d99a00; --stage: #eef1f5;
+  --plate: #c3ccd7; --accent: #e8a900;
+  --btn: #ffffff; --btnHover: #eef1f5;
+  --tile-default: #3b82c4;
+  --tile-visited: #2e9e5b;
+  --tile-active: #e8a900;
+  color-scheme: light;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1318; --panel: #171c23; --ink: #e8edf3; --muted: #9aa7b6; --line: #2c3440;
+    --hl-bg: #4a3d0a; --hl-bar: #ffc400; --stage: #141a21;
+    --plate: #2a3442; --accent: #ffc400;
+    --btn: #1d2430; --btnHover: #27303b;
+    --tile-default: #2563a8;
+    --tile-visited: #228448;
+    --tile-active: #ffc400;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1318; --panel: #171c23; --ink: #e8edf3; --muted: #9aa7b6; --line: #2c3440;
+  --hl-bg: #4a3d0a; --hl-bar: #ffc400; --stage: #141a21;
+  --plate: #2a3442; --accent: #ffc400;
+  --btn: #1d2430; --btnHover: #27303b;
+  --tile-default: #2563a8;
+  --tile-visited: #228448;
+  --tile-active: #ffc400;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  min-height: 100vh;
+}
+main {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 12px 14px 22px;
+}
+h1 {
+  font-size: 1.15rem;
+  margin: 4px 0 12px;
+  font-weight: 650;
+}
+.wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 760px) {
+  .wrap { grid-template-columns: minmax(0, 1fr); }
+}
+.stagebox {
+  position: relative;
+  background: var(--stage);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  aspect-ratio: 4/3;
+  min-height: 280px;
+  max-height: 64vh;
+  width: 100%;
+}
+#cv {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: pan-y;
+  cursor: grab;
+}
+#cv:active { cursor: grabbing; }
+.hint {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  font-size: 11px;
+  color: var(--muted);
+  pointer-events: none;
+}
+.tag {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  right: 10px;
+  width: max-content;
+  max-width: calc(100% - 20px);
+  font: 600 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  padding: 2px 9px;
+  border-radius: 999px;
+}
+.err {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 20px;
+  color: var(--ink);
+  background: var(--stage);
+}
+.err[hidden] { display: none; }
+#caption {
+  margin: 12px 2px 10px;
+  min-height: 3.2em;
+  font-size: 1rem;
+}
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+button, select {
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--ink);
+  background: var(--btn);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 12px;
+  min-height: 36px;
+}
+button {
+  cursor: pointer;
+  min-width: 64px;
+}
+button:hover:not(:disabled) { background: var(--btnHover); }
+button:disabled { opacity: 0.45; cursor: default; }
+button:focus-visible, select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.narration-status {
+  font-size: 0.85rem;
+  color: var(--muted);
+  min-height: 1.25rem;
+  margin: 6px 2px 0;
+}
+button.active {
+  background: var(--accent);
+  color: #000;
+  border-color: var(--accent);
+  font-weight: 600;
+}
+#code {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px 0;
+  overflow: auto;
+  max-height: 70vh;
+  font: 13px/1.7 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (max-width: 420px) { #code { font-size: 12px; } }
+.row {
+  display: flex;
+  min-width: max-content;
+  white-space: pre;
+  padding-right: 12px;
+  border-left: 4px solid transparent;
+}
+.ln {
+  flex: 0 0 2.4em;
+  text-align: right;
+  padding-right: 12px;
+  color: var(--muted);
+  user-select: none;
+}
+.row.active {
+  background: var(--hl-bg);
+  border-left-color: var(--hl-bar);
+}
+</style>
+</head>
+<body>
+<main>
+  <h1>Spiral matrix in 3D, step by step</h1>
+  <div class="wrap">
+    <div>
+      <div class="stagebox" id="stage">
+        <canvas id="cv" role="img" aria-label="3D matrix grid with wall pointers, tiles, and spiral order output row"></canvas>
+        <div class="tag" id="tag"></div>
+        <div class="hint">drag to rotate · double-click to reset</div>
+        <div class="err" id="err" hidden></div>
+      </div>
+      <p id="caption" role="status" aria-live="polite"></p>
+      <div class="controls" role="group" aria-label="Playback controls">
+        <button id="bBack" type="button">Back</button>
+        <button id="bPlay" type="button">Play</button>
+        <button id="bNext" type="button">Next</button>
+        <button id="bReset" type="button">Reset</button>
+        <button id="bNarration" type="button" aria-pressed="false" title="Toggle spoken narration">Narration: Off</button>
+        <label class="sr" for="voice">Narration voice</label>
+        <select id="voice" title="Speech synthesis voice">
+          <option value="auto">Default voice</option>
+        </select>
+        <label class="sr" for="preset">Input</label>
+        <select id="preset"></select>
+        <label class="sr" for="speed">Speed</label>
+        <select id="speed">
+          <option value="1300">Slow</option>
+          <option value="850" selected>Normal</option>
+          <option value="450">Fast</option>
+        </select>
+      </div>
+      <div class="narration-status" id="narrationStatus" role="status" aria-live="polite"></div>
+    </div>
+    <div id="code" role="region" aria-label="Python source code"></div>
+  </div>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+
+/* SOURCE:BEGIN */
+const SRC = [
+  "def spiral_order(matrix):",                          // 0
+  "    result = []",                                    // 1
+  "    if not matrix:",                                 // 2
+  "        return result",                              // 3
+  "    top, bottom = 0, len(matrix) - 1",               // 4
+  "    left, right = 0, len(matrix[0]) - 1",            // 5
+  "    while top <= bottom and left <= right:",         // 6
+  "        for col in range(left, right + 1):",         // 7
+  "            result.append(matrix[top][col])",        // 8
+  "        top += 1",                                   // 9
+  "        for row in range(top, bottom + 1):",         // 10
+  "            result.append(matrix[row][right])",      // 11
+  "        right -= 1",                                 // 12
+  "        if top <= bottom:",                          // 13
+  "            for col in range(right, left - 1, -1):", // 14
+  "                result.append(matrix[bottom][col])", // 15
+  "            bottom -= 1",                            // 16
+  "        if left <= right:",                          // 17
+  "            for row in range(bottom, top - 1, -1):", // 18
+  "                result.append(matrix[row][left])",   // 19
+  "            left += 1",                              // 20
+  "    return result"                                   // 21
+];
+/* SOURCE:END */
+
+/* PRESETS:BEGIN */
+const PRESETS = [
+  { name: "3x3 Square [[1..9]]", args: [[[1,2,3],[4,5,6],[7,8,9]]] },
+  { name: "2x4 Rect [[1..8]]", args: [[[1,2,3,4],[5,6,7,8]]] },
+  { name: "3x1 Single Col [[1],[2],[3]]", args: [[[1],[2],[3]]] },
+  { name: "Empty matrix []", args: [[]] },
+  { name: "1x4 Single Row [[1,2,3,4]]", args: [[[1,2,3,4]]] },
+  { name: "4x4 Matrix [[1..16]]", args: [[[1,2,3,4],[5,6,7,8],[9,10,11,12],[13,14,15,16]]] }
+];
+/* PRESETS:END */
+
+/* SIMULATE:BEGIN */
+function simulate(matrix) {
+  const frames = [];
+  let result = [];
+  let visited = [];
+  let top = null, bottom = null, left = null, right = null;
+  let curr = null;
+
+  function snap(lines, msg, kind, hold, meta) {
+    meta = meta || {};
+    frames.push({
+      lines: lines.slice(),
+      msg: msg,
+      kind: kind,
+      hold: hold || 1.0,
+      top: top,
+      bottom: bottom,
+      left: left,
+      right: right,
+      curr: curr ? [curr[0], curr[1]] : null,
+      visited: visited.map(function(v) { return { row: v.row, col: v.col, val: v.val, order: v.order }; }),
+      result: result.slice(),
+      action: meta.action || null,
+      guardPassed: meta.guardPassed !== undefined ? meta.guardPassed : null
+    });
+  }
+
+  snap([0, 1], "Initialize result = []. Walk matrix boundaries in clockwise spiral order.", "start", 1.0);
+
+  if (!matrix || matrix.length === 0 || matrix[0].length === 0) {
+    snap([2, 3], "Matrix is empty: if not matrix is True. Return empty result [].", "end", 1.2);
+    return { frames: frames, result: [] };
+  }
+
+  top = 0;
+  bottom = matrix.length - 1;
+  left = 0;
+  right = matrix[0].length - 1;
+
+  snap([4, 5], "Set initial boundaries: top = " + top + ", bottom = " + bottom + ", left = " + left + ", right = " + right + ".", "init", 1.2);
+
+  while (top <= bottom && left <= right) {
+    snap([6], "While condition true (top " + top + " <= " + bottom + " and left " + left + " <= " + right + "): a ring is left to traverse.", "step", 1.0, { action: "while_check" });
+
+    for (let col = left; col <= right; col++) {
+      curr = [top, col];
+      const val = matrix[top][col];
+      result.push(val);
+      visited.push({ row: top, col: col, val: val, order: result.length });
+      snap([7, 8], "Top row: append matrix[" + top + "][" + col + "] = " + val + ". result = [" + result.join(", ") + "].", "step", 1.0, { action: "read_cell" });
+    }
+    curr = null;
+    top += 1;
+    snap([9], "Finished top row. Move top wall down: top += 1 (top is now " + top + ").", "move", 1.2, { action: "move_wall" });
+
+    for (let row = top; row <= bottom; row++) {
+      curr = [row, right];
+      const val = matrix[row][right];
+      result.push(val);
+      visited.push({ row: row, col: right, val: val, order: result.length });
+      snap([10, 11], "Right column: append matrix[" + row + "][" + right + "] = " + val + ". result = [" + result.join(", ") + "].", "step", 1.0, { action: "read_cell" });
+    }
+    curr = null;
+    right -= 1;
+    snap([12], "Finished right column. Move right wall left: right -= 1 (right is now " + right + ").", "move", 1.2, { action: "move_wall" });
+
+    if (top <= bottom) {
+      for (let col = right; col >= left; col--) {
+        curr = [bottom, col];
+        const val = matrix[bottom][col];
+        result.push(val);
+        visited.push({ row: bottom, col: col, val: val, order: result.length });
+        snap([14, 15], "Bottom row: append matrix[" + bottom + "][" + col + "] = " + val + ". result = [" + result.join(", ") + "].", "step", 1.0, { action: "read_cell" });
+      }
+      curr = null;
+      bottom -= 1;
+      snap([16], "Finished bottom row. Move bottom wall up: bottom -= 1 (bottom is now " + bottom + ").", "move", 1.2, { action: "move_wall" });
+    } else {
+      snap([13], "Guard top <= bottom is False (" + top + " > " + bottom + "): skip bottom row traversal.", "step", 1.2, { action: "skip_guard", guardPassed: false });
+    }
+
+    if (left <= right) {
+      for (let row = bottom; row >= top; row--) {
+        curr = [row, left];
+        const val = matrix[row][left];
+        result.push(val);
+        visited.push({ row: row, col: left, val: val, order: result.length });
+        snap([18, 19], "Left column: append matrix[" + row + "][" + left + "] = " + val + ". result = [" + result.join(", ") + "].", "step", 1.0, { action: "read_cell" });
+      }
+      curr = null;
+      left += 1;
+      snap([20], "Finished left column. Move left wall right: left += 1 (left is now " + left + ").", "move", 1.2, { action: "move_wall" });
+    } else {
+      snap([17], "Guard left <= right is False (" + left + " > " + right + "): skip left column traversal.", "step", 1.2, { action: "skip_guard", guardPassed: false });
+    }
+  }
+
+  snap([6], "Loop ended: boundaries crossed (top " + top + " > " + bottom + " or left " + left + " > " + right + ").", "step", 1.0);
+  snap([21], "Return result: [" + result.join(", ") + "]. All " + result.length + " cells visited in spiral order.", "end", 1.4);
+
+  return { frames: frames, result: result };
+}
+/* SIMULATE:END */
+
+/* ---------- DOM ---------- */
+const $ = function(id){ return document.getElementById(id); };
+const $cv = $('cv'), $stage = $('stage'), $cap = $('caption'), $tag = $('tag'), $err = $('err'), $code = $('code');
+const $back = $('bBack'), $play = $('bPlay'), $next = $('bNext'), $reset = $('bReset'), $preset = $('preset'), $speed = $('speed');
+const $narration = $('bNarration'), $narrationStatus = $('narrationStatus'), $voice = $('voice');
+const RM = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches:false };
+
+const rows = SRC.map(function(txt, i){
+  const r = document.createElement('div'); r.className = 'row';
+  const n = document.createElement('span'); n.className = 'ln'; n.textContent = String(i + 1);
+  const c = document.createElement('span'); c.textContent = txt;
+  r.appendChild(n); r.appendChild(c); $code.appendChild(r);
+  return r;
+});
+PRESETS.forEach(function(p, i){
+  const o = document.createElement('option'); o.value = String(i); o.textContent = p.name; $preset.appendChild(o);
+});
+
+/* ---------- three.js scene ---------- */
+const SP = 1.0, TILE_W = 0.9, TILE_H = 0.15;
+const TILE_COL = '#3b82c4', VISITED_COL = '#2e9e5b', ACTIVE_COL = '#e8a900';
+const TOP_COL = '#2563a8', BOTTOM_COL = '#7c3aed', LEFT_COL = '#0891b2', RIGHT_COL = '#c46a14';
+const PITCH0 = 1.22; // ~70 degrees from horizontal
+const YAW0 = 0.0, YAW_MAX = 0.61; // ±35 degrees
+const FOV = 35;
+
+let gl = false, renderer = null, scene = null, camera = null;
+let world = null, tiles = {}, resultSlots = [], ptrs = {}, activeSlab = null, emptyLabel = null, flyer = null;
+let dims = { R: 0, C: 0, minX: 0, maxX: 0, minZ: 0, maxZ: 0, focusZ: 0, focusY: 0, halfW: 5, halfZ: 5, halfY: 3 };
+const view = { yaw: YAW0, pitch: PITCH0, dist: 16 };
+const C = {};
+const texCache = new Map();
+const tweens = [];
+let raf = 0, drag = null;
+
+function showError(msg){ $err.hidden = false; $err.textContent = msg; }
+function readTheme(){
+  const cs = getComputedStyle(document.documentElement);
+  ['ink', 'muted', 'plate', 'accent', 'panel'].forEach(function(k){
+    C[k] = cs.getPropertyValue('--' + k).trim() || '#888888';
+  });
+}
+
+try {
+  if (typeof THREE === 'undefined') throw new Error('three.js did not load');
+  renderer = new THREE.WebGLRenderer({ canvas: $cv, antialias: true, alpha: true });
+  renderer.setClearColor(0x000000, 0);
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(FOV, 4 / 3, 0.1, 200);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.68));
+  const dl = new THREE.DirectionalLight(0xffffff, 0.85); dl.position.set(-6, 12, 6); scene.add(dl);
+  gl = true;
+} catch (e) {
+  showError('The 3D view could not start (' + (e && e.message ? e.message : 'WebGL unavailable') + '). Check browser WebGL support. The code panel and captions still step through the trace.');
+}
+
+function makeSprite(){
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthTest: false }));
+  s.renderOrder = 15;
+  s.visible = false;
+  return s;
+}
+
+function textTex(text, subtext, color, subcolor){
+  const key = String(text) + '|' + String(subtext) + '|' + color + '|' + subcolor;
+  let t = texCache.get(key);
+  if (t) return t;
+
+  const cv = document.createElement('canvas');
+  cv.width = 256; cv.height = 256;
+  const ctx = cv.getContext('2d');
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+
+  if (subtext) {
+    ctx.font = 'bold 100px system-ui, -apple-system, sans-serif';
+    ctx.fillStyle = color;
+    ctx.fillText(String(text), 128, 100);
+
+    ctx.font = '600 48px system-ui, -apple-system, sans-serif';
+    ctx.fillStyle = subcolor || '#a7f3d0';
+    ctx.fillText(String(subtext), 128, 190);
+  } else {
+    ctx.font = 'bold 112px system-ui, -apple-system, sans-serif';
+    ctx.fillStyle = color;
+    ctx.fillText(String(text), 128, 128);
+  }
+
+  const tex = new THREE.CanvasTexture(cv);
+  tex.minFilter = THREE.LinearFilter;
+  tex.generateMipmaps = false;
+  t = { tex: tex, aspect: 1 };
+  texCache.set(key, t);
+  return t;
+}
+
+function clearTexCache(){
+  texCache.forEach(function(t){ t.tex.dispose(); });
+  texCache.clear();
+}
+
+function setSpriteLabel(s, text, subtext, color, subcolor, worldSize){
+  if (text === null || text === undefined || text === ''){
+    s.visible = false;
+    return;
+  }
+  const t = textTex(text, subtext, color, subcolor);
+  s.material.map = t.tex;
+  s.material.needsUpdate = true;
+  s.scale.set(worldSize, worldSize, 1);
+  s.visible = true;
+}
+
+function slotX(c, C){ return (c - (C - 1) / 2) * SP; }
+function slotZ(r, R){ return (r - (R - 1) / 2) * SP; }
+
+function getResultPos(k, total, maxZ, C){
+  if (total <= 9) {
+    const sp = Math.min(0.72, 5.0 / Math.max(total, 1));
+    const x = (k - (total - 1) / 2) * sp;
+    const z = maxZ + 2.15;
+    return { x: x, y: 0.06, z: z, w: sp * 0.86 };
+  } else {
+    const perRow = Math.ceil(total / 2);
+    const rowIdx = Math.floor(k / perRow);
+    const colIdx = k % perRow;
+    const countInRow = (rowIdx === 0) ? perRow : (total - perRow);
+    const sp = Math.min(0.68, 6.2 / perRow);
+    const x = (colIdx - (countInRow - 1) / 2) * sp;
+    const z = maxZ + 2.05 + rowIdx * 0.82;
+    return { x: x, y: 0.06, z: z, w: sp * 0.86 };
+  }
+}
+
+function clearWorld(){
+  tweens.length = 0;
+  if (!world) return;
+  world.traverse(function(o){
+    if (o.geometry) o.geometry.dispose();
+    if (o.material) o.material.dispose();
+  });
+  scene.remove(world);
+  world = null;
+  tiles = {};
+  resultSlots = [];
+  ptrs = {};
+  activeSlab = null;
+  emptyLabel = null;
+  flyer = null;
+}
+
+function makeWallPointer(name, color, dir){
+  const g = new THREE.Group();
+  // Horizontal cone lying on floor
+  const cone = new THREE.Mesh(
+    new THREE.ConeGeometry(0.18, 0.44, 18),
+    new THREE.MeshLambertMaterial({ color: color })
+  );
+  if (dir === 'right') { // points +X
+    cone.rotation.z = -Math.PI / 2;
+  } else if (dir === 'left') { // points -X
+    cone.rotation.z = Math.PI / 2;
+  } else if (dir === 'down') { // points +Z
+    cone.rotation.x = Math.PI / 2;
+  } else if (dir === 'up') { // points -Z
+    cone.rotation.x = -Math.PI / 2;
+  }
+  cone.position.y = 0.12;
+  g.add(cone);
+
+  const lab = makeSprite();
+  lab.position.y = 0.42;
+  g.add(lab);
+  g.visible = false;
+  return { group: g, cone: cone, label: lab, color: color, dir: dir };
+}
+
+function build(cfg, keepView){
+  if (!gl) return;
+  clearWorld();
+  readTheme();
+  world = new THREE.Group();
+  scene.add(world);
+
+  const matrix = cfg.matrix;
+  const R = matrix && matrix.length ? matrix.length : 0;
+  const C = R > 0 && matrix[0].length ? matrix[0].length : 0;
+  dims.R = R; dims.C = C;
+
+  if (R === 0 || C === 0) {
+    emptyLabel = makeSprite();
+    emptyLabel.position.set(0, 0.6, 0);
+    world.add(emptyLabel);
+    setSpriteLabel(emptyLabel, 'Empty Matrix', null, C.muted, null, 1.4);
+    dims.focusZ = 0; dims.focusY = 0; dims.halfW = 3.5; dims.halfZ = 3.5;
+    if (!keepView) { view.yaw = YAW0; view.pitch = PITCH0; }
+    fitCamera();
+    return;
+  }
+
+  dims.minX = slotX(0, C);
+  dims.maxX = slotX(C - 1, C);
+  dims.minZ = slotZ(0, R);
+  dims.maxZ = slotZ(R - 1, R);
+
+  // Floor plate for matrix grid
+  const gridW = C * SP + 0.6;
+  const gridD = R * SP + 0.6;
+  const floor = new THREE.Mesh(
+    new THREE.BoxGeometry(gridW, 0.1, gridD),
+    new THREE.MeshLambertMaterial({ color: C.plate })
+  );
+  floor.position.set(0, -0.05, 0);
+  world.add(floor);
+
+  // Tiles in matrix
+  tiles = {};
+  for (let r = 0; r < R; r++) {
+    for (let c = 0; c < C; c++) {
+      const val = matrix[r][c];
+      const x = slotX(c, C), z = slotZ(r, R);
+      const tg = new THREE.Group();
+      tg.position.set(x, TILE_H / 2, z);
+
+      const body = new THREE.Mesh(
+        new THREE.BoxGeometry(TILE_W, TILE_H, TILE_W),
+        new THREE.MeshLambertMaterial({ color: TILE_COL, transparent: true })
+      );
+      const outline = new THREE.Mesh(
+        new THREE.BoxGeometry(TILE_W + 0.1, TILE_H + 0.08, TILE_W + 0.1),
+        new THREE.MeshBasicMaterial({ color: C.accent, side: THREE.BackSide })
+      );
+      outline.visible = false;
+
+      const spr = makeSprite();
+      spr.position.set(0, TILE_H / 2 + 0.08, 0);
+      setSpriteLabel(spr, String(val), null, '#ffffff', null, 0.72);
+
+      tg.add(outline);
+      tg.add(body);
+      tg.add(spr);
+      world.add(tg);
+
+      tiles[r + ',' + c] = { group: tg, body: body, outline: outline, sprite: spr, val: val, row: r, col: c };
+    }
+  }
+
+  // Active unvisited slab
+  activeSlab = new THREE.Mesh(
+    new THREE.BoxGeometry(1, 0.04, 1),
+    new THREE.MeshBasicMaterial({ color: '#2563a8', transparent: true, opacity: 0.18, depthWrite: false })
+  );
+  activeSlab.add(new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 0.04, 1)),
+    new THREE.LineBasicMaterial({ color: C.accent })
+  ));
+  activeSlab.position.y = 0.02;
+  activeSlab.visible = false;
+  world.add(activeSlab);
+
+  // 4 Wall Pointers: top (left edge), bottom (right edge), left (above grid), right (below grid)
+  ptrs.top = makeWallPointer('top', TOP_COL, 'right');
+  ptrs.bottom = makeWallPointer('bottom', BOTTOM_COL, 'left');
+  ptrs.left = makeWallPointer('left', LEFT_COL, 'down');
+  ptrs.right = makeWallPointer('right', RIGHT_COL, 'up');
+
+  world.add(ptrs.top.group);
+  world.add(ptrs.bottom.group);
+  world.add(ptrs.left.group);
+  world.add(ptrs.right.group);
+
+  // Result Slots Row below the grid
+  const totalCells = R * C;
+  resultSlots = [];
+  const maxZ = dims.maxZ;
+  for (let k = 0; k < totalCells; k++) {
+    const pos = getResultPos(k, totalCells, maxZ, C);
+    const sg = new THREE.Group();
+    sg.position.set(pos.x, pos.y, pos.z);
+
+    const sbody = new THREE.Mesh(
+      new THREE.BoxGeometry(pos.w, 0.1, pos.w),
+      new THREE.MeshLambertMaterial({ color: C.panel, transparent: true, opacity: 0.85 })
+    );
+    const soutline = new THREE.LineSegments(
+      new THREE.EdgesGeometry(new THREE.BoxGeometry(pos.w, 0.1, pos.w)),
+      new THREE.LineBasicMaterial({ color: C.line })
+    );
+    const sspr = makeSprite();
+    sspr.position.set(0, 0.14, 0);
+
+    sg.add(soutline);
+    sg.add(sbody);
+    sg.add(sspr);
+    world.add(sg);
+
+    resultSlots.push({ group: sg, body: sbody, outline: soutline, sprite: sspr, pos: pos, filled: false, val: null });
+  }
+
+  // Flyer for sliding number animation
+  flyer = new THREE.Group();
+  const flyerMesh = new THREE.Mesh(
+    new THREE.BoxGeometry(0.72, 0.14, 0.72),
+    new THREE.MeshLambertMaterial({ color: ACTIVE_COL })
+  );
+  const flyerSpr = makeSprite();
+  flyerSpr.position.set(0, 0.14, 0);
+  flyer.add(flyerMesh);
+  flyer.add(flyerSpr);
+  flyer.visible = false;
+  world.add(flyer);
+
+  // Compute camera extents
+  const lastPos = getResultPos(totalCells - 1, totalCells, maxZ, C);
+  dims.focusZ = (dims.minZ - 0.95 + lastPos.z) / 2;
+  dims.focusY = 0.1;
+  dims.halfW = Math.max(dims.maxX + 1.8, Math.abs(lastPos.x) + 1.2);
+  dims.halfZ = (lastPos.z + 0.8 - (dims.minZ - 1.5)) / 2;
+
+  if (!keepView) { view.yaw = YAW0; view.pitch = PITCH0; }
+  fitCamera();
+}
+
+function updateCamera(){
+  if (!gl) return;
+  const cp = Math.cos(view.pitch), sp = Math.sin(view.pitch);
+  const yaw = view.yaw;
+  const r = view.dist * cp;
+  camera.position.set(
+    r * Math.sin(yaw),
+    dims.focusY + view.dist * sp,
+    dims.focusZ + r * Math.cos(yaw)
+  );
+  camera.lookAt(0, dims.focusY, dims.focusZ);
+  requestRender();
+}
+
+function fitCamera(){
+  if (!gl) return;
+  const w = $stage.clientWidth, h = $stage.clientHeight;
+  if (!w || !h) return;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(w, h, false);
+  const aspect = w / h;
+  camera.aspect = aspect;
+  camera.updateProjectionMatrix();
+
+  const t = Math.tan(FOV * Math.PI / 360);
+  const pitch = view.pitch;
+  const cp = Math.cos(pitch), sp = Math.sin(pitch);
+  const vExt = dims.halfZ * sp + 2.0 * cp;
+  const hExt = dims.halfW;
+  view.dist = Math.max(vExt / t, hExt / (t * aspect)) * 1.28;
+  updateCamera();
+}
+
+/* ---------- tweens and render loop ---------- */
+function settle(){
+  tweens.splice(0).forEach(function(tw){ tw.upd(1); });
+}
+function requestRender(){
+  if (gl && !raf) raf = requestAnimationFrame(loop);
+}
+function loop(){
+  raf = 0;
+  const now = performance.now();
+  for (let i = tweens.length - 1; i >= 0; i--){
+    const tw = tweens[i];
+    const u = Math.max(0, Math.min(1, (now - tw.t0) / tw.dur));
+    tw.upd(u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2);
+    if (u >= 1) tweens.splice(i, 1);
+  }
+  renderer.render(scene, camera);
+  if (tweens.length) requestRender();
+}
+
+/* drag to rotate clamped */
+if (gl){
+  $cv.addEventListener('pointerdown', function(e){
+    drag = { x: e.clientX, yaw: view.yaw };
+    try { $cv.setPointerCapture(e.pointerId); } catch(err){}
+  });
+  $cv.addEventListener('pointermove', function(e){
+    if (!drag) return;
+    view.yaw = Math.max(-YAW_MAX, Math.min(YAW_MAX, drag.yaw + (e.clientX - drag.x) * 0.007));
+    updateCamera();
+  });
+  ['pointerup', 'pointercancel'].forEach(function(t){
+    $cv.addEventListener(t, function(){ drag = null; });
+  });
+  $cv.addEventListener('dblclick', function(){
+    view.yaw = YAW0; view.pitch = PITCH0; updateCamera();
+  });
+}
+
+/* ---------- audio walkthroughs & narration ---------- */
+const audioAvailable = typeof Audio !== 'undefined';
+const speechAvailable = typeof window !== 'undefined' && 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined';
+const narrationAvailable = audioAvailable || speechAvailable;
+
+function makeAudio(src){
+  if (!audioAvailable) return null;
+  try {
+    const a = new Audio(src);
+    a.preload = 'auto';
+    return a;
+  } catch(e) { return null; }
+}
+
+let availableVoices = [];
+let preferredVoice = null;
+function scoreVoice(v){
+  if (!v) return -1;
+  const name = (v.name || '').toLowerCase();
+  const lang = (v.lang || '').toLowerCase();
+  let s = 0;
+  if (lang.startsWith('en')) s += 10;
+  if (lang === 'en-us' || lang === 'en_us') s += 5;
+  if (v.default) s += 2;
+  if (name.includes('natural') || name.includes('neural') || name.includes('premium')) s += 8;
+  if (name.includes('lauren') || name.includes('samantha') || name.includes('karen') || name.includes('victoria')) s += 6;
+  return s;
+}
+function refreshVoices(){
+  if (!speechAvailable || !$voice) return;
+  availableVoices = window.speechSynthesis.getVoices() || [];
+  if (!availableVoices.length) return;
+  const curVal = $voice.value;
+  $voice.innerHTML = '';
+  const autoOpt = document.createElement('option');
+  autoOpt.value = 'auto';
+  autoOpt.textContent = 'Default voice';
+  $voice.appendChild(autoOpt);
+  let best = availableVoices[0], bestScore = -1;
+  availableVoices.forEach(function(v){
+    const sc = scoreVoice(v);
+    if (sc > bestScore){ bestScore = sc; best = v; }
+    const opt = document.createElement('option');
+    opt.value = v.voiceURI;
+    opt.textContent = v.name + (v.lang ? ' (' + v.lang + ')' : '');
+    $voice.appendChild(opt);
+  });
+  preferredVoice = best;
+  if (curVal && curVal !== 'auto') $voice.value = curVal;
+  else $voice.value = 'auto';
+}
+if (speechAvailable){
+  refreshVoices();
+  if (window.speechSynthesis.onvoiceschanged !== undefined){
+    window.speechSynthesis.onvoiceschanged = refreshVoices;
+  }
+}
+
+const WALKTHROUGHS = {
+  example3x3: {
+    id: 'example3x3',
+    name: '3x3 Square [[1..9]]',
+    match: function(cfg){
+      return cfg && Array.isArray(cfg.matrix) && JSON.stringify(cfg.matrix) === '[[1,2,3],[4,5,6],[7,8,9]]';
+    },
+    clips: {
+      setupAndTopRow: makeAudio('../audio-walkthroughs/spiral-matrix/example-3x3/01-setup-and-top-row.mp3'),
+      outerRingCompletion: makeAudio('../audio-walkthroughs/spiral-matrix/example-3x3/02-outer-ring-completion.mp3'),
+      innerRingAndCompletion: makeAudio('../audio-walkthroughs/spiral-matrix/example-3x3/03-inner-ring-and-completion.mp3')
+    },
+    mapping: [
+      {
+        clip: 'setupAndTopRow',
+        startIdx: 0,
+        endIdx: 6,
+        cues: [
+          { time: 0, idx: 0 },
+          { time: 12.5, idx: 1 },
+          { time: 21.5, idx: 2 },
+          { time: 26.5, idx: 3 },
+          { time: 28.5, idx: 4 },
+          { time: 30.5, idx: 5 },
+          { time: 33.5, idx: 6 }
+        ]
+      },
+      {
+        clip: 'outerRingCompletion',
+        startIdx: 7,
+        endIdx: 14,
+        cues: [
+          { time: 0, idx: 7 },
+          { time: 5.5, idx: 8 },
+          { time: 8.0, idx: 9 },
+          { time: 13.5, idx: 10 },
+          { time: 21.5, idx: 11 },
+          { time: 24.0, idx: 12 },
+          { time: 29.5, idx: 13 },
+          { time: 36.0, idx: 14 }
+        ]
+      },
+      {
+        clip: 'innerRingAndCompletion',
+        startIdx: 15,
+        endIdx: 22,
+        cues: [
+          { time: 0, idx: 15 },
+          { time: 8.0, idx: 16 },
+          { time: 12.5, idx: 17 },
+          { time: 16.0, idx: 18 },
+          { time: 20.5, idx: 19 },
+          { time: 27.5, idx: 20 },
+          { time: 32.0, idx: 21 },
+          { time: 36.0, idx: 22 }
+        ]
+      }
+    ]
+  },
+  rect2x4: {
+    id: 'rect2x4',
+    name: '2x4 Rect [[1..8]]',
+    match: function(cfg){
+      return cfg && Array.isArray(cfg.matrix) && JSON.stringify(cfg.matrix) === '[[1,2,3,4],[5,6,7,8]]';
+    },
+    clips: {
+      setupAndTopAndRight: makeAudio('../audio-walkthroughs/spiral-matrix/rect-2x4/01-setup-and-top-and-right.mp3'),
+      bottomRowAndTermination: makeAudio('../audio-walkthroughs/spiral-matrix/rect-2x4/02-bottom-row-and-termination.mp3')
+    },
+    mapping: [
+      {
+        clip: 'setupAndTopAndRight',
+        startIdx: 0,
+        endIdx: 9,
+        cues: [
+          { time: 0, idx: 0 },
+          { time: 4.5, idx: 1 },
+          { time: 10.5, idx: 2 },
+          { time: 14.0, idx: 3 },
+          { time: 16.0, idx: 4 },
+          { time: 17.5, idx: 5 },
+          { time: 19.0, idx: 6 },
+          { time: 21.0, idx: 7 },
+          { time: 24.5, idx: 8 },
+          { time: 27.0, idx: 9 }
+        ]
+      },
+      {
+        clip: 'bottomRowAndTermination',
+        startIdx: 10,
+        endIdx: 16,
+        cues: [
+          { time: 0, idx: 10 },
+          { time: 7.5, idx: 11 },
+          { time: 9.0, idx: 12 },
+          { time: 11.0, idx: 13 },
+          { time: 15.5, idx: 14 },
+          { time: 18.5, idx: 15 },
+          { time: 22.5, idx: 16 }
+        ]
+      }
+    ]
+  },
+  singleCol3x1: {
+    id: 'singleCol3x1',
+    name: '3x1 Single Col [[1],[2],[3]]',
+    match: function(cfg){
+      return cfg && Array.isArray(cfg.matrix) && JSON.stringify(cfg.matrix) === '[[1],[2],[3]]';
+    },
+    clips: {
+      singleColumnAndGuardProtection: makeAudio('../audio-walkthroughs/spiral-matrix/single-col-3x1/01-single-column-and-guard-protection.mp3')
+    },
+    mapping: [
+      {
+        clip: 'singleColumnAndGuardProtection',
+        startIdx: 0,
+        endIdx: 11,
+        cues: [
+          { time: 0, idx: 0 },
+          { time: 6.5, idx: 1 },
+          { time: 12.5, idx: 2 },
+          { time: 14.5, idx: 3 },
+          { time: 17.5, idx: 4 },
+          { time: 20.5, idx: 5 },
+          { time: 25.0, idx: 6 },
+          { time: 27.5, idx: 7 },
+          { time: 30.5, idx: 8 },
+          { time: 34.0, idx: 9 },
+          { time: 41.5, idx: 10 },
+          { time: 44.0, idx: 11 }
+        ]
+      }
+    ]
+  },
+  emptyMatrix: {
+    id: 'emptyMatrix',
+    name: 'Empty matrix []',
+    match: function(cfg){
+      return cfg && Array.isArray(cfg.matrix) && (cfg.matrix.length === 0 || cfg.matrix[0].length === 0);
+    },
+    clips: {
+      emptyMatrixBaseCase: makeAudio('../audio-walkthroughs/spiral-matrix/empty-matrix/01-empty-matrix-base-case.mp3')
+    },
+    mapping: [
+      {
+        clip: 'emptyMatrixBaseCase',
+        startIdx: 0,
+        endIdx: 1,
+        cues: [
+          { time: 0, idx: 0 },
+          { time: 3.5, idx: 1 }
+        ]
+      }
+    ]
+  },
+  singleRow1x4: {
+    id: 'singleRow1x4',
+    name: '1x4 Single Row [[1,2,3,4]]',
+    match: function(cfg){
+      return cfg && Array.isArray(cfg.matrix) && JSON.stringify(cfg.matrix) === '[[1,2,3,4]]';
+    },
+    clips: {
+      singleRowAndGuardProtection: makeAudio('../audio-walkthroughs/spiral-matrix/single-row-1x4/01-single-row-and-guard-protection.mp3')
+    },
+    mapping: [
+      {
+        clip: 'singleRowAndGuardProtection',
+        startIdx: 0,
+        endIdx: 12,
+        cues: [
+          { time: 0, idx: 0 },
+          { time: 4.5, idx: 1 },
+          { time: 10.5, idx: 2 },
+          { time: 12.5, idx: 3 },
+          { time: 14.5, idx: 4 },
+          { time: 16.0, idx: 5 },
+          { time: 17.5, idx: 6 },
+          { time: 19.5, idx: 7 },
+          { time: 24.0, idx: 8 },
+          { time: 27.5, idx: 9 },
+          { time: 33.5, idx: 10 },
+          { time: 35.5, idx: 11 },
+          { time: 37.5, idx: 12 }
+        ]
+      }
+    ]
+  }
+};
+
+function getActiveWalkthrough(cfg){
+  if (!cfg) return null;
+  const keys = Object.keys(WALKTHROUGHS);
+  for (let i = 0; i < keys.length; i++){
+    const wt = WALKTHROUGHS[keys[i]];
+    if (wt.match(cfg)) return wt;
+  }
+  return null;
+}
+
+function narrationStatusMessage(cfg){
+  const wt = getActiveWalkthrough(cfg);
+  if (wt){
+    return 'Narration enabled (using recorded voice walkthrough for ' + wt.name + ').';
+  }
+  return 'Narration enabled (using browser speech synthesis for custom/other inputs).';
+}
+
+function tutorNarration(frame){
+  if (!frame) return '';
+  return frame.msg;
+}
+
+function speakTutor(frame, token, onComplete){
+  if (!speechAvailable || !S.narration || token !== S.narrationToken){
+    if (onComplete) onComplete();
+    return;
+  }
+  try { window.speechSynthesis.cancel(); } catch(e){}
+  const text = tutorNarration(frame);
+  if (!text){
+    if (onComplete) onComplete();
+    return;
+  }
+  const u = new SpeechSynthesisUtterance(text);
+  if (S.voiceURI && S.voiceURI !== 'auto'){
+    const chosen = availableVoices.find(function(v){ return v.voiceURI === S.voiceURI; });
+    if (chosen) u.voice = chosen;
+  }
+  u.onend = function(){
+    if (token === S.narrationToken && onComplete) onComplete();
+  };
+  u.onerror = function(){
+    if (token === S.narrationToken && onComplete) onComplete();
+  };
+  try {
+    window.speechSynthesis.speak(u);
+  } catch(e){
+    if (onComplete) onComplete();
+  }
+}
+
+function clearCueTimers(){
+  while (S.cueTimers.length){
+    clearTimeout(S.cueTimers.pop());
+  }
+}
+
+function cancelNarration(){
+  const wasPending = S.narrationPending;
+  S.narrationToken += 1;
+  S.narrationPending = false;
+  clearCueTimers();
+  S.currentClip = null;
+  Object.keys(WALKTHROUGHS).forEach(function(wKey){
+    const clips = WALKTHROUGHS[wKey].clips;
+    Object.keys(clips).forEach(function(k){
+      const c = clips[k];
+      c.pause();
+      c.currentTime = 0;
+      c.onended = null;
+      c.onerror = null;
+    });
+  });
+  if (speechAvailable && wasPending){
+    try { window.speechSynthesis.cancel(); } catch(e){}
+  }
+}
+
+function speakFrame(frame){
+  const wt = getActiveWalkthrough(S.cfg);
+  let milestone = null;
+  if (wt){
+    milestone = wt.mapping.find(function(m){ return S.idx >= m.startIdx && S.idx <= m.endIdx; });
+  }
+
+  const expectedClip = (wt && milestone) ? wt.clips[milestone.clip] : null;
+  if (expectedClip && S.currentClip === expectedClip && !expectedClip.paused && !expectedClip.ended){
+    return;
+  }
+
+  cancelNarration();
+  if (!S.narration || !narrationAvailable) return;
+
+  const token = S.narrationToken;
+  const finish = function(){
+    if (token !== S.narrationToken) return;
+    S.narrationPending = false;
+    S.currentClip = null;
+    clearCueTimers();
+    if (S.state === 'playing'){
+      if (S.idx >= S.frames.length - 1){
+        S.state = 'ended';
+        updateButtons();
+      } else {
+        schedule();
+      }
+    }
+  };
+  S.narrationPending = true;
+
+  if (wt && audioAvailable && milestone){
+    const clip = wt.clips[milestone.clip];
+    S.currentClip = clip;
+    let fellBack = false;
+    const fallback = function(){
+      if (fellBack || token !== S.narrationToken) return;
+      fellBack = true;
+      clip.onended = null;
+      clip.onerror = null;
+      S.currentClip = null;
+      clearCueTimers();
+      $narrationStatus.textContent = 'A recorded narration clip could not play; using browser speech instead.';
+      speakTutor(frame, token, finish);
+    };
+
+    clip.onended = finish;
+    clip.onerror = fallback;
+
+    let currentCue = null;
+    for (let c = milestone.cues.length - 1; c >= 0; c--){
+      if (S.idx >= milestone.cues[c].idx){
+        currentCue = milestone.cues[c];
+        break;
+      }
+    }
+    if (!currentCue) currentCue = milestone.cues[0];
+
+    try { clip.currentTime = currentCue.time; } catch(e){}
+
+    if (S.state === 'playing'){
+      milestone.cues.forEach(function(cue){
+        if (cue.time > currentCue.time){
+          const delay = (cue.time - currentCue.time) * 1000;
+          const tid = setTimeout(function(){
+            if (token === S.narrationToken && S.state === 'playing'){
+              show(cue.idx, true);
+            }
+          }, delay);
+          S.cueTimers.push(tid);
+        }
+      });
+    }
+
+    const playPromise = clip.play();
+    if (playPromise !== undefined){
+      playPromise.catch(function(err){
+        if (err && err.name === 'NotAllowedError'){
+          $narrationStatus.textContent = 'Audio playback was blocked by browser autoplay policy. Click Play or Next to enable sound.';
+          fallback();
+        } else {
+          fallback();
+        }
+      });
+    }
+  } else {
+    speakTutor(frame, token, finish);
+  }
+}
+
+/* ---------- playback state ---------- */
+const S = {
+  cfg: null,
+  frames: [],
+  idx: 0,
+  state: 'paused',
+  timer: 0,
+  speed: 850,
+  shown: -1,
+  narration: false,
+  voiceURI: 'auto',
+  narrationPending: false,
+  narrationToken: 0,
+  currentClip: null,
+  cueTimers: []
+};
+
+function tweenDur(f){
+  return S.state === 'playing' ? Math.max(120, Math.min(600, S.speed * f.hold * 0.5)) : 420;
+}
+function easeProp(get, set, to, animate, f){
+  const from = get();
+  if (animate && !RM.matches && Math.abs(from - to) > 1e-5){
+    tweens.push({
+      t0: performance.now(),
+      dur: tweenDur(f),
+      upd: function(e){ set(from + (to - from) * e); }
+    });
+  } else {
+    set(to);
+  }
+}
+
+function applyScene(f, animate){
+  if (!gl || !world) return;
+  const R = dims.R, C = dims.C;
+  if (R === 0 || C === 0) {
+    if (emptyLabel) emptyLabel.visible = true;
+    requestRender();
+    return;
+  }
+
+  const visitedMap = new Map();
+  f.visited.forEach(function(v){
+    visitedMap.set(v.row + ',' + v.col, v.order);
+  });
+
+  const curr = f.curr;
+
+  // 1. Matrix Tiles update
+  for (let r = 0; r < R; r++) {
+    for (let c = 0; c < C; c++) {
+      const tile = tiles[r + ',' + c];
+      if (!tile) continue;
+      const key = r + ',' + c;
+      const isCurr = curr && curr[0] === r && curr[1] === c;
+      const isVisited = visitedMap.has(key);
+      const targetY = isCurr ? (TILE_H / 2 + 0.35) : (TILE_H / 2);
+
+      easeProp(
+        function(){ return tile.group.position.y; },
+        function(y){ tile.group.position.y = y; },
+        targetY,
+        animate,
+        f
+      );
+
+      if (isCurr) {
+        tile.body.material.color.set(ACTIVE_COL);
+        tile.body.material.emissive.set('#4a3500');
+        tile.outline.visible = true;
+        setSpriteLabel(tile.sprite, String(tile.val), null, '#ffffff', null, 0.74);
+      } else if (isVisited) {
+        tile.body.material.color.set(VISITED_COL);
+        tile.body.material.emissive.set('#000000');
+        tile.outline.visible = false;
+        const order = visitedMap.get(key);
+        setSpriteLabel(tile.sprite, String(tile.val), '#' + order, '#ffffff', '#bbf7d0', 0.72);
+      } else {
+        tile.body.material.color.set(TILE_COL);
+        tile.body.material.emissive.set('#000000');
+        tile.outline.visible = false;
+        setSpriteLabel(tile.sprite, String(tile.val), null, '#ffffff', null, 0.72);
+      }
+    }
+  }
+
+  // 2. Translucent Unvisited Region Slab
+  if (f.top !== null && f.top <= f.bottom && f.left <= f.right) {
+    const x0 = slotX(f.left, C) - 0.45;
+    const x1 = slotX(f.right, C) + 0.45;
+    const z0 = slotZ(f.top, R) - 0.45;
+    const z1 = slotZ(f.bottom, R) + 0.45;
+
+    const cx = (x0 + x1) / 2;
+    const cz = (z0 + z1) / 2;
+    const w = Math.max(0.1, x1 - x0);
+    const d = Math.max(0.1, z1 - z0);
+
+    const was = activeSlab.visible;
+    activeSlab.visible = true;
+    if (!was) {
+      activeSlab.position.x = cx;
+      activeSlab.position.z = cz;
+      activeSlab.scale.x = w;
+      activeSlab.scale.z = d;
+    }
+    easeProp(function(){ return activeSlab.position.x; }, function(v){ activeSlab.position.x = v; }, cx, animate && was, f);
+    easeProp(function(){ return activeSlab.position.z; }, function(v){ activeSlab.position.z = v; }, cz, animate && was, f);
+    easeProp(function(){ return activeSlab.scale.x; }, function(v){ activeSlab.scale.x = v; }, w, animate && was, f);
+    easeProp(function(){ return activeSlab.scale.z; }, function(v){ activeSlab.scale.z = v; }, d, animate && was, f);
+  } else {
+    activeSlab.visible = false;
+  }
+
+  // 3. Wall Pointers
+  if (f.top !== null) {
+    // top pointer (left edge, points right at row top)
+    const pTop = ptrs.top;
+    pTop.group.visible = true;
+    const targetZ = f.top < 0 ? (dims.minZ - 0.65) : (f.top > R - 1 ? (dims.maxZ + 0.65) : slotZ(f.top, R));
+    const targetX = dims.minX - 0.95;
+    if (!pTop.group.position.x) { pTop.group.position.set(targetX, 0, targetZ); }
+    easeProp(function(){ return pTop.group.position.z; }, function(v){ pTop.group.position.z = v; }, targetZ, animate, f);
+    setSpriteLabel(pTop.label, 'top: ' + f.top, null, TOP_COL, null, 0.48);
+
+    // bottom pointer (right edge, points left at row bottom)
+    const pBottom = ptrs.bottom;
+    pBottom.group.visible = true;
+    const targetZb = f.bottom < 0 ? (dims.minZ - 0.65) : (f.bottom > R - 1 ? (dims.maxZ + 0.65) : slotZ(f.bottom, R));
+    const targetXb = dims.maxX + 0.95;
+    if (!pBottom.group.position.x) { pBottom.group.position.set(targetXb, 0, targetZb); }
+    easeProp(function(){ return pBottom.group.position.z; }, function(v){ pBottom.group.position.z = v; }, targetZb, animate, f);
+    setSpriteLabel(pBottom.label, 'bottom: ' + f.bottom, null, BOTTOM_COL, null, 0.48);
+
+    // left pointer (above grid, points down at col left)
+    const pLeft = ptrs.left;
+    pLeft.group.visible = true;
+    const targetXl = f.left < 0 ? (dims.minX - 0.65) : (f.left > C - 1 ? (dims.maxX + 0.65) : slotX(f.left, C));
+    const targetZl = dims.minZ - 0.95;
+    if (!pLeft.group.position.z) { pLeft.group.position.set(targetXl, 0, targetZl); }
+    easeProp(function(){ return pLeft.group.position.x; }, function(v){ pLeft.group.position.x = v; }, targetXl, animate, f);
+    setSpriteLabel(pLeft.label, 'left: ' + f.left, null, LEFT_COL, null, 0.48);
+
+    // right pointer (below grid, points up at col right)
+    const pRight = ptrs.right;
+    pRight.group.visible = true;
+    const targetXr = f.right < 0 ? (dims.minX - 0.65) : (f.right > C - 1 ? (dims.maxX + 0.65) : slotX(f.right, C));
+    const targetZr = dims.maxZ + 0.95;
+    if (!pRight.group.position.z) { pRight.group.position.set(targetXr, 0, targetZr); }
+    easeProp(function(){ return pRight.group.position.x; }, function(v){ pRight.group.position.x = v; }, targetXr, animate, f);
+    setSpriteLabel(pRight.label, 'right: ' + f.right, null, RIGHT_COL, null, 0.48);
+  } else {
+    ptrs.top.group.visible = false;
+    ptrs.bottom.group.visible = false;
+    ptrs.left.group.visible = false;
+    ptrs.right.group.visible = false;
+  }
+
+  // 4. Growing Result List
+  const count = f.result.length;
+  resultSlots.forEach(function(slot, k){
+    if (k < count) {
+      slot.body.material.color.set(VISITED_COL);
+      slot.body.material.opacity = 1.0;
+      setSpriteLabel(slot.sprite, String(f.result[k]), '#' + (k + 1), '#ffffff', '#bbf7d0', 0.62);
+    } else {
+      slot.body.material.color.set(C.panel);
+      slot.body.material.opacity = 0.5;
+      slot.sprite.visible = false;
+    }
+  });
+
+  // 5. Sliding Number Flyer Animation
+  if (animate && !RM.matches && f.action === 'read_cell' && curr && count > 0) {
+    const k = count - 1;
+    const slot = resultSlots[k];
+    if (slot) {
+      const startX = slotX(curr[1], C), startZ = slotZ(curr[0], R);
+      const targetX = slot.pos.x, targetZ = slot.pos.z;
+      const val = f.result[k];
+
+      flyer.visible = true;
+      setSpriteLabel(flyer.children[1], String(val), null, '#ffffff', null, 0.68);
+      flyer.position.set(startX, 0.5, startZ);
+
+      // Temporary hide slot until flyer arrives
+      slot.body.material.opacity = 0.3;
+      slot.sprite.visible = false;
+
+      tweens.push({
+        t0: performance.now(),
+        dur: tweenDur(f),
+        upd: function(u){
+          const arc = Math.sin(u * Math.PI) * 0.45;
+          flyer.position.x = startX + (targetX - startX) * u;
+          flyer.position.z = startZ + (targetZ - startZ) * u;
+          flyer.position.y = 0.45 + (0.06 - 0.45) * u + arc;
+          if (u >= 1) {
+            flyer.visible = false;
+            slot.body.material.opacity = 1.0;
+            slot.body.material.color.set(VISITED_COL);
+            setSpriteLabel(slot.sprite, String(val), '#' + (k + 1), '#ffffff', '#bbf7d0', 0.62);
+          }
+        }
+      });
+    }
+  } else {
+    flyer.visible = false;
+  }
+
+  requestRender();
+}
+
+function renderCode(f){
+  let firstActive = -1;
+  rows.forEach(function(r, i){
+    const a = f.lines.indexOf(i) >= 0;
+    r.classList.toggle('active', a);
+    if (a && firstActive < 0) firstActive = i;
+  });
+  if (firstActive >= 0){
+    const r = rows[firstActive];
+    if (r.offsetTop < $code.scrollTop) $code.scrollTop = r.offsetTop;
+    else if (r.offsetTop + r.offsetHeight > $code.scrollTop + $code.clientHeight) $code.scrollTop = r.offsetTop + r.offsetHeight - $code.clientHeight;
+  }
+}
+
+function updateButtons(){
+  const last = S.frames.length - 1;
+  $back.disabled = S.idx <= 0;
+  $next.disabled = S.idx >= last;
+  $play.textContent = S.state === 'playing' ? 'Pause' : (S.idx >= last ? 'Replay' : 'Play');
+  if ($narration){
+    $narration.classList.toggle('active', S.narration);
+  }
+}
+
+function show(i, animate){
+  const f = S.frames[i];
+  if (!f) return;
+  settle();
+  S.idx = i;
+  $cap.textContent = f.msg;
+
+  const total = dims.R * dims.C;
+  if (dims.R === 0) {
+    $tag.textContent = 'empty · collected: 0';
+  } else {
+    $tag.textContent = 'top: ' + (f.top !== null ? f.top : '-') +
+      ' · bottom: ' + (f.bottom !== null ? f.bottom : '-') +
+      ' · left: ' + (f.left !== null ? f.left : '-') +
+      ' · right: ' + (f.right !== null ? f.right : '-') +
+      ' · collected: ' + f.result.length + '/' + total;
+  }
+
+  renderCode(f);
+  applyScene(f, animate);
+  updateButtons();
+  S.shown = i;
+  if (S.narration){
+    speakFrame(f);
+  }
+}
+
+function clearTimer(){
+  if (S.timer){ clearTimeout(S.timer); S.timer = 0; }
+}
+
+function schedule(){
+  clearTimer();
+  if (S.state !== 'playing' || S.narrationPending) return;
+  const f = S.frames[S.idx];
+  const delay = Math.max(140, S.speed * (f ? f.hold : 1));
+  S.timer = setTimeout(function(){
+    if (S.state !== 'playing') return;
+    if (S.idx < S.frames.length - 1){
+      show(S.idx + 1, true);
+      schedule();
+    } else {
+      S.state = 'ended';
+      updateButtons();
+    }
+  }, delay);
+}
+
+function pause(){
+  clearTimer();
+  clearCueTimers();
+  if (S.currentClip && !S.currentClip.paused){
+    S.currentClip.pause();
+  } else {
+    cancelNarration();
+  }
+  settle();
+  if (S.state === 'playing' || S.state === 'ended') S.state = 'paused';
+  updateButtons();
+}
+
+function play(){
+  if (S.state === 'playing'){ pause(); return; }
+  if (S.idx >= S.frames.length - 1) show(0, false);
+  S.state = 'playing';
+  updateButtons();
+  if (S.narration){
+    const wt = getActiveWalkthrough(S.cfg);
+    if (wt && S.currentClip && S.currentClip.paused && !S.currentClip.ended){
+      const token = S.narrationToken;
+      const milestone = wt.mapping.find(function(m){ return S.idx >= m.startIdx && S.idx <= m.endIdx; });
+      if (milestone){
+        clearCueTimers();
+        const curTime = S.currentClip.currentTime;
+        milestone.cues.forEach(function(cue){
+          if (cue.time > curTime){
+            const delay = (cue.time - curTime) * 1000;
+            const tid = setTimeout(function(){
+              if (token === S.narrationToken && S.state === 'playing'){
+                show(cue.idx, true);
+              }
+            }, delay);
+            S.cueTimers.push(tid);
+          }
+        });
+      }
+      S.narrationPending = true;
+      S.currentClip.play().catch(function(){ speakFrame(S.frames[S.idx]); });
+    } else {
+      speakFrame(S.frames[S.idx]);
+    }
+  }
+  schedule();
+}
+
+function step(d){
+  cancelNarration();
+  pause();
+  const j = S.idx + d;
+  if (j < 0 || j >= S.frames.length) return;
+  show(j, true);
+}
+
+function reset(){
+  cancelNarration();
+  pause();
+  show(0, false);
+}
+
+function loadPreset(i){
+  cancelNarration();
+  pause();
+  const p = PRESETS[i];
+  S.cfg = { name: p.name, matrix: p.args[0] };
+  S.frames = simulate.apply(null, p.args).frames;
+  S.shown = -1;
+  S.idx = 0;
+  build(S.cfg);
+  if (S.narration){
+    $narrationStatus.textContent = narrationStatusMessage(S.cfg);
+  }
+  show(0, false);
+}
+
+function toggleNarration(){
+  if (!narrationAvailable){
+    $narrationStatus.textContent = 'Voice narration is unavailable in this environment.';
+    return;
+  }
+  S.narration = !S.narration;
+  $narration.textContent = S.narration ? 'Narration: On' : 'Narration: Off';
+  $narration.setAttribute('aria-pressed', S.narration ? 'true' : 'false');
+  if (S.narration){
+    $narrationStatus.textContent = narrationStatusMessage(S.cfg);
+    speakFrame(S.frames[S.idx]);
+  } else {
+    cancelNarration();
+    $narrationStatus.textContent = 'Narration muted.';
+    if (S.state === 'playing') schedule();
+  }
+  updateButtons();
+}
+
+$back.addEventListener('click', function(){ step(-1); });
+$next.addEventListener('click', function(){ step(1); });
+$play.addEventListener('click', play);
+$reset.addEventListener('click', reset);
+$preset.addEventListener('change', function(){ loadPreset(Number($preset.value)); });
+$narration.addEventListener('click', toggleNarration);
+$voice.addEventListener('change', function(){
+  S.voiceURI = $voice.value;
+  if (S.narration && speechAvailable){
+    cancelNarration();
+    speakFrame(S.frames[S.idx]);
+  }
+});
+$speed.addEventListener('change', function(){
+  S.speed = Number($speed.value);
+  if (S.state === 'playing') schedule();
+});
+
+document.addEventListener('keydown', function(e){
+  const t = e.target && e.target.tagName;
+  if (t === 'BUTTON' || t === 'SELECT' || t === 'INPUT' || t === 'TEXTAREA') return;
+  if (e.key === ' '){ e.preventDefault(); play(); }
+  else if (e.key === 'ArrowRight'){ step(1); }
+  else if (e.key === 'ArrowLeft'){ step(-1); }
+});
+
+document.addEventListener('visibilitychange', function(){
+  if (document.hidden && S.state === 'playing') pause();
+});
+
+if (typeof ResizeObserver !== 'undefined') new ResizeObserver(fitCamera).observe($stage);
+else window.addEventListener('resize', fitCamera);
+
+function retheme(){
+  if (!gl) return;
+  clearTexCache();
+  readTheme();
+  build(S.cfg, true);
+  S.shown = -1;
+  show(S.idx, false);
+}
+
+try {
+  if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', retheme);
+} catch(e) {}
+new MutationObserver(retheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+loadPreset(0);
+})();
+</script>
+</body>
+</html>
