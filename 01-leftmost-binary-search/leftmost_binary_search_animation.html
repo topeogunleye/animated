@@ -49,6 +49,15 @@ button{cursor:pointer;min-width:64px}
 button:hover:not(:disabled){background:var(--btnHover)}
 button:disabled{opacity:.45;cursor:default}
 button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.btn-tour{background:var(--accent);color:#111;font-weight:700;border:1px solid rgba(0,0,0,0.18);display:inline-flex;align-items:center;gap:6px;padding:6px 14px}
+.btn-tour:hover:not(:disabled){filter:brightness(1.08)}
+.btn-tour.playing{background:var(--btn);color:var(--ink);border-color:var(--accent)}
+.tour-icon{font-size:0.95em}
+.btn-mute{min-width:40px;padding:6px 10px;font-size:1rem;display:inline-flex;align-items:center;justify-content:center}
+.tour-status{display:flex;align-items:center;gap:8px;font-size:0.85rem;color:var(--muted);min-height:1.6rem;margin:8px 2px 0;padding:4px 10px;background:var(--panel);border:1px solid var(--line);border-radius:999px;width:fit-content;max-width:100%}
+.tour-badge{display:inline-block;font-size:0.75rem;font-weight:700;letter-spacing:0.02em;text-transform:uppercase;color:var(--ink);background:var(--stage);padding:2px 8px;border-radius:999px;border:1px solid var(--line);white-space:nowrap}
+.tour-msg{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:600px){.tour-status{border-radius:8px;flex-wrap:wrap}.tour-msg{white-space:normal}}
 .custom-input{margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
 .custom-input h2{font-size:1rem;margin:0 0 8px}
 .input-fields{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
@@ -77,26 +86,30 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
       </div>
       <p id="caption" role="status" aria-live="polite"></p>
       <div class="controls" role="group" aria-label="Playback controls">
-        <button id="bBack" type="button">Back</button>
-        <button id="bPlay" type="button">Play</button>
-        <button id="bNext" type="button">Next</button>
-        <button id="bReset" type="button">Reset</button>
-        <button id="bNarration" type="button" aria-pressed="false" aria-describedby="narrationStatus">Narration: Off</button>
+        <button id="bTour" type="button" class="btn-tour" title="Start guided audio tour (Space)">
+          <span class="tour-icon" aria-hidden="true">▶</span>
+          <span class="tour-label">Audio Tour</span>
+        </button>
+        <button id="bBack" type="button" title="Previous step (Left Arrow)">Back</button>
+        <button id="bNext" type="button" title="Next step (Right Arrow)">Next</button>
+        <button id="bReset" type="button" title="Reset to beginning">Reset</button>
+        <button id="bMute" type="button" class="btn-mute" aria-pressed="false" title="Mute voiceover (Silent animation)">
+          <span class="mute-icon" aria-hidden="true">🔊</span>
+        </button>
         <label class="sr" for="preset">Input</label>
         <select id="preset"></select>
         <label class="sr" for="speed">Speed</label>
         <select id="speed">
           <option value="1300">Slow</option>
-          <option value="850">Normal</option>
+          <option value="850" selected>Normal</option>
           <option value="450">Fast</option>
           <option value="220">Very fast</option>
         </select>
-        <label for="voice">Voice</label>
-        <select id="voice" aria-label="Narration voice">
-          <option value="auto">Automatic (prefer natural English)</option>
-        </select>
       </div>
-      <p class="input-status" id="narrationStatus" role="status" aria-live="polite"></p>
+      <div class="tour-status" id="tourStatus" role="status" aria-live="polite">
+        <span class="tour-badge" id="tourBadge">Milestone 1/5</span>
+        <span class="tour-msg" id="tourMsg">Ready to start guided audio tour.</span>
+      </div>
       <form class="custom-input" id="customForm">
         <h2>Play with your own input</h2>
         <div class="input-fields">
@@ -193,9 +206,12 @@ function simulate(cfg){
 /* ---------- DOM ---------- */
 const $ = function(id){ return document.getElementById(id); };
 const $cv = $('cv'), $stage = $('stage'), $cap = $('caption'), $tag = $('tag'), $err = $('err'), $code = $('code');
-const $back = $('bBack'), $play = $('bPlay'), $next = $('bNext'), $reset = $('bReset'), $preset = $('preset'), $speed = $('speed');
-const $narration = $('bNarration'), $narrationStatus = $('narrationStatus'), $voice = $('voice');
-const speechAvailable = typeof window.speechSynthesis !== 'undefined' && typeof window.SpeechSynthesisUtterance !== 'undefined';
+const $back = $('bBack'), $tour = $('bTour'), $next = $('bNext'), $reset = $('bReset');
+const $mute = $('bMute'), $preset = $('preset'), $speed = $('speed');
+const $tourIcon = $tour ? $tour.querySelector('.tour-icon') : null;
+const $tourLabel = $tour ? $tour.querySelector('.tour-label') : null;
+const $muteIcon = $mute ? $mute.querySelector('.mute-icon') : null;
+const $tourStatus = $('tourStatus'), $tourBadge = $('tourBadge'), $tourMsg = $('tourMsg');
 const audioAvailable = typeof Audio !== 'undefined' && (function(){
   try {
     const a = new Audio();
@@ -204,7 +220,6 @@ const audioAvailable = typeof Audio !== 'undefined' && (function(){
     return false;
   }
 })();
-const narrationAvailable = speechAvailable || audioAvailable;
 
 function makeAudio(relPath){
   const a = new Audio(relPath);
@@ -220,19 +235,42 @@ const WALKTHROUGHS = {
       return cfg && Array.isArray(cfg.nums) && cfg.nums.length === 6 &&
         cfg.nums.join(',') === '1,3,3,3,5,8' && cfg.target === 3;
     },
-    clips: {
-      setup: makeAudio('../audio-walkthroughs/leftmost-binary-search/01-setup-and-key-idea.mp3'),
-      probe1: makeAudio('../audio-walkthroughs/leftmost-binary-search/02-probe-one-mid-two.mp3'),
-      probe2: makeAudio('../audio-walkthroughs/leftmost-binary-search/03-probe-two-mid-zero.mp3'),
-      probe3: makeAudio('../audio-walkthroughs/leftmost-binary-search/04-probe-three-mid-one.mp3'),
-      finish: makeAudio('../audio-walkthroughs/leftmost-binary-search/05-termination-and-result.mp3')
-    },
-    mapping: [
-      { clip: 'setup',  startIdx: 0, subIdx: 1, splitTime: 18.5 },
-      { clip: 'probe1', startIdx: 2, subIdx: 3, splitTime: 9.8 },
-      { clip: 'probe2', startIdx: 4, subIdx: 5, splitTime: 9.7 },
-      { clip: 'probe3', startIdx: 6, subIdx: 7, splitTime: 9.0 },
-      { clip: 'finish', startIdx: 8, subIdx: 9, splitTime: 13.0 }
+    milestones: [
+      {
+        title: 'Setup & key idea (low=0, high=5)',
+        clip: makeAudio('../audio-walkthroughs/leftmost-binary-search/01-setup-and-key-idea.mp3'),
+        startIdx: 0,
+        endIdx: 1,
+        cues: [{ time: 0, frameIdx: 0 }, { time: 18.5, frameIdx: 1 }]
+      },
+      {
+        title: 'Probe 1: midpoint at index 2 (target match, search left)',
+        clip: makeAudio('../audio-walkthroughs/leftmost-binary-search/02-probe-one-mid-two.mp3'),
+        startIdx: 2,
+        endIdx: 3,
+        cues: [{ time: 0, frameIdx: 2 }, { time: 9.8, frameIdx: 3 }]
+      },
+      {
+        title: 'Probe 2: midpoint at index 0 (1 < 3, search right)',
+        clip: makeAudio('../audio-walkthroughs/leftmost-binary-search/03-probe-two-mid-zero.mp3'),
+        startIdx: 4,
+        endIdx: 5,
+        cues: [{ time: 0, frameIdx: 4 }, { time: 9.7, frameIdx: 5 }]
+      },
+      {
+        title: 'Probe 3: midpoint at index 1 (duplicate match, record index 1)',
+        clip: makeAudio('../audio-walkthroughs/leftmost-binary-search/04-probe-three-mid-one.mp3'),
+        startIdx: 6,
+        endIdx: 7,
+        cues: [{ time: 0, frameIdx: 6 }, { time: 9.6, frameIdx: 7 }]
+      },
+      {
+        title: 'Termination: boundaries crossed, return leftmost index 1',
+        clip: makeAudio('../audio-walkthroughs/leftmost-binary-search/05-termination-and-result.mp3'),
+        startIdx: 8,
+        endIdx: 9,
+        cues: [{ time: 0, frameIdx: 8 }, { time: 4.5, frameIdx: 9 }]
+      }
     ]
   },
   targetMissing4: {
@@ -242,17 +280,35 @@ const WALKTHROUGHS = {
       return cfg && Array.isArray(cfg.nums) && cfg.nums.length === 4 &&
         cfg.nums.join(',') === '1,3,5,8' && cfg.target === 4;
     },
-    clips: {
-      setup: makeAudio('../audio-walkthroughs/leftmost-binary-search/target-missing-4/01-setup-and-key-idea.mp3'),
-      probe1: makeAudio('../audio-walkthroughs/leftmost-binary-search/target-missing-4/02-probe-one-mid-one.mp3'),
-      probe2: makeAudio('../audio-walkthroughs/leftmost-binary-search/target-missing-4/03-probe-two-mid-two.mp3'),
-      finish: makeAudio('../audio-walkthroughs/leftmost-binary-search/target-missing-4/04-termination-and-missing-result.mp3')
-    },
-    mapping: [
-      { clip: 'setup',  startIdx: 0, subIdx: 1, splitTime: 16.0 },
-      { clip: 'probe1', startIdx: 2, subIdx: 3, splitTime: 9.5 },
-      { clip: 'probe2', startIdx: 4, subIdx: 5, splitTime: 9.5 },
-      { clip: 'finish', startIdx: 6, subIdx: 7, splitTime: 13.5 }
+    milestones: [
+      {
+        title: 'Setup: search boundaries low=0, high=3',
+        clip: makeAudio('../audio-walkthroughs/leftmost-binary-search/target-missing-4/01-setup-and-key-idea.mp3'),
+        startIdx: 0,
+        endIdx: 1,
+        cues: [{ time: 0, frameIdx: 0 }, { time: 16.0, frameIdx: 1 }]
+      },
+      {
+        title: 'Probe 1: midpoint at index 1 (3 < 4, search right)',
+        clip: makeAudio('../audio-walkthroughs/leftmost-binary-search/target-missing-4/02-probe-one-mid-one.mp3'),
+        startIdx: 2,
+        endIdx: 3,
+        cues: [{ time: 0, frameIdx: 2 }, { time: 9.5, frameIdx: 3 }]
+      },
+      {
+        title: 'Probe 2: midpoint at index 2 (5 > 4, search left)',
+        clip: makeAudio('../audio-walkthroughs/leftmost-binary-search/target-missing-4/03-probe-two-mid-two.mp3'),
+        startIdx: 4,
+        endIdx: 5,
+        cues: [{ time: 0, frameIdx: 4 }, { time: 9.5, frameIdx: 5 }]
+      },
+      {
+        title: 'Termination: boundaries crossed, target 4 missing',
+        clip: makeAudio('../audio-walkthroughs/leftmost-binary-search/target-missing-4/04-termination-and-missing-result.mp3'),
+        startIdx: 6,
+        endIdx: 7,
+        cues: [{ time: 0, frameIdx: 6 }, { time: 13.5, frameIdx: 7 }]
+      }
     ]
   },
   emptyList: {
@@ -261,13 +317,21 @@ const WALKTHROUGHS = {
     match: function(cfg){
       return cfg && Array.isArray(cfg.nums) && cfg.nums.length === 0;
     },
-    clips: {
-      setup: makeAudio('../audio-walkthroughs/leftmost-binary-search/empty-list/01-setup-and-key-idea.mp3'),
-      finish: makeAudio('../audio-walkthroughs/leftmost-binary-search/empty-list/02-termination-and-result.mp3')
-    },
-    mapping: [
-      { clip: 'setup',  startIdx: 0, subIdx: 1, splitTime: 12.0 },
-      { clip: 'finish', startIdx: 2, subIdx: 3, splitTime: 17.5 }
+    milestones: [
+      {
+        title: 'Setup: empty input list edge case',
+        clip: makeAudio('../audio-walkthroughs/leftmost-binary-search/empty-list/01-setup-and-key-idea.mp3'),
+        startIdx: 0,
+        endIdx: 1,
+        cues: [{ time: 0, frameIdx: 0 }, { time: 12.0, frameIdx: 1 }]
+      },
+      {
+        title: 'Termination: loop cannot run, return not found',
+        clip: makeAudio('../audio-walkthroughs/leftmost-binary-search/empty-list/02-termination-and-result.mp3'),
+        startIdx: 2,
+        endIdx: 3,
+        cues: [{ time: 0, frameIdx: 2 }, { time: 17.5, frameIdx: 3 }]
+      }
     ]
   },
   allEqual7: {
@@ -277,17 +341,35 @@ const WALKTHROUGHS = {
       return cfg && Array.isArray(cfg.nums) && cfg.nums.length === 5 &&
         cfg.nums.join(',') === '7,7,7,7,7' && cfg.target === 7;
     },
-    clips: {
-      setup: makeAudio('../audio-walkthroughs/leftmost-binary-search/all-equal-7/01-setup-and-key-idea.mp3'),
-      probe1: makeAudio('../audio-walkthroughs/leftmost-binary-search/all-equal-7/02-probe-one-mid-two.mp3'),
-      probe2: makeAudio('../audio-walkthroughs/leftmost-binary-search/all-equal-7/03-probe-two-mid-zero.mp3'),
-      finish: makeAudio('../audio-walkthroughs/leftmost-binary-search/all-equal-7/04-termination-and-result.mp3')
-    },
-    mapping: [
-      { clip: 'setup',  startIdx: 0, subIdx: 1, splitTime: 19.5 },
-      { clip: 'probe1', startIdx: 2, subIdx: 3, splitTime: 13.5 },
-      { clip: 'probe2', startIdx: 4, subIdx: 5, splitTime: 14.0 },
-      { clip: 'finish', startIdx: 6, subIdx: 7, splitTime: 16.5 }
+    milestones: [
+      {
+        title: 'Setup: all five items equal 7',
+        clip: makeAudio('../audio-walkthroughs/leftmost-binary-search/all-equal-7/01-setup-and-key-idea.mp3'),
+        startIdx: 0,
+        endIdx: 1,
+        cues: [{ time: 0, frameIdx: 0 }, { time: 19.5, frameIdx: 1 }]
+      },
+      {
+        title: 'Probe 1: midpoint at index 2 (match, search left)',
+        clip: makeAudio('../audio-walkthroughs/leftmost-binary-search/all-equal-7/02-probe-one-mid-two.mp3'),
+        startIdx: 2,
+        endIdx: 3,
+        cues: [{ time: 0, frameIdx: 2 }, { time: 13.5, frameIdx: 3 }]
+      },
+      {
+        title: 'Probe 2: midpoint at index 0 (leftmost match found)',
+        clip: makeAudio('../audio-walkthroughs/leftmost-binary-search/all-equal-7/03-probe-two-mid-zero.mp3'),
+        startIdx: 4,
+        endIdx: 5,
+        cues: [{ time: 0, frameIdx: 4 }, { time: 14.0, frameIdx: 5 }]
+      },
+      {
+        title: 'Termination: boundaries crossed, return index 0',
+        clip: makeAudio('../audio-walkthroughs/leftmost-binary-search/all-equal-7/04-termination-and-result.mp3'),
+        startIdx: 6,
+        endIdx: 7,
+        cues: [{ time: 0, frameIdx: 6 }, { time: 16.5, frameIdx: 7 }]
+      }
     ]
   },
   tenItemsFour4s: {
@@ -297,21 +379,49 @@ const WALKTHROUGHS = {
       return cfg && Array.isArray(cfg.nums) && cfg.nums.length === 10 &&
         cfg.nums.join(',') === '1,2,2,4,4,4,4,6,9,11' && cfg.target === 4;
     },
-    clips: {
-      setup: makeAudio('../audio-walkthroughs/leftmost-binary-search/ten-items-four-4s/01-setup-and-key-idea.mp3'),
-      probe1: makeAudio('../audio-walkthroughs/leftmost-binary-search/ten-items-four-4s/02-probe-one-mid-four.mp3'),
-      probe2: makeAudio('../audio-walkthroughs/leftmost-binary-search/ten-items-four-4s/03-probe-two-mid-one.mp3'),
-      probe3: makeAudio('../audio-walkthroughs/leftmost-binary-search/ten-items-four-4s/04-probe-three-mid-two.mp3'),
-      probe4: makeAudio('../audio-walkthroughs/leftmost-binary-search/ten-items-four-4s/05-probe-four-mid-three.mp3'),
-      finish: makeAudio('../audio-walkthroughs/leftmost-binary-search/ten-items-four-4s/06-termination-and-result.mp3')
-    },
-    mapping: [
-      { clip: 'setup',  startIdx: 0,  subIdx: 1,  splitTime: 14.0 },
-      { clip: 'probe1', startIdx: 2,  subIdx: 3,  splitTime: 13.0 },
-      { clip: 'probe2', startIdx: 4,  subIdx: 5,  splitTime: 16.5 },
-      { clip: 'probe3', startIdx: 6,  subIdx: 7,  splitTime: 13.5 },
-      { clip: 'probe4', startIdx: 8,  subIdx: 9,  splitTime: 11.5 },
-      { clip: 'finish', startIdx: 10, subIdx: 11, splitTime: 17.0 }
+    milestones: [
+      {
+        title: 'Setup: 10 items with multiple duplicate 4s',
+        clip: makeAudio('../audio-walkthroughs/leftmost-binary-search/ten-items-four-4s/01-setup-and-key-idea.mp3'),
+        startIdx: 0,
+        endIdx: 1,
+        cues: [{ time: 0, frameIdx: 0 }, { time: 14.0, frameIdx: 1 }]
+      },
+      {
+        title: 'Probe 1: midpoint at index 4 (match 4, search left)',
+        clip: makeAudio('../audio-walkthroughs/leftmost-binary-search/ten-items-four-4s/02-probe-one-mid-four.mp3'),
+        startIdx: 2,
+        endIdx: 3,
+        cues: [{ time: 0, frameIdx: 2 }, { time: 13.0, frameIdx: 3 }]
+      },
+      {
+        title: 'Probe 2: midpoint at index 1 (2 < 4, search right)',
+        clip: makeAudio('../audio-walkthroughs/leftmost-binary-search/ten-items-four-4s/03-probe-two-mid-one.mp3'),
+        startIdx: 4,
+        endIdx: 5,
+        cues: [{ time: 0, frameIdx: 4 }, { time: 16.5, frameIdx: 5 }]
+      },
+      {
+        title: 'Probe 3: midpoint at index 2 (2 < 4, search right)',
+        clip: makeAudio('../audio-walkthroughs/leftmost-binary-search/ten-items-four-4s/04-probe-three-mid-two.mp3'),
+        startIdx: 6,
+        endIdx: 7,
+        cues: [{ time: 0, frameIdx: 6 }, { time: 13.5, frameIdx: 7 }]
+      },
+      {
+        title: 'Probe 4: midpoint at index 3 (first 4 found, search left)',
+        clip: makeAudio('../audio-walkthroughs/leftmost-binary-search/ten-items-four-4s/05-probe-four-mid-three.mp3'),
+        startIdx: 8,
+        endIdx: 9,
+        cues: [{ time: 0, frameIdx: 8 }, { time: 11.5, frameIdx: 9 }]
+      },
+      {
+        title: 'Termination: return leftmost match at index 3',
+        clip: makeAudio('../audio-walkthroughs/leftmost-binary-search/ten-items-four-4s/06-termination-and-result.mp3'),
+        startIdx: 10,
+        endIdx: 11,
+        cues: [{ time: 0, frameIdx: 10 }, { time: 17.0, frameIdx: 11 }]
+      }
     ]
   }
 };
@@ -324,15 +434,6 @@ function getActiveWalkthrough(cfg){
   }
   return null;
 }
-
-function narrationStatusMessage(cfg){
-  const wt = getActiveWalkthrough(cfg);
-  if (wt){
-    return 'Narration enabled (using recorded voice walkthrough for ' + wt.name + ').';
-  }
-  return 'Narration enabled (using browser speech synthesis for custom/other inputs).';
-}
-let availableVoices = [];
 const $customForm = $('customForm'), $customNums = $('customNums'), $customTarget = $('customTarget'), $inputStatus = $('inputStatus');
 const RM = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches:false };
 
@@ -526,7 +627,7 @@ if (gl){
   $cv.addEventListener('dblclick', function(){ view.yaw = YAW0; view.pitch = PITCH0; updateCamera(); });
 }
 
-const S = { cfg:PRESETS[0], frames:[], idx:0, state:'paused', timer:0, speed:1300, shown:-1, narration:false, narrationPending:false, narrationToken:0, voiceURI:'auto', currentClip:null, subTimer:0 };
+const S = { cfg:PRESETS[0], frames:[], idx:0, state:'paused', timer:0, speed:850, shown:-1, audioMuted:false, currentClip:null, currentMilestoneIdx:-1, cueTimers:[], tourToken:0 };
 
 function tweenDur(f){ return S.state === 'playing' ? Math.max(120, Math.min(600, S.speed * f.hold * 0.5)) : 450; }
 function easeProp(get, set, to, animate, f){
@@ -604,197 +705,202 @@ function updateButtons(){
   const last = S.frames.length - 1;
   $back.disabled = S.idx <= 0;
   $next.disabled = S.idx >= last;
-  $play.textContent = S.state === 'playing' ? 'Pause' : (S.idx >= last ? 'Replay' : 'Play');
-  $narration.textContent = 'Narration: ' + (S.narration ? 'On' : 'Off');
-  $narration.setAttribute('aria-pressed', String(S.narration));
-}
-
-function tutorNarration(frame){
-  if (frame.kind === 'start'){
-    return 'Key idea for leftmost binary search: on a match, keep the candidate index but search left. The leftmost match can only be at or before it.';
-  }
-  if (frame.kind === 'init'){
-    return 'Initialize low at index 0 and high at index ' + frame.high + '. Comparisons are 0 and result is negative 1, meaning no match found yet.';
-  }
-  if (frame.kind === 'pick'){
-    return 'Low is ' + frame.low + ' and high is ' + frame.high + '. Inspect the midpoint at index ' + frame.mid + '.';
-  }
-  if (frame.kind === 'step'){
-    if (frame.cmp === 'eq'){
-      return 'The item matches target ' + frame.target + '! Record result = ' + frame.result + ', and search left by setting high = ' + frame.high + '.';
+  if (S.state === 'playing'){
+    $tour.classList.add('playing');
+    if ($tourIcon) $tourIcon.textContent = '⏸';
+    if ($tourLabel) $tourLabel.textContent = 'Pause Tour';
+    $tour.title = 'Pause guided tour (Space)';
+  } else {
+    $tour.classList.remove('playing');
+    if (S.idx >= last){
+      if ($tourIcon) $tourIcon.textContent = '↺';
+      if ($tourLabel) $tourLabel.textContent = 'Replay Tour';
+      $tour.title = 'Replay guided tour from start (Space)';
+    } else if (S.idx > 0){
+      if ($tourIcon) $tourIcon.textContent = '▶';
+      if ($tourLabel) $tourLabel.textContent = 'Resume Tour';
+      $tour.title = 'Resume guided tour (Space)';
+    } else {
+      if ($tourIcon) $tourIcon.textContent = '▶';
+      if ($tourLabel) $tourLabel.textContent = 'Audio Tour';
+      $tour.title = 'Start guided audio tour (Space)';
     }
-    if (frame.cmp === 'lt'){
-      return 'The item is smaller than target ' + frame.target + '. Discard the left half by setting low = ' + frame.low + '.';
-    }
-    if (frame.cmp === 'gt'){
-      return 'The item is larger than target ' + frame.target + '. Discard the right half by setting high = ' + frame.high + '.';
-    }
-    return 'Low ' + frame.low + ' is now greater than high ' + frame.high + '. The search interval is empty, so the loop finishes.';
-  }
-  if (frame.kind === 'end'){
-    if (frame.result >= 0){
-      return 'Return tuple (' + frame.result + ', ' + frame.comps + '): the leftmost match is at index ' + frame.result + ' in ' + frame.comps + ' comparisons.';
-    }
-    return 'Return tuple (-1, ' + frame.comps + '): target ' + frame.target + ' was not found in ' + frame.comps + ' comparisons.';
-  }
-  return frame.msg;
-}
-
-function voiceScore(voice){
-  const name = voice.name.toLowerCase(), lang = voice.lang.toLowerCase();
-  let score = lang.indexOf('en') === 0 ? 100 : -100;
-  if (/\b(natural|neural|enhanced|premium)\b/.test(name)) score += 80;
-  if (/\b(online|cloud)\b/.test(name)) score += 20;
-  if (lang === 'en-us') score += 5;
-  return score;
-}
-function preferredVoice(){
-  const english = availableVoices.filter(function(voice){ return voice.lang.toLowerCase().indexOf('en') === 0; });
-  english.sort(function(a, b){ return voiceScore(b) - voiceScore(a) || a.name.localeCompare(b.name); });
-  return english[0] || availableVoices.find(function(voice){ return voice.default; }) || null;
-}
-function refreshVoices(){
-  if (!speechAvailable) return;
-  const selected = S.voiceURI || $voice.value || 'auto';
-  availableVoices = window.speechSynthesis.getVoices();
-  $voice.replaceChildren();
-  const automatic = document.createElement('option');
-  automatic.value = 'auto';
-  automatic.textContent = 'Automatic (prefer natural English)';
-  $voice.appendChild(automatic);
-  availableVoices.slice().sort(function(a, b){
-    return voiceScore(b) - voiceScore(a) || a.name.localeCompare(b.name);
-  }).forEach(function(voice){
-    const option = document.createElement('option');
-    option.value = voice.voiceURI;
-    option.textContent = voice.name + ' (' + voice.lang + ')' + (voiceScore(voice) >= 180 ? ' \u00b7 natural' : '');
-    $voice.appendChild(option);
-  });
-  $voice.value = Array.from($voice.options).some(function(option){ return option.value === selected; }) ? selected : 'auto';
-  S.voiceURI = $voice.value;
-}
-
-function cancelNarration(){
-  const wasPending = S.narrationPending;
-  S.narrationToken += 1;
-  S.narrationPending = false;
-  S.currentClip = null;
-  if (S.subTimer){ clearTimeout(S.subTimer); S.subTimer = 0; }
-  Object.keys(WALKTHROUGHS).forEach(function(key){
-    const clips = WALKTHROUGHS[key].clips;
-    Object.keys(clips).forEach(function(k){
-      const c = clips[k];
-      c.pause();
-      c.currentTime = 0;
-      c.onended = null;
-      c.onerror = null;
-    });
-  });
-  if (speechAvailable && wasPending){
-    try { window.speechSynthesis.cancel(); } catch(e){}
   }
 }
 
-function speakTutor(frame, token, finish){
-  if (!speechAvailable){
-    S.narrationPending = false;
-    $narrationStatus.textContent = 'Browser speech is unavailable; captions still guide each step.';
-    if (S.state === 'playing') schedule();
-    return;
-  }
-  const utterance = new SpeechSynthesisUtterance(tutorNarration(frame));
-  utterance.lang = document.documentElement.lang || 'en';
-  utterance.rate = S.speed >= 1100 ? 0.85 : S.speed >= 700 ? 1 : S.speed >= 400 ? 1.25 : 1.4;
-  utterance.voice = S.voiceURI === 'auto'
-    ? preferredVoice()
-    : availableVoices.find(function(voice){ return voice.voiceURI === S.voiceURI; }) || null;
-  utterance.onend = finish;
-  utterance.onerror = finish;
-  try {
-    window.speechSynthesis.speak(utterance);
-  } catch (e) {
-    if (token !== S.narrationToken) return;
-    S.narrationPending = false;
-    $narrationStatus.textContent = 'Browser speech could not be started.';
-    if (S.state === 'playing') schedule();
-  }
-}
-
-function speakFrame(frame){
+function updateTourStatus(){
+  if (!$tourStatus) return;
   const wt = getActiveWalkthrough(S.cfg);
-  let milestone = null;
   if (wt){
-    milestone = wt.mapping.find(function(m){ return S.idx === m.startIdx || S.idx === m.subIdx; });
-  }
-
-  const expectedClip = (wt && milestone) ? wt.clips[milestone.clip] : null;
-  if (expectedClip && S.currentClip === expectedClip && !expectedClip.paused && !expectedClip.ended){
-    return;
-  }
-
-  cancelNarration();
-  if (!S.narration || !narrationAvailable) return;
-
-  const token = S.narrationToken;
-  const finish = function(){
-    if (token !== S.narrationToken) return;
-    S.narrationPending = false;
-    S.currentClip = null;
-    if (S.state === 'playing'){
-      if (S.idx >= S.frames.length - 1){
-        S.state = 'ended';
-        updateButtons();
-      } else {
-        schedule();
+    let mIdx = 0;
+    for (let i = 0; i < wt.milestones.length; i++){
+      const m = wt.milestones[i];
+      if (S.idx >= m.startIdx && S.idx <= m.endIdx){
+        mIdx = i;
+        break;
       }
     }
-  };
-  S.narrationPending = true;
-
-  if (wt && audioAvailable && milestone){
-    const clip = wt.clips[milestone.clip];
-    S.currentClip = clip;
-    let fellBack = false;
-    const fallback = function(){
-      if (fellBack || token !== S.narrationToken) return;
-      fellBack = true;
-      clip.onended = null;
-      clip.onerror = null;
-      S.currentClip = null;
-      $narrationStatus.textContent = 'A recorded narration clip could not play; using browser speech instead.';
-      speakTutor(frame, token, finish);
-    };
-
-    clip.onended = finish;
-    clip.onerror = fallback;
-
-    const isSub = (S.idx === milestone.subIdx);
-    const startTime = isSub ? milestone.splitTime : 0;
-    try { clip.currentTime = startTime; } catch(e){}
-
-    if (S.idx === milestone.startIdx && S.state === 'playing'){
-      const remainingToSub = Math.max(0, milestone.splitTime - startTime);
-      S.subTimer = setTimeout(function(){
-        if (token === S.narrationToken && S.state === 'playing' && S.idx === milestone.startIdx){
-          show(milestone.subIdx, true);
-        }
-      }, remainingToSub * 1000);
-    }
-
-    const playPromise = clip.play();
-    if (playPromise !== undefined){
-      playPromise.catch(function(err){
-        if (err && err.name === 'NotAllowedError'){
-          $narrationStatus.textContent = 'Audio playback was blocked by browser autoplay policy. Click Play or Next to enable sound.';
-          fallback();
-        } else {
-          fallback();
-        }
-      });
+    const totalM = wt.milestones.length;
+    if (S.state === 'ended'){
+      $tourBadge.textContent = 'Complete';
+      const lastF = S.frames[S.frames.length - 1];
+      const res = lastF ? lastF.result : -1;
+      $tourMsg.textContent = res >= 0
+        ? 'Tour complete! Leftmost target returned at index ' + res + '.'
+        : 'Tour complete! Target not in list.';
+    } else if (S.state === 'playing'){
+      $tourBadge.textContent = 'Milestone ' + (mIdx + 1) + '/' + totalM;
+      $tourMsg.textContent = S.audioMuted ? 'Playing silently (voiceover muted).' : wt.milestones[mIdx].title;
+    } else {
+      $tourBadge.textContent = 'Milestone ' + (mIdx + 1) + '/' + totalM;
+      if (S.idx === 0){
+        $tourMsg.textContent = 'Ready to start guided audio tour for ' + wt.name + '.';
+      } else {
+        $tourMsg.textContent = 'Tour paused at step ' + (S.idx + 1) + ' of ' + S.frames.length + '.';
+      }
     }
   } else {
-    speakTutor(frame, token, finish);
+    $tourBadge.textContent = 'Custom';
+    if (S.state === 'ended'){
+      $tourMsg.textContent = 'Search complete.';
+    } else if (S.state === 'playing'){
+      $tourMsg.textContent = 'Playing custom simulation (silent mode).';
+    } else {
+      $tourMsg.textContent = 'Ready to run custom input (' + S.cfg.nums.length + ' numbers, target ' + S.cfg.target + ').';
+    }
   }
+}
+
+function updateMuteButton(){
+  $mute.setAttribute('aria-pressed', String(S.audioMuted));
+  if ($muteIcon) $muteIcon.textContent = S.audioMuted ? '🔇' : '🔊';
+  $mute.title = S.audioMuted ? 'Unmute voiceover (Space or M)' : 'Mute voiceover (Silent animation)';
+}
+
+function clearCueTimers(){
+  S.cueTimers.forEach(function(t){ clearTimeout(t); });
+  S.cueTimers = [];
+}
+function stopAudio(){
+  clearCueTimers();
+  S.tourToken++;
+  if (S.currentClip){
+    try {
+      S.currentClip.pause();
+      S.currentClip.currentTime = 0;
+      S.currentClip.onended = null;
+      S.currentClip.onerror = null;
+    } catch(e){}
+    S.currentClip = null;
+  }
+}
+function pauseAudio(){
+  clearCueTimers();
+  S.tourToken++;
+  if (S.currentClip){
+    try {
+      S.currentClip.pause();
+    } catch(e){}
+  }
+}
+
+function startMilestone(mIdx, fromTime){
+  const wt = getActiveWalkthrough(S.cfg);
+  if (!wt || mIdx >= wt.milestones.length){
+    S.state = 'ended';
+    S.currentClip = null;
+    updateButtons();
+    updateTourStatus();
+    return;
+  }
+
+  stopAudio();
+  const m = wt.milestones[mIdx];
+  S.currentMilestoneIdx = mIdx;
+  S.currentClip = m.clip;
+
+  const token = ++S.tourToken;
+  updateTourStatus();
+
+  m.clip.onended = function(){
+    if (token !== S.tourToken || S.state !== 'playing') return;
+    if (mIdx + 1 < wt.milestones.length){
+      startMilestone(mIdx + 1, 0);
+    } else {
+      S.state = 'ended';
+      S.currentClip = null;
+      updateButtons();
+      updateTourStatus();
+    }
+  };
+
+  m.clip.onerror = function(){
+    if (token !== S.tourToken) return;
+    console.warn('Audio clip failed to play, switching to silent mode.');
+    $tourMsg.textContent = 'Audio clips unavailable; running in silent mode.';
+    S.audioMuted = true;
+    updateMuteButton();
+    if (S.state === 'playing') schedule();
+  };
+
+  try {
+    m.clip.currentTime = fromTime || 0;
+  } catch(e){}
+
+  m.cues.forEach(function(cue){
+    if (cue.time >= (fromTime || 0)){
+      const delayMs = Math.max(0, (cue.time - (fromTime || 0)) * 1000);
+      const timerId = setTimeout(function(){
+        if (token === S.tourToken && S.state === 'playing'){
+          show(cue.frameIdx, true);
+        }
+      }, delayMs);
+      S.cueTimers.push(timerId);
+    }
+  });
+
+  const playPromise = m.clip.play();
+  if (playPromise !== undefined){
+    playPromise.catch(function(err){
+      if (token !== S.tourToken) return;
+      if (err && err.name === 'NotAllowedError'){
+        $tourMsg.textContent = 'Click Audio Tour to allow sound in your browser.';
+      } else {
+        $tourMsg.textContent = 'Audio clips unavailable; running in silent mode.';
+      }
+      if (S.state === 'playing') schedule();
+    });
+  }
+}
+
+function playMilestoneForFrame(frameIdx){
+  const wt = getActiveWalkthrough(S.cfg);
+  if (!wt || !audioAvailable || S.audioMuted) return;
+
+  let mIdx = -1;
+  for (let i = 0; i < wt.milestones.length; i++){
+    const m = wt.milestones[i];
+    if (frameIdx >= m.startIdx && frameIdx <= m.endIdx){
+      mIdx = i;
+      break;
+    }
+  }
+  if (mIdx < 0) return;
+
+  const m = wt.milestones[mIdx];
+  let fromTime = 0;
+  for (let c = m.cues.length - 1; c >= 0; c--){
+    if (frameIdx >= m.cues[c].frameIdx){
+      fromTime = m.cues[c].time;
+      break;
+    }
+  }
+
+  if (S.currentClip === m.clip && !m.clip.ended && m.clip.currentTime > fromTime){
+    fromTime = m.clip.currentTime;
+  }
+
+  startMilestone(mIdx, fromTime);
 }
 
 function show(i, animate){
@@ -806,113 +912,113 @@ function show(i, animate){
   $cv.setAttribute('aria-label', describe(f));
   renderCode(f);
   applyScene(f, animate && Math.abs(i - S.shown) === 1);
-  speakFrame(f);
   S.shown = i;
   updateButtons();
+  updateTourStatus();
 }
 
 function clearTimer(){ if (S.timer){ clearTimeout(S.timer); S.timer = 0; } }
 function schedule(){
   clearTimer();
-  if (S.state !== 'playing' || S.narrationPending) return;
+  if (S.state !== 'playing') return;
+  const wt = getActiveWalkthrough(S.cfg);
+  if (wt && audioAvailable && !S.audioMuted && S.currentClip && !S.currentClip.paused){
+    return;
+  }
   S.timer = setTimeout(tick, S.speed * S.frames[S.idx].hold);
 }
 function tick(){
   S.timer = 0;
   if (S.state !== 'playing') return;
-  if (S.idx >= S.frames.length - 1){ S.state = 'ended'; updateButtons(); return; }
+  if (S.idx >= S.frames.length - 1){
+    S.state = 'ended';
+    updateButtons();
+    updateTourStatus();
+    return;
+  }
   show(S.idx + 1, true);
-  if (S.idx >= S.frames.length - 1){ S.state = 'ended'; updateButtons(); return; }
+  if (S.idx >= S.frames.length - 1){
+    S.state = 'ended';
+    updateButtons();
+    updateTourStatus();
+    return;
+  }
   schedule();
 }
 function pause(){
   clearTimer();
-  if (S.subTimer){ clearTimeout(S.subTimer); S.subTimer = 0; }
-  if (S.currentClip && !S.currentClip.paused){
-    S.currentClip.pause();
-  } else {
-    cancelNarration();
-  }
+  pauseAudio();
   settle();
   if (S.state === 'playing' || S.state === 'ended') S.state = 'paused';
   updateButtons();
+  updateTourStatus();
 }
 function play(){
-  if (S.state === 'playing'){ pause(); return; }
-  if (S.idx >= S.frames.length - 1) show(0, false);
-  S.state = 'playing'; updateButtons();
-  if (S.narration){
-    const wt = getActiveWalkthrough(S.cfg);
-    if (wt && S.currentClip && S.currentClip.paused && !S.currentClip.ended){
-      const token = S.narrationToken;
-      const milestone = wt.mapping.find(function(m){ return S.idx === m.startIdx || S.idx === m.subIdx; });
-      if (milestone && S.idx === milestone.startIdx && S.currentClip.currentTime < milestone.splitTime){
-        const remainingToSub = Math.max(0, milestone.splitTime - S.currentClip.currentTime);
-        S.subTimer = setTimeout(function(){
-          if (token === S.narrationToken && S.state === 'playing' && S.idx === milestone.startIdx){
-            show(milestone.subIdx, true);
-          }
-        }, remainingToSub * 1000);
-      }
-      S.narrationPending = true;
-      S.currentClip.play().catch(function(){ speakFrame(S.frames[S.idx]); });
-    } else {
-      speakFrame(S.frames[S.idx]);
-    }
+  if (S.state === 'playing'){
+    pause();
+    return;
   }
-  schedule();
+  if (S.idx >= S.frames.length - 1){
+    show(0, false);
+  }
+  S.state = 'playing';
+  updateButtons();
+
+  const wt = getActiveWalkthrough(S.cfg);
+  if (wt && audioAvailable && !S.audioMuted){
+    playMilestoneForFrame(S.idx);
+  } else {
+    updateTourStatus();
+    schedule();
+  }
 }
 function step(d){
-  cancelNarration();
+  stopAudio();
   pause();
   const j = S.idx + d;
   if (j < 0 || j >= S.frames.length) return;
   show(j, true);
 }
 function reset(){
-  cancelNarration();
+  stopAudio();
   pause();
   show(0, false);
 }
+function toggleMute(){
+  S.audioMuted = !S.audioMuted;
+  updateMuteButton();
+  if (S.audioMuted){
+    pauseAudio();
+    if (S.state === 'playing') schedule();
+  } else {
+    clearTimer();
+    if (S.state === 'playing') playMilestoneForFrame(S.idx);
+  }
+  updateTourStatus();
+}
 function loadConfig(cfg){
-  cancelNarration();
+  stopAudio();
   pause();
   S.cfg = cfg;
   $customNums.value = cfg.nums.join(', ');
   $customTarget.value = String(cfg.target);
-  S.frames = simulate(S.cfg).frames; S.shown = -1; S.idx = 0;
+  S.frames = simulate(S.cfg).frames;
+  S.shown = -1;
+  S.idx = 0;
   build(S.cfg);
   show(0, false);
-  if (S.narration){
-    $narrationStatus.textContent = narrationStatusMessage(cfg);
-  }
+  updateTourStatus();
 }
 function loadPreset(i){
+  $preset.value = String(i);
   loadConfig(PRESETS[i]);
 }
 
-function toggleNarration(){
-  S.narration = !S.narration;
-  if (!S.narration){
-    cancelNarration();
-    $narrationStatus.textContent = 'Narration muted.';
-    if (S.state === 'playing') schedule();
-  } else {
-    $narrationStatus.textContent = narrationStatusMessage(S.cfg);
-    speakFrame(S.frames[S.idx]);
-  }
-  updateButtons();
-}
-
+$tour.addEventListener('click', play);
 $back.addEventListener('click', function(){ step(-1); });
 $next.addEventListener('click', function(){ step(1); });
-$play.addEventListener('click', play);
 $reset.addEventListener('click', reset);
-$narration.addEventListener('click', toggleNarration);
-$voice.addEventListener('change', function(){
-  S.voiceURI = $voice.value;
-  if (S.narration && !getActiveWalkthrough(S.cfg)) speakFrame(S.frames[S.idx]);
-});
+$mute.addEventListener('click', toggleMute);
 $preset.addEventListener('change', function(){ loadPreset(Number($preset.value)); });
 $customForm.addEventListener('submit', function(e){
   e.preventDefault();
@@ -945,7 +1051,7 @@ document.addEventListener('keydown', function(e){
   if (e.key === ' '){ e.preventDefault(); play(); }
   else if (e.key === 'ArrowRight'){ step(1); }
   else if (e.key === 'ArrowLeft'){ step(-1); }
-  else if (e.key === 'n' || e.key === 'N'){ toggleNarration(); }
+  else if (e.key === 'm' || e.key === 'M'){ toggleMute(); }
 });
 document.addEventListener('visibilitychange', function(){ if (document.hidden && S.state === 'playing') pause(); });
 
@@ -960,13 +1066,6 @@ try {
   if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', retheme);
 } catch (e) { /* older browsers: theme refresh on reload */ }
 new MutationObserver(retheme).observe(document.documentElement, { attributes:true, attributeFilter:['data-theme'] });
-
-if (speechAvailable){
-  refreshVoices();
-  if (window.speechSynthesis.onvoiceschanged !== undefined){
-    window.speechSynthesis.onvoiceschanged = refreshVoices;
-  }
-}
 
 loadPreset(0);
 })();
