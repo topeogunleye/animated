@@ -626,6 +626,14 @@ function buildScene(text){
     }, 0.54, 0, blockH / 2 + 0.02, 0.28);
     tileGroup.add(frontSprite);
 
+    // Top-facing bracket symbol
+    const topSprite = makeSprite();
+    setText(topSprite, ch, {
+      color: isBracket ? '#ffffff' : (C.panel === '#171c23' ? '#94a3b8' : '#64748b'),
+      font: '900 64px monospace'
+    }, 0.38, 0, blockH + 0.12, 0);
+    tileGroup.add(topSprite);
+
     // Index sprite on floor
     const idxSprite = makeSprite();
     setText(idxSprite, String(i), { color: C.muted, font: FONT_SUB }, 0.20, 0, 0.05, 0.44);
@@ -636,6 +644,7 @@ function buildScene(text){
       group: tileGroup,
       mesh: blockMesh,
       frontSprite: frontSprite,
+      topSprite: topSprite,
       idxSprite: idxSprite,
       ch: ch,
       isBracket: isBracket,
@@ -806,11 +815,11 @@ function updateCamera(){
   const cp = Math.cos(view.pitch), sp = Math.sin(view.pitch);
   const cy = Math.cos(view.yaw), sy = Math.sin(view.yaw);
   camera.position.set(
-    bounds.centerX + view.dist * cy * cp,
-    view.dist * sp,
-    view.dist * sy * cp
+    bounds.centerX + view.dist * sy * cp,
+    bounds.ty + view.dist * sp,
+    0.15 + view.dist * cy * cp
   );
-  camera.lookAt(bounds.centerX, bounds.ty, 0.1);
+  camera.lookAt(bounds.centerX, bounds.ty, 0.15);
 }
 
 function requestRender(){
@@ -929,9 +938,11 @@ function applyScene(frame, animate){
     if (dur > 0){
       tweenProp(ct.mesh.position, 'y', targetY, dur);
       tweenProp(ct.frontSprite.position, 'y', targetY + 0.02, dur);
+      if (ct.topSprite) tweenProp(ct.topSprite.position, 'y', ct.blockH + lift + 0.12, dur);
     } else {
       ct.mesh.position.y = targetY;
       ct.frontSprite.position.y = targetY + 0.02;
+      if (ct.topSprite) ct.topSprite.position.y = ct.blockH + lift + 0.12;
     }
   });
 
