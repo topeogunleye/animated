@@ -1036,20 +1036,255 @@ function applyScene(frame, animate){
   requestRender();
 }
 
-/* ---------- PLAYBACK CONTROLLER ---------- */
+/* ---------- GUIDED AUDIO TOUR & PLAYBACK CONTROLLER ---------- */
+function makeAudio(src){
+  const a = new Audio();
+  a.preload = 'auto';
+  a.src = src;
+  return a;
+}
+
+const WALKTHROUGHS = {
+  mixedValid: {
+    id: 'mixedValid',
+    name: 'Mixed Valid: (a + b) * [c - d]',
+    match: function(arg){ return arg === '(a + b) * [c - d]'; },
+    milestones: [
+      {
+        title: 'Setup & First Bracket Pair',
+        clip: makeAudio('../audio-walkthroughs/balanced-brackets/01-setup-and-first-pair.mp3'),
+        text: 'Welcome to Balanced Brackets in 3D. We use a last-in, first-out stack to verify that every opening bracket has an exact matching partner in the correct order. We begin with our first expression: open paren, a plus b, close paren, times, open bracket, c minus d, close bracket. On the right, our 3D stack rack is completely empty. We scan the first character, an open parenthesis, and push it straight into the stack rack. Next, the characters a, plus, and b are standard math symbols, not brackets, so our algorithm ignores them. When we reach the closing parenthesis at index four, we check the top of our stack. It holds the matching open parenthesis, so we pop it out. The first sub-expression is perfectly balanced.',
+        startIdx: 0,
+        endIdx: 7,
+        cues: [
+          { time: 0, frameIdx: 0 },
+          { time: 12.0, frameIdx: 1 },
+          { time: 17.5, frameIdx: 2 },
+          { time: 19.5, frameIdx: 3 },
+          { time: 21.5, frameIdx: 4 },
+          { time: 24.0, frameIdx: 5 },
+          { time: 28.0, frameIdx: 6 },
+          { time: 30.5, frameIdx: 7 }
+        ]
+      },
+      {
+        title: 'Second Bracket Pair & Completion',
+        clip: makeAudio('../audio-walkthroughs/balanced-brackets/02-second-pair-and-completion.mp3'),
+        text: 'Continuing down the string, the multiplication operator and spaces are ignored. At index eight, we meet an open square bracket and push it into the stack rack. Once again, the letters c and d along with the subtraction sign pass through untouched. At index twelve, we encounter the closing square bracket. Checking our stack, the top item is the matching open square bracket. We pop it out, leaving the stack empty. With all seventeen characters scanned and zero leftover brackets on the stack, the function returns True.',
+        startIdx: 8,
+        endIdx: 15,
+        cues: [
+          { time: 0, frameIdx: 8 },
+          { time: 6.5, frameIdx: 9 },
+          { time: 12.0, frameIdx: 10 },
+          { time: 14.0, frameIdx: 11 },
+          { time: 16.0, frameIdx: 12 },
+          { time: 18.5, frameIdx: 13 },
+          { time: 23.0, frameIdx: 14 },
+          { time: 26.0, frameIdx: 15 }
+        ]
+      },
+      {
+        title: 'Bonus Max Depth Traversal',
+        clip: makeAudio('../audio-walkthroughs/balanced-brackets/03-bonus-max-depth.mp3'),
+        text: 'Now we trace the bonus function, max depth. Because the expression contains two separate pairs that never nest inside one another, the depth rises to one during each set of brackets and drops back to zero immediately after. Our depth gauge records a peak nesting level of one without ever calling Python\'s built-in max function.',
+        startIdx: 16,
+        endIdx: 24,
+        cues: [
+          { time: 0, frameIdx: 16 },
+          { time: 5.5, frameIdx: 17 },
+          { time: 9.0, frameIdx: 18 },
+          { time: 12.5, frameIdx: 19 },
+          { time: 15.0, frameIdx: 20 },
+          { time: 17.5, frameIdx: 24 }
+        ]
+      }
+    ]
+  },
+  allNested: {
+    id: 'allNested',
+    name: 'All Three Nested: {[()]}',
+    match: function(arg){ return arg === '{[()]}'; },
+    milestones: [
+      {
+        title: 'Three-Level Nested Stack Push & Pop',
+        clip: makeAudio('../audio-walkthroughs/balanced-brackets/nested-01.mp3'),
+        text: 'In this example, we test all three bracket types nested deeply inside one another. Watch the stack rack grow on the right. First, the curly brace drops in at level one. Next, the square bracket stacks on top at level two. Finally, the inner parenthesis stacks at level three. Now, the closing brackets arrive in mirror order. The closing parenthesis pops the top parenthesis. The closing bracket pops the square bracket. And the final closing brace pops the curly brace. Every pair matches in textbook last-in, first-out order, and our depth gauge reaches a peak level of three.',
+        startIdx: 0,
+        endIdx: 15,
+        cues: [
+          { time: 0, frameIdx: 0 },
+          { time: 5.0, frameIdx: 1 },
+          { time: 8.5, frameIdx: 2 },
+          { time: 12.0, frameIdx: 3 },
+          { time: 16.0, frameIdx: 4 },
+          { time: 19.5, frameIdx: 5 },
+          { time: 23.0, frameIdx: 6 },
+          { time: 27.0, frameIdx: 7 }
+        ]
+      }
+    ]
+  },
+  mismatch: {
+    id: 'mismatch',
+    name: 'Order Mismatch: ([)]',
+    match: function(arg){ return arg === '([)]'; },
+    milestones: [
+      {
+        title: 'Mismatched Nesting Order Detection',
+        clip: makeAudio('../audio-walkthroughs/balanced-brackets/mismatch-01.mp3'),
+        text: 'Here is a classic trap: both brackets have pairs, but their nesting order is interleaved. We push the open parenthesis, then push the open square bracket on top of it. But at index two, a closing parenthesis arrives. We inspect the top of the stack and find an open square bracket instead of a parenthesis. Because the most recently opened bracket must be the first one closed, this mismatch immediately returns False.',
+        startIdx: 0,
+        endIdx: 3,
+        cues: [
+          { time: 0, frameIdx: 0 },
+          { time: 6.0, frameIdx: 1 },
+          { time: 11.0, frameIdx: 2 },
+          { time: 15.5, frameIdx: 3 }
+        ]
+      }
+    ]
+  },
+  emptyCloser: {
+    id: 'emptyCloser',
+    name: 'Empty Stack Closer: }{',
+    match: function(arg){ return arg === '}{'; },
+    milestones: [
+      {
+        title: 'Stack Underflow on Closer',
+        clip: makeAudio('../audio-walkthroughs/balanced-brackets/empty-closer-01.mp3'),
+        text: 'What happens when a closing bracket appears at the very beginning? At index zero, we see a closing curly brace. But our stack rack has zero items. You cannot close a bracket that was never opened. The stack underflow check fails immediately, returning False without scanning another step.',
+        startIdx: 0,
+        endIdx: 1,
+        cues: [
+          { time: 0, frameIdx: 0 },
+          { time: 5.5, frameIdx: 1 }
+        ]
+      }
+    ]
+  },
+  leftover: {
+    id: 'leftover',
+    name: 'Leftover Openers: ((',
+    match: function(arg){ return arg === '(('; },
+    milestones: [
+      {
+        title: 'Unclosed Openers Leftover',
+        clip: makeAudio('../audio-walkthroughs/balanced-brackets/leftover-01.mp3'),
+        text: 'In this case, two opening parentheses are pushed onto the stack, raising the stack height to two. The string ends, but two unclosed openers remain waiting in the rack. Because the stack is not empty, our final length check evaluates to False.',
+        startIdx: 0,
+        endIdx: 3,
+        cues: [
+          { time: 0, frameIdx: 0 },
+          { time: 5.0, frameIdx: 1 },
+          { time: 9.0, frameIdx: 2 },
+          { time: 13.0, frameIdx: 3 }
+        ]
+      }
+    ]
+  }
+};
+
+function getActiveWalkthrough(text){
+  for (const k in WALKTHROUGHS){
+    if (WALKTHROUGHS[k].match(text)) return WALKTHROUGHS[k];
+  }
+  return null;
+}
+
 let currentPresetIdx = 0;
 let simData = null;
 let curFrameIdx = 0;
 let isPlaying = false;
-let playTimer = null;
 let isMuted = false;
+let currentClip = null;
+let cueTimers = [];
+let tourToken = 0;
+let currentMilestoneIdx = 0;
 
-function loadPreset(idx){
-  currentPresetIdx = idx;
-  const p = PRESETS[idx];
-  buildScene(p.args[0]);
-  simData = simulate(p.args[0]);
-  goToFrame(0, false);
+function clearCueTimers(){
+  cueTimers.forEach(function(t){ clearTimeout(t); });
+  cueTimers = [];
+}
+
+function stopAudio(){
+  clearCueTimers();
+  tourToken++;
+  if (currentClip){
+    try {
+      currentClip.pause();
+      currentClip.currentTime = 0;
+      currentClip.onended = null;
+      currentClip.onerror = null;
+    } catch(e){}
+    currentClip = null;
+  }
+  if (window.speechSynthesis){
+    try { window.speechSynthesis.cancel(); } catch(e){}
+  }
+}
+
+function pauseAudio(){
+  clearCueTimers();
+  tourToken++;
+  if (currentClip){
+    try { currentClip.pause(); } catch(e){}
+  }
+  if (window.speechSynthesis){
+    try { window.speechSynthesis.pause(); } catch(e){}
+  }
+}
+
+function updateTourUI(){
+  if ($tour){
+    if (isPlaying){
+      $tour.classList.add('playing');
+      if ($tourLabel) $tourLabel.textContent = 'Pause';
+      if ($tourIcon) $tourIcon.textContent = '❚❚';
+      $tour.title = 'Pause guided audio tour (Space)';
+    } else if (curFrameIdx >= (simData ? simData.frames.length - 1 : 0)){
+      $tour.classList.remove('playing');
+      if ($tourLabel) $tourLabel.textContent = 'Replay';
+      if ($tourIcon) $tourIcon.textContent = '↺';
+      $tour.title = 'Replay guided tour from start (Space)';
+    } else if (curFrameIdx > 0){
+      $tour.classList.remove('playing');
+      if ($tourLabel) $tourLabel.textContent = 'Resume';
+      if ($tourIcon) $tourIcon.textContent = '▶';
+      $tour.title = 'Resume guided tour (Space)';
+    } else {
+      $tour.classList.remove('playing');
+      if ($tourLabel) $tourLabel.textContent = 'Audio Tour';
+      if ($tourIcon) $tourIcon.textContent = '▶';
+      $tour.title = 'Start guided audio tour (Space)';
+    }
+  }
+
+  if ($tourStatus && simData){
+    const wt = getActiveWalkthrough(PRESETS[currentPresetIdx].args[0]);
+    if (wt && wt.milestones.length > 0){
+      const totalM = wt.milestones.length;
+      let mIdx = 0;
+      for (let i = 0; i < totalM; i++){
+        if (curFrameIdx >= wt.milestones[i].startIdx && curFrameIdx <= wt.milestones[i].endIdx){
+          mIdx = i;
+          break;
+        }
+      }
+      $tourBadge.textContent = 'Milestone ' + (mIdx + 1) + '/' + totalM;
+      if (curFrameIdx >= simData.frames.length - 1){
+        $tourBadge.textContent = 'Complete';
+        $tourMsg.textContent = 'Tour complete for ' + wt.name + '.';
+      } else if (isPlaying){
+        $tourMsg.textContent = isMuted ? 'Playing silently (voiceover muted).' : wt.milestones[mIdx].title;
+      } else {
+        $tourMsg.textContent = (curFrameIdx === 0) ? ('Ready to start guided tour: ' + wt.name) : ('Tour paused at step ' + (curFrameIdx + 1));
+      }
+    } else {
+      $tourBadge.textContent = 'Step ' + (curFrameIdx + 1) + '/' + simData.frames.length;
+      $tourMsg.textContent = simData.frames[curFrameIdx] ? simData.frames[curFrameIdx].msg : '';
+    }
+  }
 }
 
 function goToFrame(idx, animate){
@@ -1057,13 +1292,9 @@ function goToFrame(idx, animate){
   curFrameIdx = Math.max(0, Math.min(simData.frames.length - 1, idx));
   const f = simData.frames[curFrameIdx];
 
-  // Update DOM caption & status
   $cap.textContent = f.msg;
   $tag.textContent = f.tag;
-  if ($tourBadge) $tourBadge.textContent = 'Step ' + (curFrameIdx + 1) + '/' + simData.frames.length;
-  if ($tourMsg) $tourMsg.textContent = f.msg;
 
-  // Highlight code lines
   rows.forEach(function(r){ r.classList.remove('active'); });
   if (Array.isArray(f.lines)){
     f.lines.forEach(function(ln){
@@ -1074,68 +1305,217 @@ function goToFrame(idx, animate){
     }
   }
 
-  // Update controls
   $back.disabled = (curFrameIdx === 0);
   $next.disabled = (curFrameIdx === simData.frames.length - 1);
 
-  // Apply to 3D scene
   applyScene(f, animate);
+  updateTourUI();
 }
 
-function stopPlay(){
-  isPlaying = false;
-  if (playTimer){ clearTimeout(playTimer); playTimer = null; }
-  if ($tour){
-    $tour.classList.remove('playing');
-    if ($tourLabel) $tourLabel.textContent = (curFrameIdx >= simData.frames.length - 1) ? 'Replay' : 'Play Tour';
-    if ($tourIcon) $tourIcon.textContent = (curFrameIdx >= simData.frames.length - 1) ? '↺' : '▶';
+function speakNarration(text, onEnd){
+  if (isMuted || !('speechSynthesis' in window)){
+    if (onEnd) onEnd();
+    return;
+  }
+  try {
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 1.0;
+    u.pitch = 1.0;
+    u.lang = 'en-US';
+    u.onend = onEnd;
+    u.onerror = onEnd;
+    window.speechSynthesis.speak(u);
+  } catch(e){
+    if (onEnd) onEnd();
   }
 }
 
-function startPlay(){
+function startMilestone(mIdx, fromTime){
+  const wt = getActiveWalkthrough(PRESETS[currentPresetIdx].args[0]);
+  if (!wt || mIdx >= wt.milestones.length){
+    isPlaying = false;
+    updateTourUI();
+    return;
+  }
+
+  stopAudio();
+  currentMilestoneIdx = mIdx;
+  const m = wt.milestones[mIdx];
+  const token = ++tourToken;
+
+  if (isMuted){
+    // Silent stepping
+    goToFrame(m.startIdx, true);
+    scheduleSilentMilestone(mIdx);
+    return;
+  }
+
+  // Synchronous audio start
+  const clip = m.clip;
+  currentClip = clip;
+
+  let audioFailed = false;
+  clip.onended = function(){
+    if (token !== tourToken || !isPlaying) return;
+    if (mIdx + 1 < wt.milestones.length){
+      startMilestone(mIdx + 1, 0);
+    } else {
+      isPlaying = false;
+      updateTourUI();
+    }
+  };
+
+  clip.onerror = function(){
+    if (token !== tourToken || audioFailed) return;
+    audioFailed = true;
+    console.info('Audio MP3 not yet on disk, using high-fidelity Web Speech narration.');
+    // Fallback to Web Speech API
+    speakNarration(m.text, function(){
+      if (token !== tourToken || !isPlaying) return;
+      if (mIdx + 1 < wt.milestones.length){
+        startMilestone(mIdx + 1, 0);
+      } else {
+        isPlaying = false;
+        updateTourUI();
+      }
+    });
+  };
+
+  // Synchronously attempt audio play to satisfy browser autoplay policy
+  try {
+    clip.currentTime = fromTime || 0;
+    const p = clip.play();
+    if (p && typeof p.catch === 'function'){
+      p.catch(function(){ clip.onerror(); });
+    }
+  } catch(e){
+    clip.onerror();
+  }
+
+  // Queue visual frame cues
+  clearCueTimers();
+  const cues = m.cues || [];
+  cues.forEach(function(cue){
+    const delay = Math.max(0, (cue.time - (fromTime || 0)) * 1000);
+    const t = setTimeout(function(){
+      if (token !== tourToken || !isPlaying) return;
+      goToFrame(cue.frameIdx, true);
+    }, delay);
+    cueTimers.push(t);
+  });
+}
+
+function scheduleSilentMilestone(mIdx){
+  const wt = getActiveWalkthrough(PRESETS[currentPresetIdx].args[0]);
+  if (!wt || mIdx >= wt.milestones.length) return;
+  const m = wt.milestones[mIdx];
+  const cues = m.cues || [];
+
+  clearCueTimers();
+  cues.forEach(function(cue, i){
+    const delay = (i === 0) ? 0 : (cue.time * 950);
+    const t = setTimeout(function(){
+      if (!isPlaying) return;
+      goToFrame(cue.frameIdx, true);
+      if (i === cues.length - 1){
+        if (mIdx + 1 < wt.milestones.length){
+          startMilestone(mIdx + 1, 0);
+        } else {
+          isPlaying = false;
+          updateTourUI();
+        }
+      }
+    }, delay);
+    cueTimers.push(t);
+  });
+}
+
+function startTour(){
   if (!simData || !simData.frames.length) return;
   if (curFrameIdx >= simData.frames.length - 1){
     goToFrame(0, false);
   }
   isPlaying = true;
-  if ($tour){
-    $tour.classList.add('playing');
-    if ($tourLabel) $tourLabel.textContent = 'Pause';
-    if ($tourIcon) $tourIcon.textContent = '❚❚';
+  updateTourUI();
+
+  const wt = getActiveWalkthrough(PRESETS[currentPresetIdx].args[0]);
+  if (wt){
+    let mIdx = 0;
+    for (let i = 0; i < wt.milestones.length; i++){
+      if (curFrameIdx >= wt.milestones[i].startIdx && curFrameIdx <= wt.milestones[i].endIdx){
+        mIdx = i;
+        break;
+      }
+    }
+    startMilestone(mIdx, 0);
+  } else {
+    // Custom stepping
+    scheduleCustomStep();
   }
-  scheduleNext();
 }
 
-function scheduleNext(){
+function scheduleCustomStep(){
   if (!isPlaying) return;
   if (curFrameIdx >= simData.frames.length - 1){
-    stopPlay();
+    isPlaying = false;
+    updateTourUI();
     return;
   }
   const f = simData.frames[curFrameIdx];
   const speed = parseInt($speed.value, 10) || 850;
   const delay = speed * (f.hold || 1.0);
 
-  playTimer = setTimeout(function(){
+  const t = setTimeout(function(){
     if (!isPlaying) return;
     goToFrame(curFrameIdx + 1, true);
-    scheduleNext();
+    scheduleCustomStep();
   }, delay);
+  cueTimers.push(t);
 }
 
-function togglePlay(){
-  if (isPlaying) stopPlay();
-  else startPlay();
+function pauseTour(){
+  isPlaying = false;
+  pauseAudio();
+  updateTourUI();
+}
+
+function toggleTour(){
+  if (isPlaying) pauseTour();
+  else startTour();
+}
+
+function loadPreset(idx){
+  stopAudio();
+  currentPresetIdx = idx;
+  const p = PRESETS[idx];
+  buildScene(p.args[0]);
+  simData = simulate(p.args[0]);
+  goToFrame(0, false);
 }
 
 /* Event listeners */
-$tour.addEventListener('click', togglePlay);
-$back.addEventListener('click', function(){ stopPlay(); goToFrame(curFrameIdx - 1, true); });
-$next.addEventListener('click', function(){ stopPlay(); goToFrame(curFrameIdx + 1, true); });
-$reset.addEventListener('click', function(){ stopPlay(); goToFrame(0, false); });
+$tour.addEventListener('click', toggleTour);
+
+$back.addEventListener('click', function(){
+  stopAudio();
+  isPlaying = false;
+  goToFrame(curFrameIdx - 1, true);
+});
+
+$next.addEventListener('click', function(){
+  stopAudio();
+  isPlaying = false;
+  goToFrame(curFrameIdx + 1, true);
+});
+
+$reset.addEventListener('click', function(){
+  stopAudio();
+  isPlaying = false;
+  goToFrame(0, false);
+});
 
 $preset.addEventListener('change', function(){
-  stopPlay();
   loadPreset(parseInt($preset.value, 10) || 0);
 });
 
@@ -1144,6 +1524,11 @@ $mute.addEventListener('click', function(){
   $mute.setAttribute('aria-pressed', String(isMuted));
   const icon = $mute.querySelector('.mute-icon');
   if (icon) icon.textContent = isMuted ? '🔇' : '🔊';
+  $mute.title = isMuted ? 'Unmute voiceover (Space)' : 'Mute voiceover (Silent animation)';
+  if (isMuted && isPlaying){
+    pauseAudio();
+    updateTourUI();
+  }
 });
 
 if ($bHideCode) $bHideCode.addEventListener('click', toggleCodeHidden);
@@ -1153,23 +1538,28 @@ window.addEventListener('keydown', function(e){
   if (e.target && /input|select|textarea/i.test(e.target.tagName)) return;
   if (e.key === ' '){
     e.preventDefault();
-    togglePlay();
+    toggleTour();
   } else if (e.key === 'ArrowLeft'){
     e.preventDefault();
-    stopPlay();
+    stopAudio();
+    isPlaying = false;
     goToFrame(curFrameIdx - 1, true);
   } else if (e.key === 'ArrowRight'){
     e.preventDefault();
-    stopPlay();
+    stopAudio();
+    isPlaying = false;
     goToFrame(curFrameIdx + 1, true);
   } else if (e.key === 'c' || e.key === 'C'){
     e.preventDefault();
     toggleCodeHidden();
+  } else if (e.key === 'm' || e.key === 'M'){
+    e.preventDefault();
+    $mute.click();
   }
 });
 
 document.addEventListener('visibilitychange', function(){
-  if (document.hidden && isPlaying){ stopPlay(); }
+  if (document.hidden && isPlaying){ pauseTour(); }
 });
 
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(){
