@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Balanced brackets in 3D: step by step</title>
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --ink:#18212b; --muted:#5b6876; --line:#d5dbe3;
+  --hl-bg:#fff3bf; --hl-bar:#d99a00; --stage:#eef1f5;
+  --plate:#c3ccd7; --accent:#e8a900;
+  --btn:#ffffff; --btnHover:#eef1f5;
+  color-scheme:light;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1318; --panel:#171c23; --ink:#e8edf3; --muted:#9aa7b6; --line:#2c3440;
+    --hl-bg:#4a3d0a; --hl-bar:#ffc400; --stage:#141a21;
+    --plate:#3a4452; --accent:#ffc400;
+    --btn:#1d2430; --btnHover:#27303b; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1318; --panel:#171c23; --ink:#e8edf3; --muted:#9aa7b6; --line:#2c3440;
+  --hl-bg:#4a3d0a; --hl-bar:#ffc400; --stage:#141a21;
+  --plate:#3a4452; --accent:#ffc400;
+  --btn:#1d2430; --btnHover:#27303b; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+main{max-width:1120px;margin:0 auto;padding:12px 14px 22px}
+h1{font-size:1.15rem;margin:4px 0 12px;font-weight:650}
+.wrap{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:760px){.wrap{grid-template-columns:minmax(0,1fr)}}
+.stagebox{position:relative;background:var(--stage);border:1px solid var(--line);border-radius:12px;overflow:hidden;aspect-ratio:4/3;min-height:260px;max-height:64vh;width:100%}
+#cv{display:block;width:100%;height:100%;touch-action:pan-y;cursor:grab}
+#cv:active{cursor:grabbing}
+.hint{position:absolute;right:10px;bottom:8px;font-size:11px;color:var(--muted);pointer-events:none}
+.tag{position:absolute;top:8px;left:10px;right:10px;width:max-content;max-width:calc(100% - 20px);font:600 12px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--panel);border:1px solid var(--line);padding:2px 9px;border-radius:999px}
+.err{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;color:var(--ink);background:var(--stage)}
+.err[hidden]{display:none}
+#caption{margin:12px 2px 10px;min-height:3em;font-size:1rem}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.controls label{font-size:.85rem;color:var(--muted)}
+button,select{font:inherit;font-size:.9rem;color:var(--ink);background:var(--btn);border:1px solid var(--line);border-radius:8px;padding:6px 12px;min-height:36px}
+button{cursor:pointer;min-width:64px}
+button:hover:not(:disabled){background:var(--btnHover)}
+button:disabled{opacity:.45;cursor:default}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.btn-tour{background:var(--accent);color:#111;font-weight:700;border:1px solid rgba(0,0,0,0.18);display:inline-flex;align-items:center;gap:6px;padding:6px 14px}
+.btn-tour:hover:not(:disabled){filter:brightness(1.08)}
+.btn-tour.playing{background:var(--btn);color:var(--ink);border-color:var(--accent)}
+.tour-icon{font-size:0.95em}
+.btn-mute{min-width:40px;padding:6px 10px;font-size:1rem;display:inline-flex;align-items:center;justify-content:center}
+.tour-status{display:flex;align-items:center;gap:8px;font-size:0.85rem;color:var(--muted);min-height:1.6rem;margin:8px 2px 0;padding:4px 10px;background:var(--panel);border:1px solid var(--line);border-radius:999px;width:fit-content;max-width:100%}
+.tour-badge{display:inline-block;font-size:0.75rem;font-weight:700;letter-spacing:0.02em;text-transform:uppercase;color:var(--ink);background:var(--stage);padding:2px 8px;border-radius:999px;border:1px solid var(--line);white-space:nowrap}
+.tour-msg{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:600px){.tour-status{border-radius:8px;flex-wrap:wrap}.tour-msg{white-space:normal}}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+#code{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 0;overflow:auto;max-height:70vh;font:13px/1.7 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+@media (max-width:420px){#code{font-size:12px}}
+.row{display:flex;min-width:max-content;white-space:pre;padding-right:12px;border-left:4px solid transparent}
+.ln{flex:0 0 2.4em;text-align:right;padding-right:12px;color:var(--muted);user-select:none}
+.row.active{background:var(--hl-bg);border-left-color:var(--hl-bar)}
+
+/* ---------- top navigation bar ---------- */
+.top-nav{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 0 10px;margin-bottom:10px;border-bottom:1px solid var(--line);font-size:0.875rem}
+.top-nav a{color:var(--ink);text-decoration:none;display:inline-flex;align-items:center;gap:6px;font-weight:550;padding:4px 8px;border-radius:6px;transition:background 120ms ease,color 120ms ease}
+.top-nav a:hover{background:var(--btnHover);color:var(--accent)}
+.top-nav a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.nav-back{display:inline-flex;align-items:center;gap:6px;font-weight:600}
+.nav-back .nav-arrow{font-size:1.05em;transition:transform 120ms ease}
+.nav-back:hover .nav-arrow{transform:translateX(-2px)}
+.nav-sequence{display:inline-flex;align-items:center;gap:6px}
+.nav-btn{background:var(--btn);border:1px solid var(--line);padding:3px 9px;border-radius:6px;color:var(--ink);text-decoration:none;display:inline-flex;align-items:center;gap:4px;font-size:0.82rem;font-weight:550}
+.nav-btn:hover:not(.disabled){background:var(--btnHover);border-color:var(--accent);color:var(--accent)}
+.nav-btn.disabled{opacity:0.35;cursor:not-allowed;pointer-events:none}
+.nav-indicator{font-size:0.8rem;color:var(--muted);padding:0 6px;font-variant-numeric:tabular-nums;user-select:none;font-weight:600}
+.nav-arrow{font-size:1em;line-height:1}
+@media (max-width:540px){
+  .top-nav{flex-wrap:wrap;gap:8px}
+  .nav-back span:not(.nav-arrow){font-size:0.82rem}
+  .btn-show-code .nav-label{display:none}
+  .btn-show-code{padding:3px 8px}
+}
+
+/* ---------- collapsible code pane & full-width mode ---------- */
+.wrap{transition:grid-template-columns 180ms ease}
+.wrap.code-hidden{grid-template-columns:minmax(0,1fr)}
+.wrap.code-hidden .code-pane{display:none}
+
+.code-pane{display:flex;flex-direction:column;min-width:0}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:5px 12px;background:var(--panel);border:1px solid var(--line);border-bottom:none;border-radius:12px 12px 0 0;font-size:0.8rem;font-weight:600;color:var(--muted)}
+.code-header .code-title{text-transform:uppercase;letter-spacing:0.06em;font-size:0.75rem}
+.code-pane #code{border-top-left-radius:0;border-top-right-radius:0}
+
+.btn-toggle-code{background:transparent;border:1px solid transparent;color:var(--muted);padding:2px 8px;border-radius:6px;font:inherit;font-size:0.78rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;min-height:unset;min-width:unset;transition:background 120ms ease,color 120ms ease,border-color 120ms ease}
+.btn-toggle-code:hover{background:var(--btnHover);color:var(--ink);border-color:var(--line)}
+.btn-toggle-code:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn-toggle-code .eye-icon{font-size:1em;line-height:1}
+
+.btn-show-code{display:inline-flex;align-items:center;gap:5px}
+.btn-show-code[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+  <nav class="top-nav" aria-label="Visualizations navigation">
+    <a class="nav-back" href="../index.html" title="Return to all algorithm visualizations">
+      <span class="nav-arrow" aria-hidden="true">←</span>
+      <span>All Visualizations</span>
+    </a>
+    <div class="nav-sequence">
+      <button id="bShowCodeNav" type="button" class="nav-btn btn-show-code" title="Show code panel (C)" aria-label="Show code panel" hidden><span class="eye-icon" aria-hidden="true">👁</span><span class="nav-label">Show Code</span></button>
+      <a class="nav-btn prev" href="../insertion-sort/Insertion%20sort%20in%203D%2C%20step%20by%20step.html" title="Previous visualization: Insertion Sort"><span class="nav-arrow" aria-hidden="true">‹</span><span class="nav-label">Prev</span></a>
+      <span class="nav-indicator" aria-label="Visualization 13 of 13" title="Visualization 13 of 13">13 / 13</span>
+      <span class="nav-btn next disabled" aria-disabled="true"><span class="nav-label">Next</span><span class="nav-arrow" aria-hidden="true">›</span></span>
+    </div>
+  </nav>
+  <h1>Balanced brackets in 3D, step by step</h1>
+  <div class="wrap" id="wrap">
+    <div>
+      <div class="stagebox" id="stage">
+        <canvas id="cv" role="img" aria-label="3D stack rack and character row demonstrating balanced bracket checking"></canvas>
+        <div class="tag" id="tag"></div>
+        <div class="hint">drag to rotate · double-click to reset</div>
+        <div class="err" id="err" hidden></div>
+      </div>
+      <p id="caption" role="status" aria-live="polite"></p>
+      <div class="controls" role="group" aria-label="Playback controls">
+        <button id="bTour" type="button" class="btn-tour" title="Start animation (Space)">
+          <span class="tour-icon" aria-hidden="true">▶</span>
+          <span class="tour-label">Play Tour</span>
+        </button>
+        <button id="bBack" type="button" title="Previous step (Left Arrow)">Back</button>
+        <button id="bNext" type="button" title="Next step (Right Arrow)">Next</button>
+        <button id="bReset" type="button" title="Reset to beginning">Reset</button>
+        <button id="bMute" type="button" class="btn-mute" aria-pressed="false" title="Mute voiceover (Silent animation)">
+          <span class="mute-icon" aria-hidden="true">🔊</span>
+        </button>
+        <label class="sr" for="preset">Input</label>
+        <select id="preset"></select>
+        <label class="sr" for="speed">Speed</label>
+        <select id="speed">
+          <option value="1300">Slow</option>
+          <option value="850">Normal</option>
+          <option value="450">Fast</option>
+          <option value="220">Very fast</option>
+        </select>
+      </div>
+      <div class="tour-status" id="tourStatus" role="status" aria-live="polite">
+        <span class="tour-badge" id="tourBadge">Step 1/N</span>
+        <span class="tour-msg" id="tourMsg">Ready to start visualization tour.</span>
+      </div>
+    </div>
+    <div class="code-pane" id="codePane">
+      <div class="code-header">
+        <span class="code-title">Python Source</span>
+        <button id="bHideCode" type="button" class="btn-toggle-code" title="Hide code panel (C)" aria-label="Hide code panel" aria-expanded="true">
+          <span class="eye-icon" aria-hidden="true">👁</span>
+          <span>Hide</span>
+        </button>
+      </div>
+      <div id="code" role="region" aria-label="Python source code"></div>
+    </div>
+  </div>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+
+/* SOURCE:BEGIN */
+const SRC = [
+  'def is_balanced(text):',                              // 0
+  '    matching = {\')\': \'(\', \']\': \'[\', \'}\': \'{\'}', // 1
+  '    openers = set(matching.values())',                 // 2
+  '    stack = []',                                       // 3
+  '    for ch in text:',                                  // 4
+  '        if ch in openers:',                            // 5
+  '            stack.append(ch)',                         // 6
+  '        elif ch in matching:',                         // 7
+  '            if not stack or stack[-1] != matching[ch]:', // 8
+  '                return False',                         // 9
+  '            stack.pop()',                              // 10
+  '    return len(stack) == 0',                           // 11
+  'def max_depth(text):',                                // 12
+  '    matching = {\')\': \'(\', \']\': \'[\', \'}\': \'{\'}', // 13
+  '    openers = set(matching.values())',                 // 14
+  '    deepest, current = 0, 0',                          // 15
+  '    for ch in text:',                                  // 16
+  '        if ch in openers:',                            // 17
+  '            current += 1',                             // 18
+  '            if current > deepest:',                    // 19
+  '                deepest = current',                    // 20
+  '        elif ch in matching:',                         // 21
+  '            current -= 1',                             // 22
+  '    return deepest'                                    // 23
+];
+/* SOURCE:END */
+
+/* PRESETS:BEGIN */
+const PRESETS = [
+  { name: 'Mixed valid: (a + b) * [c - d]', args: ['(a + b) * [c - d]'] },
+  { name: 'All three nested: {[()]}',      args: ['{[()]}'] },
+  { name: 'Order mismatch: ([)]',           args: ['([)]'] },
+  { name: 'Empty stack closer: }{',         args: ['}{'] },
+  { name: 'Leftover openers: ((',           args: ['(('] },
+  { name: 'Bonus depth: ((a)(b))',          args: ['((a)(b))'] },
+  { name: 'Empty string: ""',               args: [''] }
+];
+/* PRESETS:END */
+
+/* SIMULATE:BEGIN */
+function simulate(text) {
+  const frames = [];
+  const matching = { ')': '(', ']': '[', '}': '{' };
+  const openers = new Set(['(', '[', '{']);
+  
+  let stack = [];
+  let curIdx = -1;
+  let curCh = null;
+  let popped = null;
+  let matched = [];
+  let failedIdx = -1;
+  let currentDepth = 0;
+  let deepest = 0;
+  let phase = 'balance';
+  let tag = '';
+  let status = 'running';
+
+  function snap(lines, msg, kind, hold) {
+    frames.push({
+      lines: lines.slice(),
+      msg: msg,
+      kind: kind,
+      hold: hold || 1.0,
+      stack: stack.slice(),
+      curIdx: curIdx,
+      curCh: curCh,
+      popped: popped,
+      matched: matched.slice(),
+      failedIdx: failedIdx,
+      currentDepth: currentDepth,
+      deepest: deepest,
+      phase: phase,
+      status: status,
+      tag: tag
+    });
+  }
+
+  tag = 'is_balanced · stack: [] · depth: 0';
+  snap([0, 1, 2, 3], 'Initialize bracket matching table, openers set, and empty stack [] to check balanced brackets.', 'start', 1.0);
+
+  let isBal = true;
+
+  if (text.length === 0) {
+    tag = 'empty string · stack: [] · result: True';
+    status = 'success';
+    snap([4, 11], 'String is empty. Loop finishes immediately. len(stack) == 0 is True.', 'ret', 1.5);
+  } else {
+    for (let i = 0; i < text.length; i++) {
+      curIdx = i;
+      curCh = text[i];
+      popped = null;
+
+      if (openers.has(curCh)) {
+        stack.push(curCh);
+        currentDepth = stack.length;
+        if (currentDepth > deepest) deepest = currentDepth;
+        tag = "ch: '" + curCh + "' · push · stack len: " + stack.length;
+        snap([4, 5, 6], "Character '" + curCh + "' is an opening bracket. Push onto stack. Stack depth is now " + stack.length + ".", 'move', 1.2);
+      } else if (curCh in matching) {
+        if (stack.length === 0) {
+          failedIdx = i;
+          isBal = false;
+          status = 'error';
+          tag = "closer '" + curCh + "' with empty stack · result: False";
+          snap([7, 8, 9], "Closer '" + curCh + "' found, but stack is empty! No matching opener. Return False.", 'err', 1.6);
+          break;
+        } else if (stack[stack.length - 1] !== matching[curCh]) {
+          failedIdx = i;
+          isBal = false;
+          status = 'error';
+          const top = stack[stack.length - 1];
+          tag = "mismatch: '" + top + "' != '" + matching[curCh] + "' · result: False";
+          snap([7, 8, 9], "Mismatched bracket! Top of stack is '" + top + "', but closer is '" + curCh + "' (expects '" + matching[curCh] + "'). Return False.", 'err', 1.6);
+          break;
+        } else {
+          popped = stack.pop();
+          matched.push(i);
+          currentDepth = stack.length;
+          tag = "match: '" + popped + "' with '" + curCh + "' · stack len: " + stack.length;
+          snap([7, 8, 10], "Match found! Pop '" + popped + "' from stack to pair with '" + curCh + "'. Stack depth is now " + stack.length + ".", 'step', 1.3);
+        }
+      } else {
+        tag = "ignore '" + curCh + "' · stack len: " + stack.length;
+        snap([4, 5, 7], "Character '" + curCh + "' is not a bracket. Ignore it and continue scanning.", 'step', 0.8);
+      }
+    }
+
+    if (isBal) {
+      if (stack.length > 0) {
+        isBal = false;
+        failedIdx = 0;
+        status = 'error';
+        tag = "unclosed openers on stack · result: False";
+        snap([11], "End of string reached, but stack still contains " + stack.length + " unclosed opener(s): [" + stack.join(', ') + "]. Return False.", 'err', 1.6);
+      } else {
+        curIdx = -1;
+        curCh = null;
+        status = 'success';
+        tag = 'balanced · stack empty · result: True';
+        snap([11], 'All brackets matched correctly and stack is empty: len(stack) == 0 is True!', 'ret', 1.5);
+      }
+    }
+  }
+
+  // Bonus max_depth trace if balanced
+  if (isBal) {
+    phase = 'depth';
+    curIdx = -1;
+    curCh = null;
+    currentDepth = 0;
+    deepest = 0;
+    tag = 'max_depth · deepest: 0 · current: 0';
+    snap([12, 13, 14, 15], 'String is balanced! Now tracing bonus max_depth(text) to find peak nesting depth without max().', 'init', 1.2);
+
+    for (let i = 0; i < text.length; i++) {
+      curIdx = i;
+      curCh = text[i];
+      if (openers.has(curCh)) {
+        currentDepth++;
+        if (currentDepth > deepest) {
+          deepest = currentDepth;
+          tag = "opener '" + curCh + "' · depth " + currentDepth + " > peak -> peak " + deepest;
+          snap([16, 17, 18, 19, 20], "Opener '" + curCh + "': current depth rises to " + currentDepth + ". New deepest peak = " + deepest + "!", 'step', 1.2);
+        } else {
+          tag = "opener '" + curCh + "' · depth " + currentDepth + " <= peak " + deepest;
+          snap([16, 17, 18, 19], "Opener '" + curCh + "': current depth rises to " + currentDepth + " (deepest remains " + deepest + ").", 'step', 1.0);
+        }
+      } else if (curCh in matching) {
+        currentDepth--;
+        tag = "closer '" + curCh + "' · depth drops to " + currentDepth;
+        snap([16, 21, 22], "Closer '" + curCh + "': current depth decreases to " + currentDepth + " (deepest is " + deepest + ").", 'step', 1.0);
+      }
+    }
+
+    curIdx = -1;
+    curCh = null;
+    tag = "max_depth result: " + deepest;
+    snap([23], "Finished max_depth traversal. Returning deepest nesting level = " + deepest + ".", 'ret', 1.5);
+  }
+
+  return { frames, result: isBal };
+}
+/* SIMULATE:END */
+
+/* ---------- DOM ELEMENTS ---------- */
+const $ = function(id){ return document.getElementById(id); };
+const $cv = $('cv'), $stage = $('stage'), $cap = $('caption'), $tag = $('tag'), $err = $('err'), $code = $('code');
+const $wrap = $('wrap'), $bHideCode = $('bHideCode'), $bShowCodeNav = $('bShowCodeNav');
+const $back = $('bBack'), $tour = $('bTour'), $mute = $('bMute'), $next = $('bNext'), $reset = $('bReset'), $preset = $('preset'), $speed = $('speed');
+const $tourIcon = $tour ? $tour.querySelector('.tour-icon') : null;
+const $tourLabel = $tour ? $tour.querySelector('.tour-label') : null;
+const $tourStatus = $('tourStatus'), $tourBadge = $('tourBadge'), $tourMsg = $('tourMsg');
+
+const RM = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches:false };
+
+/* Render code lines */
+const rows = SRC.map(function(txt, i){
+  const r = document.createElement('div'); r.className = 'row';
+  const n = document.createElement('span'); n.className = 'ln'; n.textContent = String(i + 1);
+  const c = document.createElement('span'); c.textContent = txt;
+  r.appendChild(n); r.appendChild(c); $code.appendChild(r);
+  return r;
+});
+
+PRESETS.forEach(function(p, i){
+  const o = document.createElement('option'); o.value = String(i); o.textContent = p.name; $preset.appendChild(o);
+});
+
+/* Code visibility state */
+const S = { codeHidden: false };
+function setCodeHidden(hidden){
+  S.codeHidden = !!hidden;
+  try {
+    localStorage.setItem('antigravity_code_hidden', S.codeHidden ? '1' : '0');
+  } catch(e){}
+  if ($wrap) $wrap.classList.toggle('code-hidden', S.codeHidden);
+  if ($bHideCode) $bHideCode.setAttribute('aria-expanded', String(!S.codeHidden));
+  if ($bShowCodeNav) $bShowCodeNav.hidden = !S.codeHidden;
+  if (typeof fitCamera === 'function') fitCamera();
+  if (typeof requestRender === 'function') requestRender();
+}
+function toggleCodeHidden(){ setCodeHidden(!S.codeHidden); }
+try {
+  if (localStorage.getItem('antigravity_code_hidden') === '1') setCodeHidden(true);
+} catch(e){}
+
+/* ---------- THREE.JS PERSPECTIVE SCENE ---------- */
+const YAW0 = -0.22, PITCH0 = 0.46, YAW_MAX = 0.55, FOV = 32;
+let gl = false, renderer = null, scene = null, camera = null;
+let world = null;
+const view = { yaw: YAW0, pitch: PITCH0, dist: 16 };
+const C = {};
+const texCache = new Map();
+const tweens = [];
+let raf = 0, drag = null;
+
+function showError(msg){ $err.hidden = false; $err.textContent = msg; }
+function readTheme(){
+  const cs = getComputedStyle(document.documentElement);
+  ['ink','muted','plate','accent','line','panel','stage'].forEach(function(k){
+    C[k] = cs.getPropertyValue('--' + k).trim() || '#888888';
+  });
+}
+
+try {
+  if (typeof THREE === 'undefined') throw new Error('three.js did not load');
+  renderer = new THREE.WebGLRenderer({ canvas: $cv, antialias: true, alpha: true });
+  renderer.setClearColor(0x000000, 0);
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(FOV, 4 / 3, 0.1, 200);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.58));
+  const dl = new THREE.DirectionalLight(0xffffff, 0.85);
+  dl.position.set(-6, 12, 9);
+  scene.add(dl);
+  gl = true;
+} catch (e) {
+  showError('The 3D view could not start (' + (e && e.message ? e.message : 'WebGL unavailable') + '). The code panel and captions continue to step.');
+}
+
+function textTex(text, style){
+  const key = text + '|' + style.color + '|' + style.font;
+  let t = texCache.get(key);
+  if (t) return t;
+  const cv = document.createElement('canvas'), ctx = cv.getContext('2d');
+  ctx.font = style.font;
+  const w = Math.max(32, Math.ceil(ctx.measureText(text).width) + 20), h = 64;
+  cv.width = w; cv.height = h;
+  ctx.font = style.font; ctx.fillStyle = style.color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, w / 2, h / 2 + 2);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.minFilter = THREE.LinearFilter; tex.generateMipmaps = false;
+  t = { tex: tex, aspect: w / h };
+  texCache.set(key, t);
+  return t;
+}
+
+function clearTexCache(){ texCache.forEach(function(t){ t.tex.dispose(); }); texCache.clear(); }
+
+function makeSprite(){
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthTest: false }));
+  s.renderOrder = 10; s.visible = false; return s;
+}
+
+function setText(s, text, style, worldH, x, y, z){
+  if (!text){ s.visible = false; return; }
+  const t = textTex(text, style);
+  s.material.map = t.tex; s.material.needsUpdate = true;
+  s.scale.set(worldH * t.aspect, worldH, 1);
+  if (x !== undefined) s.position.x = x;
+  if (y !== undefined) s.position.y = y;
+  if (z !== undefined) s.position.z = z;
+  s.visible = true;
+}
+
+const FONT_TILE = '700 44px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
+const FONT_LABEL = '600 32px system-ui, -apple-system, sans-serif';
+const FONT_TAG = '700 36px ui-monospace, SFMono-Regular, monospace';
+
+/* Scene Meshes Container */
+let currentText = '';
+let charTiles = [];
+let stackMeshes = [];
+let chPointer = null;
+let topPointer = null;
+let stackSlab = null;
+let rackGroup = null;
+let resultBanner = null;
+
+const SP = 0.88;
+function charX(i, n){ return (i - (n - 1) / 2) * SP; }
+
+function clearWorld(){
+  tweens.length = 0;
+  if (!world) return;
+  scene.remove(world);
+  world.traverse(function(o){
+    if (o.geometry) o.geometry.dispose();
+    if (o.material){
+      if (Array.isArray(o.material)) o.material.forEach(function(m){ m.dispose(); });
+      else o.material.dispose();
+    }
+  });
+  world = null;
+  charTiles = [];
+  stackMeshes = [];
+  chPointer = null;
+  topPointer = null;
+  stackSlab = null;
+  rackGroup = null;
+  resultBanner = null;
+}
+
+function buildScene(text){
+  if (!gl) return;
+  readTheme();
+  clearWorld();
+  clearTexCache();
+  currentText = text;
+
+  world = new THREE.Group();
+  scene.add(world);
+
+  const n = text.length;
+  const plateW = Math.max(10, n * SP + 2.5);
+  const plateD = 5.2;
+
+  // Floor Plate
+  const plateGeo = new THREE.BoxGeometry(plateW, 0.14, plateD);
+  const plateMat = new THREE.MeshLambertMaterial({ color: C.plate });
+  const plate = new THREE.Mesh(plateGeo, plateMat);
+  plate.position.set(0, -0.07, 0.1);
+  world.add(plate);
+
+  // Stack Rack Container at z = -1.1
+  rackGroup = new THREE.Group();
+  rackGroup.position.set(0, 0, -1.1);
+  world.add(rackGroup);
+
+  const rackBaseGeo = new THREE.BoxGeometry(2.4, 0.08, 1.6);
+  const rackBaseMat = new THREE.MeshLambertMaterial({ color: 0x475569 });
+  const rackBase = new THREE.Mesh(rackBaseGeo, rackBaseMat);
+  rackBase.position.set(0, 0.04, 0);
+  rackGroup.add(rackBase);
+
+  // Corner guide posts
+  const postGeo = new THREE.CylinderGeometry(0.04, 0.04, 3.2, 8);
+  const postMat = new THREE.MeshLambertMaterial({ color: 0x64748b });
+  [[-1.15, -0.75], [1.15, -0.75], [-1.15, 0.75], [1.15, 0.75]].forEach(function(pos){
+    const post = new THREE.Mesh(postGeo, postMat);
+    post.position.set(pos[0], 1.6, pos[1]);
+    rackGroup.add(post);
+  });
+
+  // Stack Rack Label Sprite
+  const rackLabel = makeSprite();
+  setText(rackLabel, 'STACK (LIFO)', { color: C.muted, font: FONT_LABEL }, 0.28, 0, 0.1, -2.1);
+  world.add(rackLabel);
+
+  // Occupied Stack Translucent Slab
+  const slabGeo = new THREE.BoxGeometry(2.1, 1, 1.4);
+  const slabMat = new THREE.MeshBasicMaterial({ color: 0x2563a8, transparent: true, opacity: 0.14, depthWrite: false });
+  stackSlab = new THREE.Mesh(slabGeo, slabMat);
+  const edges = new THREE.LineSegments(new THREE.EdgesGeometry(slabGeo), new THREE.LineBasicMaterial({ color: 0x60a5fa, transparent: true, opacity: 0.5 }));
+  stackSlab.add(edges);
+  stackSlab.position.set(0, 0.5, -1.1);
+  stackSlab.visible = false;
+  world.add(stackSlab);
+
+  // TOP Pointer above stack
+  topPointer = new THREE.Group();
+  const topConeGeo = new THREE.ConeGeometry(0.18, 0.35, 12);
+  topConeGeo.rotateZ(Math.PI);
+  const topConeMat = new THREE.MeshLambertMaterial({ color: 0x3b82f6 });
+  const topCone = new THREE.Mesh(topConeGeo, topConeMat);
+  topCone.position.set(0, 0, 0);
+  topPointer.add(topCone);
+  const topLabel = makeSprite();
+  setText(topLabel, 'TOP', { color: '#3b82f6', font: FONT_TAG }, 0.26, 0, 0.32, 0);
+  topPointer.add(topLabel);
+  topPointer.position.set(0, 2, -1.1);
+  topPointer.visible = false;
+  world.add(topPointer);
+
+  // Character Tiles Row at z = 1.2
+  charTiles = [];
+  const openers = new Set(['(', '[', '{']);
+  const closers = new Set([')', ']', '}']);
+
+  for (let i = 0; i < n; i++){
+    const ch = text[i];
+    const isOpener = openers.has(ch);
+    const isCloser = closers.has(ch);
+    const isBracket = isOpener || isCloser;
+
+    const tileGroup = new THREE.Group();
+    const x = charX(i, n);
+    tileGroup.position.set(x, 0, 1.2);
+
+    const tileGeo = new THREE.BoxGeometry(0.72, 0.12, 0.72);
+    const tileMat = new THREE.MeshLambertMaterial({
+      color: isBracket ? (C.panel === '#171c23' ? 0x242d3d : 0xe2e8f0) : (C.panel === '#171c23' ? 0x1a212b : 0xf1f5f9)
+    });
+    const tileMesh = new THREE.Mesh(tileGeo, tileMat);
+    tileMesh.position.y = 0.06;
+    tileGroup.add(tileMesh);
+
+    // Text Sprite on Tile
+    const charSprite = makeSprite();
+    setText(charSprite, ch, {
+      color: isBracket ? (C.ink) : C.muted,
+      font: FONT_TILE
+    }, 0.36, 0, 0.22, 0);
+    tileGroup.add(charSprite);
+
+    // Index sprite below tile
+    const idxSprite = makeSprite();
+    setText(idxSprite, String(i), { color: C.muted, font: FONT_LABEL }, 0.20, 0, 0.06, 0.52);
+    tileGroup.add(idxSprite);
+
+    world.add(tileGroup);
+    charTiles.push({
+      group: tileGroup,
+      mesh: tileMesh,
+      charSprite: charSprite,
+      idxSprite: idxSprite,
+      ch: ch,
+      isBracket: isBracket,
+      baseColor: tileMat.color.getHex()
+    });
+  }
+
+  // Scanner Pointer `ch`
+  chPointer = new THREE.Group();
+  const chConeGeo = new THREE.ConeGeometry(0.18, 0.36, 12);
+  chConeGeo.rotateZ(Math.PI);
+  const chConeMat = new THREE.MeshLambertMaterial({ color: 0xe8a900 });
+  const chCone = new THREE.Mesh(chConeGeo, chConeMat);
+  chPointer.add(chCone);
+  const chLabel = makeSprite();
+  setText(chLabel, 'ch', { color: '#e8a900', font: FONT_TAG }, 0.28, 0, 0.36, 0);
+  chPointer.add(chLabel);
+  chPointer.position.set(0, 0.9, 1.2);
+  chPointer.visible = false;
+  world.add(chPointer);
+
+  // Result Banner Sprite
+  resultBanner = makeSprite();
+  resultBanner.position.set(0, 2.2, 0);
+  world.add(resultBanner);
+
+  // Pre-instantiate pool of stack block meshes
+  stackMeshes = [];
+  const maxStack = Math.max(8, n);
+  for (let k = 0; k < maxStack; k++){
+    const bGroup = new THREE.Group();
+    bGroup.position.set(0, -5, -1.1);
+
+    const bGeo = new THREE.BoxGeometry(1.6, 0.36, 1.1);
+    const bMat = new THREE.MeshLambertMaterial({ color: 0x3b82f6 });
+    const bMesh = new THREE.Mesh(bGeo, bMat);
+    bGroup.add(bMesh);
+
+    const bSprite = makeSprite();
+    bGroup.add(bSprite);
+
+    bGroup.visible = false;
+    world.add(bGroup);
+    stackMeshes.push({ group: bGroup, mesh: bMesh, sprite: bSprite });
+  }
+
+  fitCamera();
+  requestRender();
+}
+
+function fitCamera(){
+  if (!gl || !camera) return;
+  const n = currentText.length;
+  const plateW = Math.max(10, n * SP + 2.5);
+  const dist = Math.max(14, plateW * 1.05);
+  view.dist = dist;
+  updateCamera();
+}
+
+function updateCamera(){
+  if (!gl || !camera) return;
+  const cp = Math.cos(view.pitch), sp = Math.sin(view.pitch);
+  const cy = Math.cos(view.yaw), sy = Math.sin(view.yaw);
+  camera.position.set(view.dist * cy * cp, view.dist * sp, view.dist * sy * cp);
+  camera.lookAt(0, 0.6, 0.1);
+}
+
+function requestRender(){
+  if (!raf){ raf = requestAnimationFrame(render); }
+}
+
+function render(){
+  raf = 0;
+  if (!gl || !renderer || !scene || !camera) return;
+
+  const now = performance.now();
+  for (let i = tweens.length - 1; i >= 0; i--){
+    const tw = tweens[i];
+    const p = Math.min(1, (now - tw.t0) / tw.dur);
+    const ease = 1 - Math.pow(1 - p, 3);
+    tw.obj[tw.prop] = tw.from + (tw.to - tw.from) * ease;
+    if (tw.onUpdate) tw.onUpdate(tw.obj[tw.prop]);
+    if (p >= 1) tweens.splice(i, 1);
+  }
+
+  renderer.render(scene, camera);
+  if (tweens.length > 0) requestRender();
+}
+
+function tweenProp(obj, prop, to, dur, onUpdate){
+  if (RM.matches || dur <= 0){
+    obj[prop] = to;
+    if (onUpdate) onUpdate(to);
+    return;
+  }
+  tweens.push({ obj: obj, prop: prop, from: obj[prop], to: to, t0: performance.now(), dur: dur, onUpdate: onUpdate });
+  requestRender();
+}
+
+/* Pointer drag interaction */
+function onDown(e){
+  drag = { x: e.clientX, yaw: view.yaw };
+  $cv.setPointerCapture(e.pointerId);
+}
+function onMove(e){
+  if (!drag) return;
+  const dx = e.clientX - drag.x;
+  view.yaw = Math.max(-YAW_MAX, Math.min(YAW_MAX, drag.yaw - dx * 0.005));
+  updateCamera();
+  requestRender();
+}
+function onUp(e){
+  if (!drag) return;
+  drag = null;
+  try { $cv.releasePointerCapture(e.pointerId); } catch(err){}
+}
+function onDblClick(){
+  tweenProp(view, 'yaw', YAW0, 300, updateCamera);
+}
+$cv.addEventListener('pointerdown', onDown);
+$cv.addEventListener('pointermove', onMove);
+$cv.addEventListener('pointerup', onUp);
+$cv.addEventListener('pointercancel', onUp);
+$cv.addEventListener('dblclick', onDblClick);
+
+/* Apply snapshot frame to 3D Scene */
+function applyScene(frame, animate){
+  if (!gl || !world) return;
+  const dur = (animate && !RM.matches) ? 240 : 0;
+
+  // 1. Scanner pointer
+  if (frame.curIdx >= 0 && frame.curIdx < charTiles.length){
+    chPointer.visible = true;
+    const targetX = charX(frame.curIdx, charTiles.length);
+    if (dur > 0){
+      tweenProp(chPointer.position, 'x', targetX, dur);
+    } else {
+      chPointer.position.x = targetX;
+    }
+  } else {
+    chPointer.visible = false;
+  }
+
+  // 2. Character Tiles highlight states
+  const matchedSet = new Set(frame.matched);
+  charTiles.forEach(function(ct, i){
+    let col = ct.baseColor;
+    if (i === frame.failedIdx){
+      col = 0xd93838; // red
+    } else if (i === frame.curIdx){
+      col = 0xe8a900; // gold
+    } else if (matchedSet.has(i)){
+      col = 0x2e9e5b; // green
+    } else if (!ct.isBracket){
+      col = (C.panel === '#171c23' ? 0x151b22 : 0xf8fafc);
+    }
+    ct.mesh.material.color.setHex(col);
+  });
+
+  // 3. Stack Blocks & Translucent Slab
+  const stk = frame.stack || [];
+  const stkLen = stk.length;
+
+  for (let k = 0; k < stackMeshes.length; k++){
+    const sm = stackMeshes[k];
+    if (k < stkLen){
+      sm.group.visible = true;
+      const targetY = 0.25 + k * 0.42;
+      setText(sm.sprite, stk[k], { color: '#ffffff', font: FONT_TILE }, 0.32, 0, 0, 0.58);
+      
+      let blockCol = 0x2563a8; // solid blue
+      if (frame.failedIdx >= 0 && k === stkLen - 1){
+        blockCol = 0xd93838; // error red on top of stack
+      } else if (k === stkLen - 1 && frame.curCh in { ')':1, ']':1, '}':1 }){
+        blockCol = 0xe8a900; // examining top
+      }
+      sm.mesh.material.color.setHex(blockCol);
+
+      if (dur > 0 && Math.abs(sm.group.position.y - targetY) > 0.05){
+        tweenProp(sm.group.position, 'y', targetY, dur);
+      } else {
+        sm.group.position.y = targetY;
+      }
+    } else {
+      sm.group.visible = false;
+      sm.group.position.y = -5;
+    }
+  }
+
+  // Stack Translucent Slab
+  if (stkLen > 0){
+    stackSlab.visible = true;
+    const slabH = stkLen * 0.42 + 0.12;
+    stackSlab.scale.y = slabH;
+    stackSlab.position.y = slabH / 2 + 0.08;
+  } else {
+    stackSlab.visible = false;
+  }
+
+  // TOP pointer
+  if (stkLen > 0){
+    topPointer.visible = true;
+    const topY = 0.25 + (stkLen - 1) * 0.42 + 0.48;
+    if (dur > 0){
+      tweenProp(topPointer.position, 'y', topY, dur);
+    } else {
+      topPointer.position.y = topY;
+    }
+  } else {
+    topPointer.visible = false;
+  }
+
+  // Result Banner
+  if (frame.status === 'success'){
+    setText(resultBanner, 'RESULT: TRUE (BALANCED)', { color: '#2e9e5b', font: FONT_TAG }, 0.42, 0, 2.5, 0);
+  } else if (frame.status === 'error'){
+    setText(resultBanner, 'RESULT: FALSE (UNBALANCED)', { color: '#d93838', font: FONT_TAG }, 0.42, 0, 2.5, 0);
+  } else {
+    resultBanner.visible = false;
+  }
+
+  requestRender();
+}
+
+/* ---------- PLAYBACK CONTROLLER ---------- */
+let currentPresetIdx = 0;
+let simData = null;
+let curFrameIdx = 0;
+let isPlaying = false;
+let playTimer = null;
+let isMuted = false;
+
+function loadPreset(idx){
+  currentPresetIdx = idx;
+  const p = PRESETS[idx];
+  buildScene(p.args[0]);
+  simData = simulate(p.args[0]);
+  goToFrame(0, false);
+}
+
+function goToFrame(idx, animate){
+  if (!simData || !simData.frames.length) return;
+  curFrameIdx = Math.max(0, Math.min(simData.frames.length - 1, idx));
+  const f = simData.frames[curFrameIdx];
+
+  // Update DOM caption & status
+  $cap.textContent = f.msg;
+  $tag.textContent = f.tag;
+  if ($tourBadge) $tourBadge.textContent = 'Step ' + (curFrameIdx + 1) + '/' + simData.frames.length;
+  if ($tourMsg) $tourMsg.textContent = f.msg;
+
+  // Highlight code lines
+  rows.forEach(function(r){ r.classList.remove('active'); });
+  if (Array.isArray(f.lines)){
+    f.lines.forEach(function(ln){
+      if (rows[ln]) rows[ln].classList.add('active');
+    });
+    if (f.lines.length > 0 && rows[f.lines[0]]){
+      rows[f.lines[0]].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }
+
+  // Update controls
+  $back.disabled = (curFrameIdx === 0);
+  $next.disabled = (curFrameIdx === simData.frames.length - 1);
+
+  // Apply to 3D scene
+  applyScene(f, animate);
+}
+
+function stopPlay(){
+  isPlaying = false;
+  if (playTimer){ clearTimeout(playTimer); playTimer = null; }
+  if ($tour){
+    $tour.classList.remove('playing');
+    if ($tourLabel) $tourLabel.textContent = (curFrameIdx >= simData.frames.length - 1) ? 'Replay' : 'Play Tour';
+    if ($tourIcon) $tourIcon.textContent = (curFrameIdx >= simData.frames.length - 1) ? '↺' : '▶';
+  }
+}
+
+function startPlay(){
+  if (!simData || !simData.frames.length) return;
+  if (curFrameIdx >= simData.frames.length - 1){
+    goToFrame(0, false);
+  }
+  isPlaying = true;
+  if ($tour){
+    $tour.classList.add('playing');
+    if ($tourLabel) $tourLabel.textContent = 'Pause';
+    if ($tourIcon) $tourIcon.textContent = '❚❚';
+  }
+  scheduleNext();
+}
+
+function scheduleNext(){
+  if (!isPlaying) return;
+  if (curFrameIdx >= simData.frames.length - 1){
+    stopPlay();
+    return;
+  }
+  const f = simData.frames[curFrameIdx];
+  const speed = parseInt($speed.value, 10) || 850;
+  const delay = speed * (f.hold || 1.0);
+
+  playTimer = setTimeout(function(){
+    if (!isPlaying) return;
+    goToFrame(curFrameIdx + 1, true);
+    scheduleNext();
+  }, delay);
+}
+
+function togglePlay(){
+  if (isPlaying) stopPlay();
+  else startPlay();
+}
+
+/* Event listeners */
+$tour.addEventListener('click', togglePlay);
+$back.addEventListener('click', function(){ stopPlay(); goToFrame(curFrameIdx - 1, true); });
+$next.addEventListener('click', function(){ stopPlay(); goToFrame(curFrameIdx + 1, true); });
+$reset.addEventListener('click', function(){ stopPlay(); goToFrame(0, false); });
+
+$preset.addEventListener('change', function(){
+  stopPlay();
+  loadPreset(parseInt($preset.value, 10) || 0);
+});
+
+$mute.addEventListener('click', function(){
+  isMuted = !isMuted;
+  $mute.setAttribute('aria-pressed', String(isMuted));
+  const icon = $mute.querySelector('.mute-icon');
+  if (icon) icon.textContent = isMuted ? '🔇' : '🔊';
+});
+
+if ($bHideCode) $bHideCode.addEventListener('click', toggleCodeHidden);
+if ($bShowCodeNav) $bShowCodeNav.addEventListener('click', toggleCodeHidden);
+
+window.addEventListener('keydown', function(e){
+  if (e.target && /input|select|textarea/i.test(e.target.tagName)) return;
+  if (e.key === ' '){
+    e.preventDefault();
+    togglePlay();
+  } else if (e.key === 'ArrowLeft'){
+    e.preventDefault();
+    stopPlay();
+    goToFrame(curFrameIdx - 1, true);
+  } else if (e.key === 'ArrowRight'){
+    e.preventDefault();
+    stopPlay();
+    goToFrame(curFrameIdx + 1, true);
+  } else if (e.key === 'c' || e.key === 'C'){
+    e.preventDefault();
+    toggleCodeHidden();
+  }
+});
+
+document.addEventListener('visibilitychange', function(){
+  if (document.hidden && isPlaying){ stopPlay(); }
+});
+
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(){
+  readTheme();
+  buildScene(PRESETS[currentPresetIdx].args[0]);
+  goToFrame(curFrameIdx, false);
+});
+
+// Initial boot
+loadPreset(0);
+
+})();
+</script>
+</body>
+</html>
