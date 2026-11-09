@@ -79,11 +79,31 @@ CLIPS = [
     }
 ]
 
+def load_dotenv():
+    for fn in [".env.local", ".env"]:
+        p = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", fn))
+        if os.path.exists(p):
+            with open(p, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        k, v = line.split("=", 1)
+                        k = k.strip()
+                        v = v.strip().strip("'").strip('"')
+                        if k not in os.environ:
+                            os.environ[k] = v
+
 def main():
-    api_key = os.environ.get("ELEVENLABS_API_KEY") or os.environ.get("XI_API_KEY")
+    load_dotenv()
+    api_key = (
+        (sys.argv[1] if len(sys.argv) > 1 and not sys.argv[1].startswith("-") else None)
+        or os.environ.get("ELEVENLABS_API_KEY")
+        or os.environ.get("XI_API_KEY")
+    )
     if not api_key:
         print("INFO: ELEVENLABS_API_KEY environment variable is not set.", file=sys.stderr)
-        print("Please set it using: export ELEVENLABS_API_KEY='your-key-here'", file=sys.stderr)
+        print("Usage: python generate_audio.py [API_KEY]", file=sys.stderr)
+        print("   or: export ELEVENLABS_API_KEY='your-key-here' && python generate_audio.py", file=sys.stderr)
         return
 
     output_dir = os.path.dirname(os.path.abspath(__file__))
