@@ -1070,32 +1070,35 @@ const WALKTHROUGHS = {
       {
         title: 'Second Bracket Pair & Completion',
         clip: makeAudio('../audio-walkthroughs/balanced-brackets/02-second-pair-and-completion.mp3'),
-        text: 'Continuing down the string, the multiplication operator and spaces are ignored. At index eight, we meet an open square bracket and push it into the stack rack. Once again, the letters c and d along with the subtraction sign pass through untouched. At index twelve, we encounter the closing square bracket. Checking our stack, the top item is the matching open square bracket. We pop it out, leaving the stack empty. With all seventeen characters scanned and zero leftover brackets on the stack, the function returns True.',
+        text: 'Continuing down the string, the multiplication operator and spaces are ignored. At index ten, we meet an open square bracket and push it into the stack rack. Once again, the letters c and d along with the subtraction sign pass through untouched. At index sixteen, we encounter the closing square bracket. Checking our stack, the top item is the matching open square bracket. We pop it out, leaving the stack empty. With all seventeen characters scanned and zero leftover brackets on the stack, the function returns True.',
         startIdx: 8,
-        endIdx: 15,
+        endIdx: 18,
         cues: [
           { time: 0, frameIdx: 8 },
-          { time: 6.5, frameIdx: 9 },
-          { time: 12.0, frameIdx: 10 },
-          { time: 14.0, frameIdx: 11 },
-          { time: 16.0, frameIdx: 12 },
-          { time: 18.5, frameIdx: 13 },
-          { time: 23.0, frameIdx: 14 },
-          { time: 26.0, frameIdx: 15 }
+          { time: 2.0, frameIdx: 9 },
+          { time: 4.0, frameIdx: 10 },
+          { time: 6.5, frameIdx: 11 },
+          { time: 11.5, frameIdx: 12 },
+          { time: 13.0, frameIdx: 13 },
+          { time: 14.5, frameIdx: 14 },
+          { time: 16.0, frameIdx: 15 },
+          { time: 17.5, frameIdx: 16 },
+          { time: 20.0, frameIdx: 17 },
+          { time: 24.5, frameIdx: 18 }
         ]
       },
       {
         title: 'Bonus Max Depth Traversal',
         clip: makeAudio('../audio-walkthroughs/balanced-brackets/03-bonus-max-depth.mp3'),
         text: 'Now we trace the bonus function, max depth. Because the expression contains two separate pairs that never nest inside one another, the depth rises to one during each set of brackets and drops back to zero immediately after. Our depth gauge records a peak nesting level of one without ever calling Python\'s built-in max function.',
-        startIdx: 16,
+        startIdx: 19,
         endIdx: 24,
         cues: [
-          { time: 0, frameIdx: 16 },
-          { time: 5.5, frameIdx: 17 },
-          { time: 9.0, frameIdx: 18 },
-          { time: 12.5, frameIdx: 19 },
-          { time: 15.0, frameIdx: 20 },
+          { time: 0, frameIdx: 19 },
+          { time: 5.5, frameIdx: 20 },
+          { time: 9.0, frameIdx: 21 },
+          { time: 12.5, frameIdx: 22 },
+          { time: 15.0, frameIdx: 23 },
           { time: 17.5, frameIdx: 24 }
         ]
       }

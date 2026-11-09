@@ -18,7 +18,7 @@ CLIPS = [
             "We begin with our first expression: open paren, a plus b, close paren, times, open bracket, c minus d, close bracket. "
             "On the right, our 3D stack rack is completely empty. We scan the first character, an open parenthesis, and push it straight into the stack rack. "
             "Next, the characters a, plus, and b are standard math symbols, not brackets, so our algorithm ignores them. "
-            "When we reach the closing parenthesis at index four, we check the top of our stack. "
+            "When we reach the closing parenthesis at index six, we check the top of our stack. "
             "It holds the matching open parenthesis, so we pop it out. The first sub-expression is perfectly balanced."
         )
     },
@@ -26,9 +26,9 @@ CLIPS = [
         "filename": "02-second-pair-and-completion.mp3",
         "title": "Second Bracket Pair and Completion",
         "text": (
-            "Continuing down the string, the multiplication operator and spaces are ignored. At index eight, we meet an open square bracket and push it into the stack rack. "
+            "Continuing down the string, the multiplication operator and spaces are ignored. At index ten, we meet an open square bracket and push it into the stack rack. "
             "Once again, the letters c and d along with the subtraction sign pass through untouched. "
-            "At index twelve, we encounter the closing square bracket. Checking our stack, the top item is the matching open square bracket. "
+            "At index sixteen, we encounter the closing square bracket. Checking our stack, the top item is the matching open square bracket. "
             "We pop it out, leaving the stack empty. With all seventeen characters scanned and zero leftover brackets on the stack, the function returns True."
         )
     },
