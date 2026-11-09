@@ -91,6 +91,8 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
 @media (max-width:540px){
   .top-nav{flex-wrap:wrap;gap:8px}
   .nav-back span:not(.nav-arrow){font-size:0.82rem}
+  .btn-show-code .nav-label{display:none}
+  .btn-show-code{padding:3px 8px}
 }
 
 /* ---------- collapsible code pane & full-width mode ---------- */
@@ -111,10 +113,6 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
 .btn-show-code{display:inline-flex;align-items:center;gap:5px}
 .btn-show-code[hidden]{display:none!important}
 
-.stage-code-btn{position:absolute;top:8px;right:10px;z-index:2;background:var(--panel);border:1px solid var(--line);color:var(--ink);padding:4px 10px;border-radius:999px;font:inherit;font-size:0.78rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;box-shadow:0 2px 6px rgba(0,0,0,0.18);transition:background 120ms ease,border-color 120ms ease;min-height:unset;min-width:unset}
-.stage-code-btn:hover{background:var(--btnHover);border-color:var(--accent);color:var(--accent)}
-.stage-code-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.stage-code-btn[hidden]{display:none!important}
 </style>
 </head>
 <body>
@@ -137,7 +135,6 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid 
       <div class="stagebox" id="stage">
         <canvas id="cv" role="img" aria-label="3D hangman word letters and wrong-guess slots"></canvas>
         <div class="tag" id="tag"></div>
-        <button id="bShowCode" type="button" class="stage-code-btn" title="Show code panel (C)" aria-label="Show code panel" hidden><span class="eye-icon" aria-hidden="true">👁</span><span>Show Code</span></button>
         <div class="hint">drag to rotate · double-click to reset</div>
         <div class="err" id="err" hidden></div>
       </div>
@@ -295,7 +292,7 @@ function simulate(word, guesses, max){
 /* ---------- DOM ---------- */
 const $ = function(id){ return document.getElementById(id); };
 const $cv = $('cv'), $stage = $('stage'), $cap = $('caption'), $tag = $('tag'), $err = $('err'), $code = $('code');
-const $wrap = $('wrap'), $bHideCode = $('bHideCode'), $bShowCode = $('bShowCode'), $bShowCodeNav = $('bShowCodeNav');
+const $wrap = $('wrap'), $bHideCode = $('bHideCode'), $bShowCodeNav = $('bShowCodeNav');
 const $back = $('bBack'), $tour = $('bTour'), $mute = $('bMute'), $next = $('bNext'), $reset = $('bReset'), $preset = $('preset'), $speed = $('speed');
 const $tourIcon = $tour ? $tour.querySelector('.tour-icon') : null;
 const $tourLabel = $tour ? $tour.querySelector('.tour-label') : null;
@@ -760,7 +757,6 @@ function setCodeHidden(hidden){
   } catch(e){}
   if ($wrap) $wrap.classList.toggle('code-hidden', S.codeHidden);
   if ($bHideCode) $bHideCode.setAttribute('aria-expanded', String(!S.codeHidden));
-  if ($bShowCode) $bShowCode.hidden = !S.codeHidden;
   if ($bShowCodeNav) $bShowCodeNav.hidden = !S.codeHidden;
   if (typeof fitCamera === 'function') fitCamera();
   if (typeof requestRender === 'function') requestRender();
@@ -1275,7 +1271,6 @@ $tour.addEventListener('click', play);
 $reset.addEventListener('click', reset);
 
 if ($bHideCode) $bHideCode.addEventListener('click', toggleCodeHidden);
-if ($bShowCode) $bShowCode.addEventListener('click', toggleCodeHidden);
 if ($bShowCodeNav) $bShowCodeNav.addEventListener('click', toggleCodeHidden);
 if ($wrap){
   $wrap.addEventListener('transitionend', function(){
