@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Edit distance table in 3D</title>
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --ink:#18212b; --muted:#5b6876; --line:#d5dbe3;
+  --hl-bg:#fff3bf; --hl-bar:#d99a00; --stage:#eef1f5;
+  --plate:#c3ccd7; --accent:#e8a900;
+  --btn:#ffffff; --btnHover:#eef1f5;
+  color-scheme:light;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1318; --panel:#171c23; --ink:#e8edf3; --muted:#9aa7b6; --line:#2c3440;
+    --hl-bg:#4a3d0a; --hl-bar:#ffc400; --stage:#141a21;
+    --plate:#3a4452; --accent:#ffc400;
+    --btn:#1d2430; --btnHover:#27303b; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1318; --panel:#171c23; --ink:#e8edf3; --muted:#9aa7b6; --line:#2c3440;
+  --hl-bg:#4a3d0a; --hl-bar:#ffc400; --stage:#141a21;
+  --plate:#3a4452; --accent:#ffc400;
+  --btn:#1d2430; --btnHover:#27303b; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+main{max-width:1120px;margin:0 auto;padding:12px 14px 22px}
+h1{font-size:1.15rem;margin:4px 0 2px;font-weight:650}
+.goal{margin:0 0 12px;color:var(--muted)}
+.legend{margin-top:10px;font-size:.9rem;color:var(--muted)}
+.legend summary{cursor:pointer;color:var(--ink);font-weight:600}
+.legend ul{margin:6px 0;padding-left:18px}
+.wrap{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:start;transition:grid-template-columns 180ms ease}
+.wrap.code-hidden{grid-template-columns:minmax(0,1fr)}
+.wrap.code-hidden .code-pane{display:none}
+@media (max-width:760px){.wrap{grid-template-columns:minmax(0,1fr)}}
+.stagebox{position:relative;background:var(--stage);border:1px solid var(--line);border-radius:12px;overflow:hidden;aspect-ratio:4/3;min-height:260px;max-height:64vh;width:100%}
+#cv{display:block;width:100%;height:100%;touch-action:pan-y;cursor:grab}
+#cv:active{cursor:grabbing}
+.hint{position:absolute;right:10px;bottom:8px;font-size:11px;color:var(--muted);pointer-events:none}
+.tag{position:absolute;top:8px;left:10px;right:10px;width:max-content;max-width:calc(100% - 20px);font:600 12px ui-monospace,Menlo,Consolas,monospace;background:var(--panel);border:1px solid var(--line);padding:2px 9px;border-radius:999px}
+.err{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;background:var(--stage);color:var(--ink)}
+.err[hidden]{display:none}
+#caption{margin:12px 2px 8px;min-height:3.2em;font-size:1rem}
+#pmap{margin:0 0 10px;padding:6px 10px;background:var(--panel);border:1px solid var(--line);border-radius:8px;font:12.5px/1.5 ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;color:var(--ink)}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button,select{font:inherit;font-size:.9rem;color:var(--ink);background:var(--btn);border:1px solid var(--line);border-radius:8px;padding:6px 12px;min-height:36px}
+button{cursor:pointer;min-width:64px}
+button:hover:not(:disabled){background:var(--btnHover)}
+button:disabled{opacity:.45;cursor:default}
+button:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.btn-tour{background:var(--accent);color:#111;font-weight:700;border:1px solid rgba(0,0,0,0.18);display:inline-flex;align-items:center;gap:6px;padding:6px 14px}
+.btn-tour:hover:not(:disabled){filter:brightness(1.08)}
+.btn-tour.playing{background:var(--btn);color:var(--ink);border-color:var(--accent)}
+.tour-icon{font-size:0.95em}
+.btn-mute{min-width:40px;padding:6px 10px;font-size:1rem;display:inline-flex;align-items:center;justify-content:center}
+.tour-status{display:flex;align-items:center;gap:8px;font-size:0.85rem;color:var(--muted);min-height:1.6rem;margin:8px 2px 0;padding:4px 10px;background:var(--panel);border:1px solid var(--line);border-radius:999px;width:fit-content;max-width:100%}
+.tour-badge{display:inline-block;font-size:0.75rem;font-weight:700;letter-spacing:0.02em;text-transform:uppercase;color:var(--ink);background:var(--bg);padding:2px 8px;border-radius:999px;border:1px solid var(--line);white-space:nowrap}
+.tour-msg{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:600px){.tour-status{border-radius:8px;flex-wrap:wrap}.tour-msg{white-space:normal}}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+#code,#full{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:auto;font:13px/1.7 ui-monospace,Menlo,Consolas,monospace}
+#code{padding:8px 0;max-height:70vh}
+#full{padding:8px 12px;margin:8px 0;white-space:pre;font-size:12px;line-height:1.5}
+.row{display:flex;min-width:max-content;white-space:pre;padding-right:12px;border-left:4px solid transparent}
+.ln{flex:0 0 2.4em;text-align:right;padding-right:12px;color:var(--muted);user-select:none}
+.row.active{background:var(--hl-bg);border-left-color:var(--hl-bar)}
+
+/* ---------- top navigation bar ---------- */
+.top-nav{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 0 10px;margin-bottom:10px;border-bottom:1px solid var(--line);font-size:0.875rem}
+.top-nav a{color:var(--ink);text-decoration:none;display:inline-flex;align-items:center;gap:6px;font-weight:550;padding:4px 8px;border-radius:6px;transition:background 120ms ease,color 120ms ease}
+.top-nav a:hover{background:var(--btnHover);color:var(--accent)}
+.top-nav a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.nav-back{display:inline-flex;align-items:center;gap:6px;font-weight:600}
+.nav-back .nav-arrow{font-size:1.05em;transition:transform 120ms ease}
+.nav-back:hover .nav-arrow{transform:translateX(-2px)}
+.nav-sequence{display:inline-flex;align-items:center;gap:6px}
+.nav-btn{background:var(--btn);border:1px solid var(--line);padding:3px 9px;border-radius:6px;color:var(--ink);text-decoration:none;display:inline-flex;align-items:center;gap:4px;font-size:0.82rem;font-weight:550}
+.nav-btn:hover:not(.disabled){background:var(--btnHover);border-color:var(--accent);color:var(--accent)}
+.nav-btn.disabled{opacity:0.35;cursor:not-allowed;pointer-events:none}
+.nav-indicator{font-size:0.8rem;color:var(--muted);padding:0 6px;font-variant-numeric:tabular-nums;user-select:none;font-weight:600}
+.nav-arrow{font-size:1em;line-height:1}
+@media (max-width:540px){
+  .top-nav{flex-wrap:wrap;gap:8px}
+  .nav-back span:not(.nav-arrow){font-size:0.82rem}
+  .btn-show-code .nav-label{display:none}
+  .btn-show-code{padding:3px 8px}
+}
+
+/* ---------- collapsible code pane & full-width mode ---------- */
+.code-pane{display:flex;flex-direction:column;min-width:0}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:5px 12px;background:var(--panel);border:1px solid var(--line);border-bottom:none;border-radius:12px 12px 0 0;font-size:0.8rem;font-weight:600;color:var(--muted)}
+.code-header .code-title{text-transform:uppercase;letter-spacing:0.06em;font-size:0.75rem}
+.code-pane #code{border-top-left-radius:0;border-top-right-radius:0}
+.btn-toggle-code{background:transparent;border:1px solid transparent;color:var(--muted);padding:2px 8px;border-radius:6px;font:inherit;font-size:0.78rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;min-height:unset;min-width:unset;transition:background 120ms ease,color 120ms ease,border-color 120ms ease}
+.btn-toggle-code:hover{background:var(--btnHover);color:var(--ink);border-color:var(--line)}
+.btn-toggle-code:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn-toggle-code .eye-icon{font-size:1em;line-height:1}
+.btn-show-code{display:inline-flex;align-items:center;gap:5px}
+.btn-show-code[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+  <nav class="top-nav" aria-label="Visualizations navigation">
+    <a class="nav-back" href="../index.html" title="Return to all algorithm visualizations">
+      <span class="nav-arrow" aria-hidden="true">←</span>
+      <span>All Visualizations</span>
+    </a>
+    <div class="nav-sequence">
+      <button id="bShowCodeNav" type="button" class="nav-btn btn-show-code" title="Show code panel (C)" aria-label="Show code panel" hidden><span class="eye-icon" aria-hidden="true">👁</span><span class="nav-label">Show Code</span></button>
+      <a class="nav-btn prev" href="../17-shortest-route-BFS/Shortest%20route%20%28BFS%29%20in%203D.html" title="Previous visualization: Shortest route with BFS"><span class="nav-arrow" aria-hidden="true">‹</span><span class="nav-label">Prev</span></a>
+      <span class="nav-indicator" aria-label="Visualization 21 of 22" title="Visualization 21 of 22">21 / 22</span>
+      <a class="nav-btn next" href="../insertion-sort/Insertion%20sort%20in%203D%2C%20step%20by%20step.html" title="Next visualization: Insertion Sort"><span class="nav-label">Next</span><span class="nav-arrow" aria-hidden="true">›</span></a>
+    </div>
+  </nav>
+  <h1>Edit distance: filling the table, in 3D</h1>
+  <p class="goal" id="goal">Goal: count the fewest single-letter edits (insert, delete, replace) that turn string a into string b.</p>
+  <div class="wrap" id="wrap">
+    <div>
+      <div class="stagebox" id="stage">
+        <canvas id="cv" role="img" aria-label="3D table for edit distance"></canvas>
+        <div class="tag" id="tag"></div>
+        <div class="hint">drag to rotate · double-click to reset</div>
+        <div class="err" id="err" hidden></div>
+      </div>
+      <p id="caption" role="status" aria-live="polite"></p>
+      <div id="pmap" aria-label="Dynamic programming formula and step detail"></div>
+      <div class="controls" role="group" aria-label="Playback controls">
+        <button id="bTour" type="button" class="btn-tour" title="Start guided audio tour (Space)">
+          <span class="tour-icon" aria-hidden="true">▶</span>
+          <span class="tour-label">Audio Tour</span>
+        </button>
+        <button id="bBack" type="button" title="Previous step (Left Arrow)">Back</button>
+        <button id="bNext" type="button" title="Next step (Right Arrow)">Next</button>
+        <button id="bReset" type="button" title="Reset to beginning">Reset</button>
+        <button id="bMute" type="button" class="btn-mute" aria-pressed="false" title="Mute voiceover (Silent animation)">
+          <span class="mute-icon" aria-hidden="true">🔊</span>
+        </button>
+        <label class="sr" for="preset">Input</label>
+        <select id="preset"></select>
+        <label class="sr" for="speed">Speed</label>
+        <select id="speed">
+          <option value="1300">Slow</option>
+          <option value="850" selected>Normal</option>
+          <option value="450">Fast</option>
+          <option value="220">Very fast</option>
+        </select>
+      </div>
+      <div class="tour-status" id="tourStatus" role="status" aria-live="polite">
+        <span class="tour-badge" id="tourBadge">Milestone 1/2</span>
+        <span class="tour-msg" id="tourMsg">Ready to start guided audio tour.</span>
+      </div>
+      <details class="legend"><summary>How to read this</summary><ul>
+        <li>Each tile is <code>dp[i][j]</code>: fewest edits to turn the first i letters of <b>a</b> (rows) into the first j letters of <b>b</b> (columns). \u2205 means no letters.</li>
+        <li><b>Grey tile</b>: empty. <b>Blue tile</b>: filled in. <b>Raised yellow tile</b>: being filled now (its two letters turn orange). <b>Teal tile</b>: a tile it reads from. <b>Purple tiles</b>: the winning route back, at the end.</li>
+        <li><b>Arrow pointing down</b> (orange) = delete a letter of a. <b>Arrow pointing right</b> (blue) = insert a letter of b. <b>Diagonal arrow</b> (green) = replace, or free match when letters are equal. Thick arrow is the winner.</li>
+      </ul></details>
+    </div>
+    <div class="code-pane" id="codePane">
+      <div class="code-header">
+        <span class="code-title">Python Source</span>
+        <button id="bHideCode" type="button" class="btn-toggle-code" title="Hide code panel (C)" aria-label="Hide code panel">
+          <span class="eye-icon" aria-hidden="true">✕</span>
+          <span class="btn-label">Hide</span>
+        </button>
+      </div>
+      <div id="code" role="region" aria-label="Python source code of edit_table"></div>
+      <details style="margin-top:10px;"><summary style="cursor:pointer;font-weight:600;color:var(--muted);font-size:0.82rem;">Full solution (naive, memo, table, two-row bonus, analysis)</summary><div id="full"></div></details>
+    </div>
+  </div>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+
+const SRC = [
+  "def edit_table(a, b):",
+  "    m, n = len(a), len(b)",
+  "    dp = [[0] * (n + 1) for _ in range(m + 1)]",
+  "    for i in range(m + 1):",
+  "        dp[i][0] = i",
+  "    for j in range(n + 1):",
+  "        dp[0][j] = j",
+  "    for i in range(1, m + 1):",
+  "        for j in range(1, n + 1):",
+  "            if a[i - 1] == b[j - 1]:",
+  "                dp[i][j] = dp[i - 1][j - 1]",
+  "            else:",
+  "                dp[i][j] = 1 + min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1])",
+  "    return dp[m][n]"
+];
+
+const FULL = "# ---------------------------------------------------------------\n# Edit distance three ways (+ two-row bonus). No globals, no functools.\n# ---------------------------------------------------------------\n\ndef memoize(func):\n    cache = {}                      # arguments -> answer already worked out\n\n    def wrapper(*args):\n        wrapper.calls += 1          # counts every call, including cache hits\n        if args not in cache:\n            cache[args] = func(*args)\n        return cache[args]\n\n    wrapper.calls = 0\n    return wrapper\n\n\ndef edit_naive(a, b, counter=None):\n    def go(i, j):                   # distance between a[i:] and b[j:]\n        if counter is not None:\n            counter[0] += 1\n        if i == len(a):\n            return len(b) - j       # only inserts left\n        if j == len(b):\n            return len(a) - i       # only deletes left\n        if a[i] == b[j]:\n            return go(i + 1, j + 1)\n        return 1 + min(go(i + 1, j), go(i, j + 1), go(i + 1, j + 1))\n    return go(0, 0)\n\n\ndef edit_memo(a, b, counter=None):\n    @memoize\n    def go(i, j):\n        if i == len(a):\n            return len(b) - j\n        if j == len(b):\n            return len(a) - i\n        if a[i] == b[j]:\n            return go(i + 1, j + 1)\n        return 1 + min(go(i + 1, j), go(i, j + 1), go(i + 1, j + 1))\n    result = go(0, 0)\n    if counter is not None:\n        counter[0] += go.calls\n    return result\n\n\ndef edit_table(a, b):\n    m, n = len(a), len(b)\n    dp = [[0] * (n + 1) for _ in range(m + 1)]\n    for i in range(m + 1):\n        dp[i][0] = i\n    for j in range(n + 1):\n        dp[0][j] = j\n    for i in range(1, m + 1):\n        for j in range(1, n + 1):\n            if a[i - 1] == b[j - 1]:\n                dp[i][j] = dp[i - 1][j - 1]\n            else:\n                dp[i][j] = 1 + min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1])\n    return dp[m][n]\n\n\ndef edit_two_rows(a, b):\n    if len(b) > len(a):\n        a, b = b, a                 # distance is symmetric: keep rows short\n    prev = list(range(len(b) + 1))\n    for i in range(1, len(a) + 1):\n        cur = [i] + [0] * len(b)\n        for j in range(1, len(b) + 1):\n            if a[i - 1] == b[j - 1]:\n                cur[j] = prev[j - 1]\n            else:\n                cur[j] = 1 + min(prev[j], cur[j - 1], prev[j - 1])\n        prev = cur\n    return prev[len(b)]\n";
+
+const PRESETS = [
+  { name: 'flaw to lawn (answer 2)', a: 'flaw', b: 'lawn', expect: 2 },
+  { name: 'kitten to sitting (answer 3)', a: 'kitten', b: 'sitting', expect: 3 },
+  { name: 'same to same (answer 0)', a: 'same', b: 'same', expect: 0 },
+  { name: 'empty to abc (answer 3)', a: '', b: 'abc', expect: 3 },
+  { name: 'abc to empty (answer 3)', a: 'abc', b: '', expect: 3 },
+  { name: 'ab to ba (answer 2)', a: 'ab', b: 'ba', expect: 2 }
+];
+
+/* SIMULATE */
+function simulate(a, b){
+  const m = a.length, n = b.length, F = [];
+  let dp = [], ci = null, cj = null, srcs = [], arrows = [], path = null, formula = '', result = null;
+  const snap = function(lines, msg, kind, hold){
+    F.push({
+      lines: lines, msg: msg, kind: kind, hold: hold,
+      dp: dp.map(function(r){ return r.slice(); }), ci: ci, cj: cj,
+      srcs: srcs.map(function(s){ return s.slice(); }),
+      arrows: arrows.map(function(x){ return { from: x.from.slice(), to: x.to.slice(), kind: x.kind, win: x.win }; }),
+      path: path && path.map(function(s){ return s.slice(); }),
+      formula: formula, result: result, a: a, b: b
+    });
+  };
+  const q = function(s){ return '"' + s + '"'; };
+  for (let i = 0; i <= m; i++){ dp.push([]); for (let j = 0; j <= n; j++) dp[i].push(-1); }
+  snap([], 'Key idea: dp[i][j] = fewest edits to turn the first i letters of a into the first j letters of b. Every tile is built from three tiles already filled: up, left and diagonal.', 'start', 1.5);
+  snap([1, 2], 'Make an empty table with ' + (m + 1) + ' rows and ' + (n + 1) + ' columns. Row 0 and column 0 stand for the empty string (shown as \u2205).', 'init', 1.2);
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  snap([3, 4], 'First column: turning the first i letters of a into nothing takes i deletes.', 'base', 1.3);
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  snap([5, 6], 'First row: turning nothing into the first j letters of b takes j inserts.', 'base', 1.3);
+  for (let i = 1; i <= m; i++){
+    for (let j = 1; j <= n; j++){
+      ci = i; cj = j; const x = a[i - 1], y = b[j - 1];
+      if (x === y){
+        dp[i][j] = dp[i - 1][j - 1]; srcs = [[i - 1, j - 1]];
+        arrows = [{ from: [i - 1, j - 1], to: [i, j], kind: 'sub', win: true }];
+        formula = 'dp[' + i + '][' + j + '] = dp[' + (i - 1) + '][' + (j - 1) + '] = ' + dp[i][j];
+        snap([7, 8, 9, 10], q(x) + ' = ' + q(y) + ': the letters match, so no edit is needed. Copy the diagonal tile: ' + dp[i][j] + '.', 'match', 1.1);
+      } else {
+        const up = dp[i - 1][j], left = dp[i][j - 1], dg = dp[i - 1][j - 1], best = Math.min(up, left, dg);
+        dp[i][j] = 1 + best; srcs = [[i - 1, j], [i, j - 1], [i - 1, j - 1]];
+        arrows = [
+          { from: [i - 1, j], to: [i, j], kind: 'del', win: (up === best) },
+          { from: [i, j - 1], to: [i, j], kind: 'ins', win: (left === best) },
+          { from: [i - 1, j - 1], to: [i, j], kind: 'sub', win: (dg === best) }
+        ];
+        formula = 'dp[' + i + '][' + j + '] = 1 + min(up ' + up + ', left ' + left + ', diagonal ' + dg + ') = ' + dp[i][j];
+        snap([7, 8, 9, 11, 12], q(x) + ' \u2260 ' + q(y) + '. Delete ' + q(x) + ' (up): ' + up + '+1. Insert ' + q(y) + ' (left): ' + left + '+1. Replace ' + q(x) + ' with ' + q(y) + ' (diagonal): ' + dg + '+1. Cheapest is ' + dp[i][j] + '.', 'cell', 1.4);
+      }
+    }
+  }
+  ci = null; cj = null; srcs = []; arrows = []; result = dp[m][n];
+  let pi = m, pj = n; path = [[pi, pj]]; const ops = [];
+  while (pi > 0 || pj > 0){
+    if (pi > 0 && pj > 0 && a[pi - 1] === b[pj - 1] && dp[pi][pj] === dp[pi - 1][pj - 1]){ pi--; pj--; }
+    else if (pi > 0 && pj > 0 && dp[pi][pj] === dp[pi - 1][pj - 1] + 1){ ops.push('replace ' + a[pi - 1] + ' with ' + b[pj - 1]); pi--; pj--; }
+    else if (pi > 0 && dp[pi][pj] === dp[pi - 1][pj] + 1){ ops.push('delete ' + a[pi - 1]); pi--; }
+    else { ops.push('insert ' + b[pj - 1]); pj--; }
+    path.push([pi, pj]);
+  }
+  ops.reverse(); formula = 'return dp[' + m + '][' + n + '] = ' + result;
+  snap([13], 'Return dp[' + m + '][' + n + '] = ' + result + ', the bottom-right tile. Winning route back gives ' + (ops.length ? (ops.join(', then ') + '.') : 'no edits at all.'), 'end', 1.8);
+  return F;
+}
+
+/* DOM Elements */
+const $ = function(id){ return document.getElementById(id); };
+const $cv = $('cv'), $stage = $('stage'), $cap = $('caption'), $tag = $('tag'), $err = $('err'), $code = $('code'), $pmap = $('pmap');
+const $wrap = $('wrap'), $bHideCode = $('bHideCode'), $bShowCodeNav = $('bShowCodeNav');
+const $tour = $('bTour'), $back = $('bBack'), $next = $('bNext'), $reset = $('bReset'), $mute = $('bMute');
+const $preset = $('preset'), $speed = $('speed');
+const $tourStatus = $('tourStatus'), $tourBadge = $('tourBadge'), $tourMsg = $('tourMsg');
+const $goal = $('goal');
+const $tourIcon = $tour.querySelector('.tour-icon');
+const $tourLabel = $tour.querySelector('.tour-label');
+const $muteIcon = $mute.querySelector('.mute-icon');
+
+$('full').textContent = FULL;
+
+function toggleCode(){
+  const isHidden = $wrap.classList.toggle('code-hidden');
+  $bShowCodeNav.hidden = !isHidden;
+  $bHideCode.setAttribute('aria-expanded', String(!isHidden));
+  fitCamera();
+}
+$bHideCode.addEventListener('click', toggleCode);
+$bShowCodeNav.addEventListener('click', toggleCode);
+
+const rows = SRC.map(function(t, i){
+  const r = document.createElement('div');
+  r.className = 'row';
+  const n = document.createElement('span');
+  n.className = 'ln';
+  n.textContent = String(i + 1);
+  const c = document.createElement('span');
+  c.textContent = t;
+  r.appendChild(n);
+  r.appendChild(c);
+  $code.appendChild(r);
+  return r;
+});
+
+PRESETS.forEach(function(p, i){
+  const o = document.createElement('option');
+  o.value = String(i);
+  o.textContent = p.name;
+  $preset.appendChild(o);
+});
+
+/* Audio Walkthrough Assets */
+const audioAvailable = typeof Audio !== 'undefined';
+function makeAudio(src){
+  if (!audioAvailable) return null;
+  const a = new Audio();
+  a.preload = 'auto';
+  a.src = src;
+  return a;
+}
+
+const WALKTHROUGHS = {
+  flawToLawn: {
+    id: 'flawToLawn',
+    name: 'flaw to lawn (answer 2)',
+    match: function(cfg){
+      return cfg && cfg.a === 'flaw' && cfg.b === 'lawn';
+    },
+    clips: {
+      c1: makeAudio('../audio-walkthroughs/edit-distance-table/01-table-init-and-base-cases.mp3'),
+      c2: makeAudio('../audio-walkthroughs/edit-distance-table/02-recurrences-matches-and-backtrack.mp3')
+    },
+    milestones: [
+      {
+        title: 'Table Initialization & Base Cases',
+        clip: 'c1',
+        startIdx: 0,
+        endIdx: 3,
+        cues: [
+          { time: 0.0, frameIdx: 0 },
+          { time: 7.5, frameIdx: 1 },
+          { time: 18.0, frameIdx: 2 },
+          { time: 27.0, frameIdx: 3 }
+        ]
+      },
+      {
+        title: 'Recurrences, Free Matches & Optimal Alignment',
+        clip: 'c2',
+        startIdx: 4,
+        endIdx: 20,
+        cues: [
+          { time: 0.0, frameIdx: 4 },
+          { time: 2.0, frameIdx: 5 },
+          { time: 4.0, frameIdx: 6 },
+          { time: 6.0, frameIdx: 7 },
+          { time: 8.5, frameIdx: 8 },
+          { time: 11.0, frameIdx: 9 },
+          { time: 12.5, frameIdx: 11 },
+          { time: 14.0, frameIdx: 13 },
+          { time: 16.5, frameIdx: 15 },
+          { time: 18.0, frameIdx: 18 },
+          { time: 21.0, frameIdx: 19 },
+          { time: 27.5, frameIdx: 20 }
+        ]
+      }
+    ]
+  }
+};
+
+function getActiveWalkthrough(cfg){
+  if (!cfg) return null;
+  const keys = Object.keys(WALKTHROUGHS);
+  for (let i = 0; i < keys.length; i++){
+    const wt = WALKTHROUGHS[keys[i]];
+    if (wt.match(cfg)) return wt;
+  }
+  return null;
+}
+
+function getMilestones(wt){
+  if (!wt) return [];
+  return wt.milestones || [];
+}
+
+function getMilestoneTitle(wt, mIdx){
+  const milestones = getMilestones(wt);
+  const m = milestones[mIdx];
+  if (!m) return '';
+  return m.title || ('Milestone ' + (mIdx + 1));
+}
+
+function getMilestoneClip(wt, m){
+  if (!m) return null;
+  if (typeof m.clip === 'string' && wt.clips){
+    return wt.clips[m.clip] || null;
+  }
+  return null;
+}
+
+/* 3D Scene setup */
+const EMPTY='#c9d1db', FILLED='#9ccaf0', CUR='#ffd23f', SRCC='#7be0c8', PATHC='#c4a5f5', TXT='#0b1220', HOT='#e8710a';
+const KC = { del:'#c46a14', ins:'#2563a8', sub:'#2e9e5b' };
+const SP = 1.25, TS = 0.92, YAW0 = -0.1, PITCH0 = 1.0, YAW_MAX = 0.55, FOV = 32;
+let gl = false, renderer = null, scene = null, camera = null, world = null, tiles = [], hdrA = [], hdrB = [], arrows = [];
+const view = { yaw: YAW0, pitch: PITCH0, dist: 20 }, C = {}, texCache = new Map(), tweens = [];
+let raf = 0, drag = null, dims = { hw: 5, hz: 4, cx: 0, cz: 0 };
+
+function showError(msg){ $err.hidden = false; $err.textContent = msg; }
+function readTheme(){
+  const cs = getComputedStyle(document.documentElement);
+  ['ink','muted','plate','accent'].forEach(function(k){
+    C[k] = cs.getPropertyValue('--' + k).trim() || '#888888';
+  });
+}
+
+try {
+  if (typeof THREE === 'undefined') throw new Error('three.js did not load');
+  renderer = new THREE.WebGLRenderer({ canvas: $cv, antialias: true, alpha: true });
+  renderer.setClearColor(0, 0);
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(FOV, 4/3, 0.1, 200);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.58));
+  const dl = new THREE.DirectionalLight(0xffffff, 0.85);
+  dl.position.set(-5, 10, 8);
+  scene.add(dl);
+  gl = true;
+} catch (e){
+  showError('The 3D view could not start (' + (e && e.message ? e.message : 'WebGL unavailable') + '). Code and captions still step through the table.');
+}
+
+const SANS = '700 48px system-ui,-apple-system,"Segoe UI",sans-serif';
+function textTex(text, color){
+  const key = text + '|' + color;
+  let t = texCache.get(key);
+  if (t) return t;
+  const cv = document.createElement('canvas'), ctx = cv.getContext('2d');
+  ctx.font = SANS;
+  const w = Math.max(24, Math.ceil(ctx.measureText(text).width) + 16), h = 64;
+  cv.width = w; cv.height = h;
+  ctx.font = SANS; ctx.fillStyle = color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, w / 2, h / 2 + 2);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.minFilter = THREE.LinearFilter; tex.generateMipmaps = false;
+  t = { tex: tex, aspect: w / h };
+  texCache.set(key, t);
+  return t;
+}
+
+function makeSprite(){
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthTest: false }));
+  s.renderOrder = 10; s.visible = false;
+  return s;
+}
+
+function setText(s, text, color, h){
+  if (text === '' || text === null){ s.visible = false; return; }
+  const t = textTex(String(text), color);
+  s.material.map = t.tex; s.material.needsUpdate = true;
+  s.scale.set(h * t.aspect, h, 1);
+  s.visible = true;
+}
+
+function clearWorld(){
+  tweens.length = 0; if (!world) return;
+  world.traverse(function(o){
+    if (o.geometry) o.geometry.dispose();
+    if (o.material) o.material.dispose();
+  });
+  scene.remove(world); world = null; tiles = []; hdrA = []; hdrB = []; arrows = [];
+  texCache.forEach(function(t){ t.tex.dispose(); }); texCache.clear();
+}
+
+function tx(j, n){ return (j - n / 2) * SP; }
+
+function buildScene(cfg, keep){
+  if (!gl) return;
+  clearWorld(); readTheme();
+  world = new THREE.Group(); scene.add(world);
+
+  const a = cfg.a, b = cfg.b, m = a.length, n = b.length;
+  const x0 = tx(0, n), xn = tx(n, n), z0 = tx(0, m), zm = tx(m, m);
+  dims.cx = (x0 + xn) / 2 - 0.5; dims.cz = (z0 + zm) / 2 - 0.5;
+  dims.hw = (n * SP + 3) / 2; dims.hz = (m * SP + 3) / 2;
+
+  const fl = new THREE.Mesh(new THREE.BoxGeometry(n * SP + 3, 0.14, m * SP + 3), new THREE.MeshLambertMaterial({ color: C.plate }));
+  fl.position.set(dims.cx, -0.07, dims.cz); world.add(fl);
+
+  for (let i = 0; i <= m; i++){
+    tiles.push([]);
+    for (let j = 0; j <= n; j++){
+      const t = new THREE.Mesh(new THREE.BoxGeometry(TS, 0.16, TS), new THREE.MeshLambertMaterial({ color: EMPTY }));
+      t.position.set(tx(j, n), 0.08, tx(i, m)); world.add(t);
+      const v = makeSprite(); v.position.set(tx(j, n), 0.55, tx(i, m)); world.add(v);
+      tiles[i].push({ m: t, v: v });
+    }
+  }
+
+  for (let j = 0; j <= n; j++){
+    const s = makeSprite(); s.position.set(tx(j, n), 0.2, z0 - SP * 1.0);
+    setText(s, j === 0 ? '\u2205' : b[j - 1], C.ink, 0.6); world.add(s); hdrB.push(s);
+  }
+  for (let i = 0; i <= m; i++){
+    const s = makeSprite(); s.position.set(x0 - SP * 1.0, 0.2, tx(i, m));
+    setText(s, i === 0 ? '\u2205' : a[i - 1], C.ink, 0.6); world.add(s); hdrA.push(s);
+  }
+
+  const Y = new THREE.Vector3(0, 1, 0);
+  ['del','ins','sub'].forEach(function(k){
+    const mat = new THREE.MeshLambertMaterial({ color: KC[k] });
+    const cyl = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1, 10), mat);
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.28, 14), mat);
+    cyl.visible = false; cone.visible = false; world.add(cyl); world.add(cone);
+    arrows.push({ k: k, cyl: cyl, cone: cone, Y: Y });
+  });
+
+  if (!keep){ view.yaw = YAW0; view.pitch = PITCH0; }
+  fitCamera();
+}
+
+function placeArrow(ar, p0, p1, w){
+  const d = p1.clone().sub(p0), L = d.length(); d.normalize();
+  const q = new THREE.Quaternion().setFromUnitVectors(ar.Y, d), cl = Math.max(L - 0.84, 0.05);
+  ar.cyl.scale.set(w, cl, w); ar.cyl.position.copy(p0).addScaledVector(d, 0.28 + cl / 2); ar.cyl.quaternion.copy(q);
+  ar.cone.scale.set(w, 1, w); ar.cone.position.copy(p1).addScaledVector(d, -0.42); ar.cone.quaternion.copy(q);
+  ar.cyl.visible = true; ar.cone.visible = true;
+}
+
+function updateCamera(){
+  if (!gl) return;
+  const cp = Math.cos(view.pitch), sp = Math.sin(view.pitch);
+  camera.position.set(dims.cx + Math.sin(view.yaw) * cp * view.dist, sp * view.dist, dims.cz + Math.cos(view.yaw) * cp * view.dist);
+  camera.lookAt(dims.cx, 0, dims.cz);
+  requestRender();
+}
+
+function fitCamera(){
+  if (!gl) return;
+  const w = $stage.clientWidth || 600, h = $stage.clientHeight || 450;
+  if (!w || !h) return;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(w, h, false);
+  const asp = w / h, t = Math.tan(FOV * Math.PI / 360);
+  camera.aspect = asp; camera.updateProjectionMatrix();
+  const vE = 0.8 * Math.cos(PITCH0) + dims.hz * Math.sin(PITCH0), hE = dims.hw * Math.cos(YAW_MAX) + dims.hz * Math.sin(YAW_MAX);
+  view.dist = Math.max(vE / t, hE / (t * asp)) * 1.12;
+  updateCamera();
+}
+
+function settle(){ tweens.splice(0).forEach(function(tw){ tw.upd(1); }); }
+function requestRender(){ if (gl && !raf) raf = requestAnimationFrame(loop); }
+function loop(){
+  raf = 0; const now = performance.now();
+  for (let i = tweens.length - 1; i >= 0; i--){
+    const tw = tweens[i], u = Math.max(0, Math.min(1, (now - tw.t0) / tw.dur));
+    tw.upd(u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2);
+    if (u >= 1) tweens.splice(i, 1);
+  }
+  renderer.render(scene, camera);
+  if (tweens.length) requestRender();
+}
+
+if (gl){
+  $cv.addEventListener('pointerdown', function(e){
+    drag = { x: e.clientX, yaw: view.yaw };
+    try { $cv.setPointerCapture(e.pointerId); } catch(err){}
+  });
+  $cv.addEventListener('pointermove', function(e){
+    if (!drag) return;
+    view.yaw = Math.max(-YAW_MAX, Math.min(YAW_MAX, drag.yaw + (e.clientX - drag.x) * 0.008));
+    updateCamera();
+  });
+  ['pointerup','pointercancel'].forEach(function(t){
+    $cv.addEventListener(t, function(){ drag = null; });
+  });
+  $cv.addEventListener('dblclick', function(){
+    view.yaw = YAW0; view.pitch = PITCH0; updateCamera();
+  });
+}
+
+/* Playback State */
+const State = {
+  cfg: null, frames: [], idx: 0, state: 'paused', timer: 0, speed: 850, shown: -1,
+  audioMuted: false, currentClip: null, currentMilestoneIdx: -1, cueTimers: [], tourToken: 0
+};
+
+function applyScene(f){
+  if (!gl || !world) return;
+  const m = f.a.length, n = f.b.length;
+  const key = function(p){ return p[0] + ',' + p[1]; };
+  const srcSet = new Set(f.srcs.map(key)), pathSet = new Set((f.path || []).map(key));
+
+  for (let i = 0; i <= m; i++){
+    for (let j = 0; j <= n; j++){
+      const t = tiles[i][j], v = f.dp[i][j], k = i + ',' + j;
+      let col = EMPTY, lift = 0;
+      if (v >= 0) col = FILLED;
+      if (srcSet.has(k)) col = SRCC;
+      if (pathSet.has(k)) col = PATHC;
+      if (f.ci === i && f.cj === j){ col = CUR; lift = 0.22; }
+
+      t.m.material.color.set(col);
+      t.m.position.y = 0.08 + lift;
+      t.v.position.y = 0.55 + lift;
+      setText(t.v, v >= 0 ? v : '', TXT, 0.52);
+    }
+  }
+
+  for (let j = 0; j <= n; j++){
+    setText(hdrB[j], j === 0 ? '\u2205' : f.b[j - 1], f.cj === j && j > 0 ? HOT : C.ink, 0.6);
+  }
+  for (let i = 0; i <= m; i++){
+    setText(hdrA[i], i === 0 ? '\u2205' : f.a[i - 1], f.ci === i && i > 0 ? HOT : C.ink, 0.6);
+  }
+
+  arrows.forEach(function(ar){ ar.cyl.visible = false; ar.cone.visible = false; });
+  f.arrows.forEach(function(x){
+    const ar = arrows.filter(function(r){ return r.k === x.kind; })[0];
+    if (ar){
+      placeArrow(ar, new THREE.Vector3(tx(x.from[1], n), 0.4, tx(x.from[0], m)), new THREE.Vector3(tx(x.to[1], n), 0.4, tx(x.to[0], m)), x.win ? 2.2 : 0.8);
+    }
+  });
+
+  requestRender();
+}
+
+function renderCode(f){
+  let first = -1;
+  rows.forEach(function(r, i){
+    const a = f.lines.indexOf(i) >= 0;
+    r.classList.toggle('active', a);
+    if (a && first < 0) first = i;
+  });
+  if (first >= 0){
+    const r = rows[first];
+    if (r.offsetTop < $code.scrollTop) $code.scrollTop = r.offsetTop;
+    else if (r.offsetTop + r.offsetHeight > $code.scrollTop + $code.clientHeight){
+      $code.scrollTop = r.offsetTop + r.offsetHeight - $code.clientHeight;
+    }
+  }
+}
+
+function updateButtons(){
+  const last = State.frames.length - 1;
+  $back.disabled = State.idx <= 0;
+  $next.disabled = State.idx >= last;
+  if (State.state === 'playing'){
+    $tour.classList.add('playing');
+    if ($tourIcon) $tourIcon.textContent = '⏸';
+    if ($tourLabel) $tourLabel.textContent = 'Pause Tour';
+    $tour.title = 'Pause guided tour (Space)';
+  } else {
+    $tour.classList.remove('playing');
+    if (State.idx >= last){
+      if ($tourIcon) $tourIcon.textContent = '↺';
+      if ($tourLabel) $tourLabel.textContent = 'Replay Tour';
+      $tour.title = 'Replay guided tour from start (Space)';
+    } else if (State.idx > 0){
+      if ($tourIcon) $tourIcon.textContent = '▶';
+      if ($tourLabel) $tourLabel.textContent = 'Resume Tour';
+      $tour.title = 'Resume guided tour (Space)';
+    } else {
+      if ($tourIcon) $tourIcon.textContent = '▶';
+      if ($tourLabel) $tourLabel.textContent = 'Audio Tour';
+      $tour.title = 'Start guided audio tour (Space)';
+    }
+  }
+}
+
+function updateTourStatus(){
+  const wt = getActiveWalkthrough(State.cfg);
+  if (wt){
+    const milestones = getMilestones(wt);
+    const totalM = milestones.length;
+    let mIdx = State.currentMilestoneIdx;
+    if (mIdx < 0 || mIdx >= totalM){
+      mIdx = 0;
+      for (let i = 0; i < milestones.length; i++){
+        if (State.idx >= milestones[i].startIdx && State.idx <= milestones[i].endIdx){
+          mIdx = i;
+          break;
+        }
+      }
+    }
+    const title = getMilestoneTitle(wt, mIdx);
+
+    if (State.state === 'playing'){
+      $tourBadge.textContent = 'Milestone ' + (mIdx + 1) + '/' + totalM;
+      $tourMsg.textContent = State.audioMuted ? (title + ' (silent mode)') : title;
+    } else if (State.state === 'ended'){
+      $tourBadge.textContent = 'Completed';
+      $tourMsg.textContent = 'Guided tour finished for ' + wt.name + '.';
+    } else {
+      $tourBadge.textContent = 'Milestone ' + (mIdx + 1) + '/' + totalM;
+      if (State.idx === 0){
+        $tourMsg.textContent = 'Ready to start guided audio tour for ' + wt.name + '.';
+      } else {
+        $tourMsg.textContent = 'Tour paused at step ' + (State.idx + 1) + ' of ' + State.frames.length + '.';
+      }
+    }
+  } else {
+    $tourBadge.textContent = 'Preset';
+    if (State.state === 'ended'){
+      $tourMsg.textContent = 'Run complete.';
+    } else if (State.state === 'playing'){
+      $tourMsg.textContent = 'Playing ' + (State.cfg ? State.cfg.name : 'simulation') + ' (silent mode).';
+    } else {
+      $tourMsg.textContent = 'Ready to run ' + (State.cfg ? State.cfg.name : 'preset') + '.';
+    }
+  }
+}
+
+function updateMuteButton(){
+  $mute.setAttribute('aria-pressed', String(State.audioMuted));
+  if ($muteIcon) $muteIcon.textContent = State.audioMuted ? '🔇' : '🔊';
+  $mute.title = State.audioMuted ? 'Unmute voiceover (Space or M)' : 'Mute voiceover (Silent animation)';
+}
+
+function clearCueTimers(){
+  if (Array.isArray(State.cueTimers)){
+    State.cueTimers.forEach(function(t){ clearTimeout(t); });
+  }
+  State.cueTimers = [];
+}
+
+function stopAudio(){
+  clearCueTimers();
+  State.tourToken = (State.tourToken || 0) + 1;
+  if (State.currentClip){
+    try {
+      State.currentClip.pause();
+      State.currentClip.currentTime = 0;
+      State.currentClip.onended = null;
+    } catch(e){}
+    State.currentClip = null;
+  }
+  State.currentMilestoneIdx = -1;
+}
+
+function pauseAudio(){
+  clearCueTimers();
+  if (State.currentClip){
+    try { State.currentClip.pause(); } catch(e){}
+  }
+}
+
+function startMilestone(mIdx, fromTime){
+  const wt = getActiveWalkthrough(State.cfg);
+  if (!wt || !audioAvailable || State.audioMuted) return;
+
+  const milestones = getMilestones(wt);
+  if (mIdx < 0 || mIdx >= milestones.length) return;
+
+  const m = milestones[mIdx];
+  const clip = getMilestoneClip(wt, m);
+  if (!clip){
+    if (State.state === 'playing') schedule();
+    return;
+  }
+
+  State.currentMilestoneIdx = mIdx;
+  State.currentClip = clip;
+  const token = ++State.tourToken;
+  updateTourStatus();
+
+  clip.onended = function(){
+    if (token !== State.tourToken || State.state !== 'playing') return;
+    if (mIdx + 1 < milestones.length){
+      startMilestone(mIdx + 1, 0);
+    } else {
+      State.state = 'ended';
+      State.currentClip = null;
+      updateButtons();
+      updateTourStatus();
+    }
+  };
+
+  clip.onerror = function(){
+    if (token !== State.tourToken) return;
+    console.warn('Audio clip failed to play, switching to silent mode.');
+    $tourMsg.textContent = 'Audio clips unavailable; running in silent mode.';
+    State.audioMuted = true;
+    updateMuteButton();
+    if (State.state === 'playing') schedule();
+  };
+
+  try {
+    clip.currentTime = fromTime || 0;
+  } catch(e){}
+
+  clearCueTimers();
+  if (Array.isArray(m.cues)){
+    m.cues.forEach(function(cue){
+      const cueTime = cue.time || 0;
+      const targetFrame = cue.frameIdx;
+      if (cueTime >= (fromTime || 0)){
+        const delayMs = Math.max(0, (cueTime - (fromTime || 0)) * 1000);
+        const timerId = setTimeout(function(){
+          if (token === State.tourToken && State.state === 'playing'){
+            show(targetFrame);
+          }
+        }, delayMs);
+        State.cueTimers.push(timerId);
+      }
+    });
+  }
+
+  const playPromise = clip.play();
+  if (playPromise !== undefined){
+    playPromise.catch(function(err){
+      if (token !== State.tourToken) return;
+      if (err && err.name === 'NotAllowedError'){
+        $tourMsg.textContent = 'Click Audio Tour to allow sound in your browser.';
+      } else {
+        $tourMsg.textContent = 'Audio clips unavailable; running in silent mode.';
+      }
+      if (State.state === 'playing') schedule();
+    });
+  }
+}
+
+function playMilestoneForFrame(frameIdx){
+  const wt = getActiveWalkthrough(State.cfg);
+  if (!wt || !audioAvailable || State.audioMuted) return;
+
+  const milestones = getMilestones(wt);
+  let mIdx = -1;
+  for (let i = 0; i < milestones.length; i++){
+    const m = milestones[i];
+    if (frameIdx >= m.startIdx && frameIdx <= m.endIdx){
+      mIdx = i;
+      break;
+    }
+  }
+  if (mIdx < 0) return;
+
+  const m = milestones[mIdx];
+  const clip = getMilestoneClip(wt, m);
+  let fromTime = 0;
+  if (Array.isArray(m.cues)){
+    for (let c = m.cues.length - 1; c >= 0; c--){
+      if (frameIdx >= m.cues[c].frameIdx){
+        fromTime = m.cues[c].time || 0;
+        break;
+      }
+    }
+  }
+
+  if (State.currentClip === clip && !clip.ended && clip.currentTime > fromTime){
+    fromTime = clip.currentTime;
+  }
+
+  startMilestone(mIdx, fromTime);
+}
+
+function show(i){
+  const f = State.frames[i]; if (!f) return;
+  settle(); State.idx = i;
+  $cap.textContent = f.msg;
+  $tag.textContent = 'Step ' + (i + 1) + ' of ' + State.frames.length + ' \u00b7 a = "' + f.a + '" (rows), b = "' + f.b + '" (columns)';
+  $pmap.textContent = f.formula || 'dp[i][j] = fewest edits: a[:i] \u2192 b[:j]';
+  $cv.setAttribute('aria-label', 'Edit distance table for ' + f.a + ' and ' + f.b + '. ' + f.formula);
+  renderCode(f);
+  applyScene(f);
+  State.shown = i;
+  updateButtons();
+  updateTourStatus();
+}
+
+function clearTimer(){ if (State.timer){ clearTimeout(State.timer); State.timer = 0; } }
+function schedule(){
+  clearTimer();
+  if (State.state !== 'playing') return;
+  const wt = getActiveWalkthrough(State.cfg);
+  if (wt && audioAvailable && !State.audioMuted && State.currentClip && !State.currentClip.paused){
+    return;
+  }
+  const hold = (State.frames[State.idx] && State.frames[State.idx].hold) ? State.frames[State.idx].hold : 1;
+  State.timer = setTimeout(tick, State.speed * hold);
+}
+function tick(){
+  State.timer = 0;
+  if (State.state !== 'playing') return;
+  if (State.idx >= State.frames.length - 1){
+    State.state = 'ended';
+    updateButtons();
+    updateTourStatus();
+    return;
+  }
+  show(State.idx + 1);
+  if (State.idx >= State.frames.length - 1){
+    State.state = 'ended';
+    updateButtons();
+    updateTourStatus();
+    return;
+  }
+  schedule();
+}
+function pause(){
+  clearTimer();
+  settle();
+  pauseAudio();
+  if (State.state === 'playing' || State.state === 'ended') State.state = 'paused';
+  updateButtons();
+  updateTourStatus();
+}
+function play(){
+  if (State.state === 'playing'){
+    pause();
+    return;
+  }
+  if (State.idx >= State.frames.length - 1){
+    show(0);
+  }
+  State.state = 'playing';
+  updateButtons();
+
+  const wt = getActiveWalkthrough(State.cfg);
+  if (wt && audioAvailable && !State.audioMuted){
+    playMilestoneForFrame(State.idx);
+  } else {
+    updateTourStatus();
+    schedule();
+  }
+}
+function step(d){
+  stopAudio();
+  pause();
+  const j = State.idx + d;
+  if (j < 0 || j >= State.frames.length) return;
+  show(j);
+}
+function reset(){
+  stopAudio();
+  pause();
+  show(0);
+}
+function toggleMute(){
+  State.audioMuted = !State.audioMuted;
+  updateMuteButton();
+  if (State.audioMuted){
+    pauseAudio();
+    if (State.state === 'playing') schedule();
+  } else {
+    clearTimer();
+    if (State.state === 'playing') playMilestoneForFrame(State.idx);
+  }
+  updateTourStatus();
+}
+function loadPreset(i){
+  stopAudio();
+  pause();
+  $preset.value = String(i);
+  const p = PRESETS[i];
+  State.cfg = { name: p.name, a: p.a, b: p.b };
+  State.frames = simulate(p.a, p.b);
+  State.shown = -1;
+  State.idx = 0;
+  $goal.textContent = 'edit_table(\'' + p.a + '\', \'' + p.b + '\') \u2014 Goal: count fewest single-letter edits (insert, delete, replace) turning \'' + p.a + '\' into \'' + p.b + '\'.';
+  buildScene(State.cfg);
+  show(0);
+  updateTourStatus();
+}
+
+$tour.addEventListener('click', play);
+$back.addEventListener('click', function(){ step(-1); });
+$next.addEventListener('click', function(){ step(1); });
+$reset.addEventListener('click', reset);
+$mute.addEventListener('click', toggleMute);
+$preset.addEventListener('change', function(){ loadPreset(Number($preset.value)); });
+$speed.addEventListener('change', function(){
+  State.speed = Number($speed.value);
+  if (State.state === 'playing') schedule();
+});
+document.addEventListener('keydown', function(e){
+  const t = e.target && e.target.tagName;
+  if (t === 'BUTTON' || t === 'SELECT' || t === 'INPUT' || t === 'TEXTAREA' || t === 'SUMMARY') return;
+  if (e.key === ' '){ e.preventDefault(); play(); }
+  else if (e.key === 'ArrowRight'){ step(1); }
+  else if (e.key === 'ArrowLeft'){ step(-1); }
+  else if (e.key === 'm' || e.key === 'M'){ toggleMute(); }
+  else if (e.key === 'c' || e.key === 'C'){ toggleCode(); }
+});
+document.addEventListener('visibilitychange', function(){ if (document.hidden && State.state === 'playing') pause(); });
+
+if (typeof ResizeObserver !== 'undefined') new ResizeObserver(fitCamera).observe($stage);
+else window.addEventListener('resize', fitCamera);
+
+function retheme(){
+  if (!gl || !State.cfg) return;
+  buildScene(State.cfg, true);
+  show(State.idx);
+}
+try { if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', retheme); } catch(e){}
+new MutationObserver(retheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+loadPreset(0);
+})();
+</script>
+</body>
+</html>
