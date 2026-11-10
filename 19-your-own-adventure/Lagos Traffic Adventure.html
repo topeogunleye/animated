@@ -1,0 +1,1229 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Lagos Traffic Adventure</title>
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --ink:#18212b; --muted:#5b6876; --line:#d5dbe3;
+  --hl-bg:#fff3bf; --hl-bar:#d99a00; --stage:#eef1f5;
+  --plate:#c3ccd7; --accent:#e8a900;
+  --btn:#ffffff; --btnHover:#eef1f5;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1318; --panel:#171c23; --ink:#e8edf3; --muted:#9aa7b6; --line:#2c3440;
+    --hl-bg:#4a3d0a; --hl-bar:#ffc400; --stage:#141a21;
+    --plate:#3a4452; --accent:#ffc400;
+    --btn:#1d2430; --btnHover:#27303b; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1318; --panel:#171c23; --ink:#e8edf3; --muted:#9aa7b6; --line:#2c3440;
+  --hl-bg:#4a3d0a; --hl-bar:#ffc400; --stage:#141a21;
+  --plate:#3a4452; --accent:#ffc400;
+  --btn:#1d2430; --btnHover:#27303b; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh;overflow-x:hidden}
+main{max-width:1120px;margin:0 auto;padding-block:12px 22px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font-size:1.15rem;margin:4px 0 4px;font-weight:650}
+.goal{margin:0 0 12px;color:var(--muted);font-size:.95rem}
+.wrap{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:start;transition:grid-template-columns 180ms ease}
+.wrap.code-hidden{grid-template-columns:minmax(0,1fr)}
+.wrap.code-hidden .code-pane{display:none}
+@media (max-width:760px){.wrap{grid-template-columns:minmax(0,1fr)}}
+.stagebox{position:relative;background:var(--stage);border:1px solid var(--line);border-radius:12px;overflow:hidden;aspect-ratio:4/3;min-height:260px;max-height:64vh;width:100%}
+#cv{display:block;width:100%;height:100%;touch-action:pan-y;cursor:grab}
+#cv:active{cursor:grabbing}
+.hint{position:absolute;right:10px;bottom:8px;font-size:11px;color:var(--muted);pointer-events:none}
+.tag{position:absolute;top:8px;left:10px;width:max-content;max-width:calc(100% - 20px);font:600 12px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--panel);border:1px solid var(--line);padding:2px 9px;border-radius:999px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.err{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;color:var(--ink);background:var(--stage)}
+.err[hidden]{display:none}
+#caption{margin:12px 2px 4px;min-height:3em;font-size:1rem}
+#watch{margin:0 2px 10px;min-height:1.4em;font-size:.88rem;color:var(--muted)}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button,select{font:inherit;font-size:.9rem;color:var(--ink);background:var(--btn);border:1px solid var(--line);border-radius:8px;padding:6px 12px;min-height:36px}
+button{cursor:pointer;min-width:64px}
+button:hover:not(:disabled){background:var(--btnHover)}
+button:disabled{opacity:.45;cursor:default}
+button:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.btn-tour{background:var(--accent);color:#111;font-weight:700;border:1px solid rgba(0,0,0,0.18);display:inline-flex;align-items:center;gap:6px;padding:6px 14px}
+.btn-tour:hover:not(:disabled){filter:brightness(1.08)}
+.btn-tour.playing{background:var(--btn);color:var(--ink);border-color:var(--accent)}
+.tour-icon{font-size:0.95em}
+.btn-mute{min-width:40px;padding:6px 10px;font-size:1rem;display:inline-flex;align-items:center;justify-content:center}
+.tour-status{display:flex;align-items:center;gap:8px;font-size:0.85rem;color:var(--muted);min-height:1.6rem;margin:8px 2px 0;padding:4px 10px;background:var(--panel);border:1px solid var(--line);border-radius:999px;width:fit-content;max-width:100%}
+.tour-badge{display:inline-block;font-size:0.75rem;font-weight:700;letter-spacing:0.02em;text-transform:uppercase;color:var(--ink);background:var(--bg);padding:2px 8px;border-radius:999px;border:1px solid var(--line);white-space:nowrap}
+.tour-msg{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:600px){.tour-status{border-radius:8px;flex-wrap:wrap}.tour-msg{white-space:normal}}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.screenlab{margin:14px 2px 4px;font-size:.8rem;font-weight:650;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+#screen{background:#0e131a;color:#d6e4f0;border:1px solid var(--line);border-radius:10px;padding:8px 12px;max-height:12.5em;min-height:5em;overflow:auto;font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+#screen div{white-space:pre-wrap;overflow-wrap:anywhere}
+#screen .cmd{color:#ffc400}
+details{margin-top:12px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:6px 12px;font-size:.9rem}
+summary{cursor:pointer;font-weight:600}
+details ul{margin:8px 0 6px;padding-left:1.2em}
+details li{margin:3px 0}
+#code{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 0;overflow:auto;max-height:80vh;font:13px/1.7 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+@media (max-width:420px){#code{font-size:12px}}
+.row{display:flex;min-width:max-content;white-space:pre;padding-right:12px;border-left:4px solid transparent}
+.ln{flex:0 0 2.4em;text-align:right;padding-right:12px;color:var(--muted);user-select:none}
+.row.active{background:var(--hl-bg);border-left-color:var(--hl-bar)}
+
+/* ---------- top navigation bar ---------- */
+.top-nav{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 0 10px;margin-bottom:10px;border-bottom:1px solid var(--line);font-size:0.875rem}
+.top-nav a{color:var(--ink);text-decoration:none;display:inline-flex;align-items:center;gap:6px;font-weight:550;padding:4px 8px;border-radius:6px;transition:background 120ms ease,color 120ms ease}
+.top-nav a:hover{background:var(--btnHover);color:var(--accent)}
+.top-nav a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.nav-back{display:inline-flex;align-items:center;gap:6px;font-weight:600}
+.nav-back .nav-arrow{font-size:1.05em;transition:transform 120ms ease}
+.nav-back:hover .nav-arrow{transform:translateX(-2px)}
+.nav-sequence{display:inline-flex;align-items:center;gap:6px}
+.nav-btn{background:var(--btn);border:1px solid var(--line);padding:3px 9px;border-radius:6px;color:var(--ink);text-decoration:none;display:inline-flex;align-items:center;gap:4px;font-size:0.82rem;font-weight:550}
+.nav-btn:hover:not(.disabled){background:var(--btnHover);border-color:var(--accent);color:var(--accent)}
+.nav-btn.disabled{opacity:0.35;cursor:not-allowed;pointer-events:none}
+.nav-indicator{font-size:0.8rem;color:var(--muted);padding:0 6px;font-variant-numeric:tabular-nums;user-select:none;font-weight:600}
+.nav-arrow{font-size:1em;line-height:1}
+@media (max-width:540px){
+  .top-nav{flex-wrap:wrap;gap:8px}
+  .nav-back span:not(.nav-arrow){font-size:0.82rem}
+  .btn-show-code .nav-label{display:none}
+  .btn-show-code{padding:3px 8px}
+}
+
+/* ---------- collapsible code pane & full-width mode ---------- */
+.code-pane{display:flex;flex-direction:column;min-width:0}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:5px 12px;background:var(--panel);border:1px solid var(--line);border-bottom:none;border-radius:12px 12px 0 0;font-size:0.8rem;font-weight:600;color:var(--muted)}
+.code-header .code-title{text-transform:uppercase;letter-spacing:0.06em;font-size:0.75rem}
+.code-pane #code{border-top-left-radius:0;border-top-right-radius:0}
+.btn-toggle-code{background:transparent;border:1px solid transparent;color:var(--muted);padding:2px 8px;border-radius:6px;font:inherit;font-size:0.78rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;min-height:unset;min-width:unset;transition:background 120ms ease,color 120ms ease,border-color 120ms ease}
+.btn-toggle-code:hover{background:var(--btnHover);color:var(--ink);border-color:var(--line)}
+.btn-toggle-code:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn-toggle-code .eye-icon{font-size:1em;line-height:1}
+.btn-show-code{display:inline-flex;align-items:center;gap:5px}
+.btn-show-code[hidden]{display:none!important}
+</style>
+<main>
+  <nav class="top-nav" aria-label="Visualizations navigation">
+    <a class="nav-back" href="../index.html" title="Return to all algorithm visualizations">
+      <span class="nav-arrow" aria-hidden="true">←</span>
+      <span>All Visualizations</span>
+    </a>
+    <div class="nav-sequence">
+      <button id="bShowCodeNav" type="button" class="nav-btn btn-show-code" title="Show code panel (C)" aria-label="Show code panel" hidden><span class="eye-icon" aria-hidden="true">👁</span><span class="nav-label">Show Code</span></button>
+      <a class="nav-btn prev" href="../18-edit-distance-table/Edit%20distance%20table%20in%203D.html" title="Previous visualization: Edit distance table in 3D"><span class="nav-arrow" aria-hidden="true">‹</span><span class="nav-label">Prev</span></a>
+      <span class="nav-indicator" aria-label="Visualization 22 of 23" title="Visualization 22 of 23">22 / 23</span>
+      <a class="nav-btn next" href="../insertion-sort/Insertion%20sort%20in%203D%2C%20step%20by%20step.html" title="Next visualization: Insertion Sort"><span class="nav-label">Next</span><span class="nav-arrow" aria-hidden="true">›</span></a>
+    </div>
+  </nav>
+  <h1>Lagos Traffic Adventure: how a text game works</h1>
+  <p class="goal">Goal: keep asking the player what to do, move them between rooms, and stop when they win, lose or type quit.</p>
+  <div class="wrap" id="wrap">
+    <div>
+      <div class="stagebox" id="stage">
+        <canvas id="cv" role="img" aria-label="3D map of the game rooms"></canvas>
+        <div class="tag" id="tag"></div>
+        <div class="hint">drag to rotate · double-click to reset</div>
+        <div class="err" id="err" hidden></div>
+      </div>
+      <p id="caption" role="status" aria-live="polite"></p>
+      <p id="watch"></p>
+      <div class="controls" role="group" aria-label="Playback controls">
+        <button id="bTour" type="button" class="btn-tour" title="Start guided audio tour (Space)">
+          <span class="tour-icon" aria-hidden="true">▶</span>
+          <span class="tour-label">Audio Tour</span>
+        </button>
+        <button id="bBack" type="button" title="Previous step (Left Arrow)">Back</button>
+        <button id="bPlay" type="button" title="Play / Pause (Space)">Play</button>
+        <button id="bNext" type="button" title="Next step (Right Arrow)">Next</button>
+        <button id="bReset" type="button" title="Reset to start">Reset</button>
+        <button id="bMute" type="button" class="btn-mute" title="Mute/unmute narration (M)" aria-label="Mute audio">🔊</button>
+        <label class="sr" for="preset">Playthrough</label>
+        <select id="preset"></select>
+        <label class="sr" for="speed">Speed</label>
+        <select id="speed">
+          <option value="1300">Slow</option>
+          <option value="850">Normal</option>
+          <option value="450">Fast</option>
+          <option value="220">Very fast</option>
+        </select>
+      </div>
+      <div id="tourStatus" class="tour-status" hidden>
+        <span id="tourBadge" class="tour-badge">Tour</span>
+        <span id="tourMsg" class="tour-msg"></span>
+      </div>
+      <div class="screenlab">What the player sees</div>
+      <div id="screen" role="log" aria-label="Game text so far"></div>
+      <details>
+        <summary>How to read this</summary>
+        <ul>
+          <li><b>Flat pad with a name</b> = a room, a key in the <code>rooms</code> dictionary. The top of the screen is NORTH.</li>
+          <li><b>Blue pad</b> = not visited yet. <b>Green pad with #1, #2...</b> = visited, in order.</li>
+          <li><b>Gold outline and the gold cone</b> = the room the player is in now (the <code>room</code> variable).</li>
+          <li><b>Plain line</b> = a door that works both ways. <b>Line with an arrow</b> = a one-way door.</li>
+          <li><b>Tall green block "ending: win"</b> and <b>tall red block "ending: lose"</b> = the two endings.</li>
+          <li><b>Red box on a line</b> = a locked door. It turns green and says "open" when the player holds the item it needs.</li>
+          <li><b>Gold coin</b> = an item. The <b>grey tray</b> is the <code>inventory</code> list.</li>
+        </ul>
+      </details>
+    </div>
+    <div class="code-pane" id="codePane">
+      <div class="code-header">
+        <span class="code-title">Python Code</span>
+        <button id="bHideCode" type="button" class="btn-toggle-code" title="Hide code panel (C)">
+          <span class="eye-icon" aria-hidden="true">✕</span>
+          <span>Hide Code</span>
+        </button>
+      </div>
+      <div id="code" role="region" aria-label="Python source code"></div>
+    </div>
+  </div>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+
+/* SOURCE:BEGIN */
+const SRC = [
+  "rooms = {",
+  "    \"bus_stop\": {",
+  "        \"text\": \"Ojota bus stop, 6:00 am. A danfo waits NORTH. Mama Put's kiosk is EAST. The road WEST is flooded.\",",
+  "        \"exits\": {\"north\": \"danfo\", \"east\": \"kiosk\", \"west\": \"flooded_road\"},",
+  "        \"locked\": {\"north\": \"change\"},",
+  "    },",
+  "    \"kiosk\": {",
+  "        \"text\": \"Mama Put's kiosk smells of meat pie. A N200 note lies under a stool. Type TAKE. The bus stop is WEST.\",",
+  "        \"exits\": {\"west\": \"bus_stop\"},",
+  "        \"item\": \"change\",",
+  "    },",
+  "    \"danfo\": {",
+  "        \"text\": \"You pay the conductor and squeeze in. The bridge is NORTH. The bus stop is SOUTH.\",",
+  "        \"exits\": {\"north\": \"bridge\", \"south\": \"bus_stop\"},",
+  "    },",
+  "    \"bridge\": {",
+  "        \"text\": \"Third Mainland Bridge. Nobody is moving, so you hop out and walk NORTH. The danfo is SOUTH.\",",
+  "        \"exits\": {\"north\": \"office\", \"south\": \"danfo\"},",
+  "    },",
+  "    \"flooded_road\": {",
+  "        \"text\": \"Water up to your knees! A man offers a canoe NORTH. The bus stop is EAST.\",",
+  "        \"exits\": {\"north\": \"fired\", \"east\": \"bus_stop\"},",
+  "    },",
+  "    \"office\": {",
+  "        \"text\": \"You reach the office at 8:59 am. Your boss nods. YOU WIN!\",",
+  "        \"exits\": {},",
+  "        \"ending\": \"win\",",
+  "    },",
+  "    \"fired\": {",
+  "        \"text\": \"The canoe man wants N5000 and your phone drowns. You arrive at noon. YOU ARE FIRED!\",",
+  "        \"exits\": {},",
+  "        \"ending\": \"lose\",",
+  "    },",
+  "}",
+  "def move(room, command, inventory):",
+  "    exits = rooms[room][\"exits\"]",
+  "    if command not in exits:",
+  "        return room, \"You cannot go that way.\"",
+  "    need = rooms[room].get(\"locked\", {}).get(command)",
+  "    if need is not None and need not in inventory:",
+  "        return room, \"The conductor blocks the door: no change, no ride!\"",
+  "    return exits[command], \"\"",
+  "def play():",
+  "    room = \"bus_stop\"",
+  "    inventory = []",
+  "    print(rooms[room][\"text\"])",
+  "    while True:",
+  "        command = input(\"> \").strip().lower()",
+  "        if command == \"quit\":",
+  "            print(\"You go back to bed. Bye!\")",
+  "            break",
+  "        elif command == \"take\":",
+  "            item = rooms[room].get(\"item\")",
+  "            if item and item not in inventory:",
+  "                inventory.append(item)",
+  "                print(\"You pick up the \" + item + \".\")",
+  "            else:",
+  "                print(\"There is nothing to take here.\")",
+  "        elif command in (\"north\", \"south\", \"east\", \"west\"):",
+  "            new_room, note = move(room, command, inventory)",
+  "            if note:",
+  "                print(note)",
+  "            else:",
+  "                room = new_room",
+  "                print(rooms[room][\"text\"])",
+  "                if \"ending\" in rooms[room]:",
+  "                    break",
+  "        else:",
+  "            print(\"Hmm, I do not know that. Try north, south, east, west, take or quit.\")",
+  "play()"
+];
+const ROOMS = {
+  "bus_stop": {
+    "text": "Ojota bus stop, 6:00 am. A danfo waits NORTH. Mama Put's kiosk is EAST. The road WEST is flooded.",
+    "exits": {
+      "north": "danfo",
+      "east": "kiosk",
+      "west": "flooded_road"
+    },
+    "locked": {
+      "north": "change"
+    }
+  },
+  "kiosk": {
+    "text": "Mama Put's kiosk smells of meat pie. A N200 note lies under a stool. Type TAKE. The bus stop is WEST.",
+    "exits": {
+      "west": "bus_stop"
+    },
+    "item": "change"
+  },
+  "danfo": {
+    "text": "You pay the conductor and squeeze in. The bridge is NORTH. The bus stop is SOUTH.",
+    "exits": {
+      "north": "bridge",
+      "south": "bus_stop"
+    }
+  },
+  "bridge": {
+    "text": "Third Mainland Bridge. Nobody is moving, so you hop out and walk NORTH. The danfo is SOUTH.",
+    "exits": {
+      "north": "office",
+      "south": "danfo"
+    }
+  },
+  "flooded_road": {
+    "text": "Water up to your knees! A man offers a canoe NORTH. The bus stop is EAST.",
+    "exits": {
+      "north": "fired",
+      "east": "bus_stop"
+    }
+  },
+  "office": {
+    "text": "You reach the office at 8:59 am. Your boss nods. YOU WIN!",
+    "exits": {},
+    "ending": "win"
+  },
+  "fired": {
+    "text": "The canoe man wants N5000 and your phone drowns. You arrive at noon. YOU ARE FIRED!",
+    "exits": {},
+    "ending": "lose"
+  }
+};
+/* SOURCE:END */
+
+/* PRESETS:BEGIN */
+const PRESETS = [
+  { name:'Win: get change, take the bus', cmds:['east', 'take', 'west', 'north', 'north', 'north'] },
+  { name:'Lose: wade through the flood',  cmds:['west', 'north'] },
+  { name:'Mistakes, locked door, quit',   cmds:['  NORTH ', 'dance', 'south', 'take', 'east', 'take', 'take', 'quit'] }
+];
+/* PRESETS:END */
+
+/* SIMULATE:BEGIN */
+/* Pure function: no DOM, no three.js. Every frame is an independent snapshot of plain values. */
+function L(text, nth){
+  let seen = 0;
+  for (let i = 0; i < SRC.length; i++){
+    if (SRC[i] === text){ if (seen === (nth || 0)) return i; seen++; }
+  }
+  throw new Error('source line not found: ' + text);
+}
+function simulate(cmds){
+  const I = {
+    rooms: L('rooms = {'), roomsEnd: L('}'),
+    playCall: L('play()'), room0: L('    room = "bus_stop"'), inv0: L('    inventory = []'), text0: L('    print(rooms[room]["text"])'),
+    loop: L('    while True:'), input: L('        command = input("> ").strip().lower()'),
+    ifQuit: L('        if command == "quit":'), pQuit: L('            print("You go back to bed. Bye!")'), bQuit: L('            break'),
+    elTake: L('        elif command == "take":'), item: L('            item = rooms[room].get("item")'),
+    ifItem: L('            if item and item not in inventory:'), append: L('                inventory.append(item)'),
+    pPick: L('                print("You pick up the " + item + ".")'), takeElse: L('            else:', 0),
+    pNothing: L('                print("There is nothing to take here.")'),
+    elDir: L('        elif command in ("north", "south", "east", "west"):'), call: L('            new_room, note = move(room, command, inventory)'),
+    ifNote: L('            if note:'), pNote: L('                print(note)'), noteElse: L('            else:', 1),
+    setRoom: L('                room = new_room'), pText: L('                print(rooms[room]["text"])'),
+    ifEnd: L('                if "ending" in rooms[room]:'), bEnd: L('                    break'),
+    elseInv: L('        else:'), pHint: L('            print("Hmm, I do not know that. Try north, south, east, west, take or quit.")'),
+    exits: L('    exits = rooms[room]["exits"]'), ifNot: L('    if command not in exits:'), rCant: L('        return room, "You cannot go that way."'),
+    need: L('    need = rooms[room].get("locked", {}).get(command)'), ifNeed: L('    if need is not None and need not in inventory:'),
+    rLock: L('        return room, "The conductor blocks the door: no change, no ride!"'), rOk: L('    return exits[command], ""')
+  };
+  function range(a, b){ const r = []; for (let i = a; i <= b; i++) r.push(i); return r; }
+  const MSG_CANT = 'You cannot go that way.', MSG_LOCK = 'The conductor blocks the door: no change, no ride!';
+  const MSG_PICK = 'You pick up the ', MSG_NOTHING = 'There is nothing to take here.', MSG_BYE = 'You go back to bed. Bye!';
+  const MSG_HINT = 'Hmm, I do not know that. Try north, south, east, west, take or quit.';
+
+  const frames = [], out = [];
+  let room = null, inv = [], visited = [], cmd = null, tryEdge = null, lock = null, ended = null;
+
+  function snap(lines, msg, kind, hold, watch){
+    frames.push({ lines: lines.slice(), msg: msg, watch: watch || '', kind: kind, hold: hold,
+      room: room, inv: inv.slice(), visited: visited.slice(), cmd: cmd,
+      tryEdge: tryEdge ? { a: tryEdge.a, b: tryEdge.b } : null, lock: lock, ended: ended, outN: out.length });
+  }
+  const q = function(s){ return '"' + s + '"'; };
+
+  snap([], 'Key idea: the whole game is one dictionary of rooms plus one loop that keeps asking "what do you do?" until the game ends.', 'start', 1);
+  snap(range(I.rooms, I.roomsEnd), 'The rooms dictionary: each room has its text, its exits (a command that leads to another room) and sometimes a "locked" door or an "item".', 'init', 1.6,
+    'The map on the left is drawn from this dictionary: one pad per room, one line per exit.');
+  room = 'bus_stop'; visited = ['bus_stop']; out.push(ROOMS[room].text);
+  snap([I.playCall, I.room0, I.inv0, I.text0], 'play() starts the game: room = "bus_stop", inventory = [] (empty), and the first room text is printed.', 'init', 1.2,
+    'room holds only a name. rooms[room] looks up everything about that room.');
+
+  for (let c = 0; c < cmds.length && !ended; c++){
+    const raw = cmds[c];
+    cmd = raw.trim().toLowerCase(); tryEdge = null; lock = null;
+    out.push('> ' + raw);
+    snap([I.loop, I.input], 'The loop waits at input(). The player types ' + q(raw) + (raw === cmd ? '.' : '; strip() and lower() clean it up to ' + q(cmd) + '.'), 'input', 1,
+      raw === cmd ? '' : 'strip() removes extra spaces and lower() removes capital letters, so " NORTH " still works.');
+    const chain = [I.ifQuit];
+
+    if (cmd === 'quit'){
+      out.push(MSG_BYE); ended = 'quit';
+      snap([I.ifQuit, I.pQuit, I.bQuit], 'quit: say goodbye and break out of the while loop.', 'step', 1.2);
+    } else if (cmd === 'take'){
+      chain.push(I.elTake);
+      const item = ROOMS[room].item || null;
+      const has = item !== null && inv.indexOf(item) >= 0;
+      if (item && !has){
+        inv.push(item); out.push(MSG_PICK + item + '.');
+        snap(chain.concat([I.item, I.ifItem, I.append, I.pPick]), 'take: this room has an item (' + q(item) + ') that is not in the inventory yet, so it is added to the inventory list.', 'step', 1.6,
+          'The coin flies from the room into the inventory list.');
+      } else {
+        out.push(MSG_NOTHING);
+        snap(chain.concat([I.item, I.ifItem, I.takeElse, I.pNothing]),
+          item ? 'take: the ' + item + ' is already in the inventory, so there is nothing left to pick up.' : 'take: ' + q(room) + ' has no item, so the player gets a friendly message instead of an error.', 'step', 1.2);
+      }
+    } else if (cmd === 'north' || cmd === 'south' || cmd === 'east' || cmd === 'west'){
+      chain.push(I.elTake, I.elDir);
+      const exits = ROOMS[room].exits;
+      const target = Object.prototype.hasOwnProperty.call(exits, cmd) ? exits[cmd] : null;
+      const lockMap = ROOMS[room].locked || {};
+      const needItem = Object.prototype.hasOwnProperty.call(lockMap, cmd) ? lockMap[cmd] : null;
+      tryEdge = { a: room, b: target };
+      snap(chain.concat([I.call]), q(cmd) + ' is a direction, so the loop hands the work to move(room, command, inventory).', 'step', 1);
+      let note = '', moveLines, moveMsg, moveWatch = '';
+      if (target === null){
+        note = MSG_CANT; moveLines = [I.exits, I.ifNot, I.rCant];
+        moveMsg = 'Inside move(): ' + q(cmd) + ' is not one of the exits of ' + q(room) + ' (' + Object.keys(exits).join(', ') + '), so it returns the same room and a note.';
+      } else if (needItem !== null && inv.indexOf(needItem) < 0){
+        note = MSG_LOCK; lock = 'blocked'; moveLines = [I.exits, I.ifNot, I.need, I.ifNeed, I.rLock];
+        moveMsg = 'Inside move(): ' + q(cmd) + ' is a real exit, but the door is locked and the inventory has no ' + q(needItem) + ', so move() returns the same room and a note.';
+        moveWatch = 'The "locked" entry names the item the door needs. "need not in inventory" is how the game checks it.';
+      } else if (needItem !== null){
+        moveLines = [I.exits, I.ifNot, I.need, I.ifNeed, I.rOk]; lock = 'open';
+        moveMsg = 'Inside move(): ' + q(cmd) + ' is locked, but ' + q(needItem) + ' is in the inventory, so the door opens and move() returns ' + q(target) + '.';
+        moveWatch = 'The same door that blocked an empty-handed player now lets this player through.';
+      } else {
+        moveLines = [I.exits, I.ifNot, I.need, I.ifNeed, I.rOk];
+        moveMsg = 'Inside move(): ' + q(cmd) + ' leads to ' + q(target) + ' and nothing locks it, so move() returns ' + q(target) + ' and an empty note.';
+      }
+      snap(moveLines, moveMsg, lock === 'blocked' ? 'lock' : 'step', 1.4, moveWatch);
+      if (note){
+        out.push(note); tryEdge = null;
+        snap([I.ifNote, I.pNote], 'note is not empty, so the move failed: print the note and stay in ' + q(room) + '.', 'step', 1.2,
+          lock === 'blocked' ? 'The player did not move. Find the missing item first.' : '');
+      } else {
+        const from = room;
+        room = target; tryEdge = null; lock = null;
+        if (visited.indexOf(room) < 0) visited.push(room);
+        out.push(ROOMS[room].text);
+        const isEnd = Object.prototype.hasOwnProperty.call(ROOMS[room], 'ending');
+        let lines = [I.ifNote, I.noteElse, I.setRoom, I.pText, I.ifEnd];
+        let m = 'note is empty, so the move worked: room becomes ' + q(room) + ' and its text is printed.';
+        if (isEnd){ lines.push(I.bEnd); ended = ROOMS[room].ending; m += ' This room has an "ending" key, so break stops the loop.'; }
+        snap(lines, m, 'step', 1.6);
+      }
+    } else {
+      chain.push(I.elTake, I.elDir);
+      out.push(MSG_HINT);
+      snap(chain.concat([I.elseInv, I.pHint]), 'It is not quit, take or a direction, so the else branch prints a kind hint. The game does not crash.', 'step', 1.4,
+        'Invalid typing never crashes the game: every unknown command lands in else.');
+    }
+    cmd = null;
+  }
+  tryEdge = null; lock = null;
+  const endMsg = ended === 'win' ? 'Game over: you reached the office. YOU WIN!'
+    : ended === 'lose' ? 'Game over: you took the flooded road. YOU LOSE!'
+    : ended === 'quit' ? 'Game over: the player typed quit.' : 'The recorded commands ended while the game was still running.';
+  snap([], endMsg + ' Takeaway: a text game is a dictionary lookup (rooms[room]) inside a loop that runs until an ending.', 'end', 1);
+  return { frames: frames, out: out };
+}
+/* SIMULATE:END */
+
+/* ---------- DOM ---------- */
+const $ = function(id){ return document.getElementById(id); };
+const $cv = $('cv'), $stage = $('stage'), $cap = $('caption'), $watch = $('watch'), $tag = $('tag'), $err = $('err'), $code = $('code'), $screen = $('screen');
+const $back = $('bBack'), $play = $('bPlay'), $next = $('bNext'), $reset = $('bReset'), $preset = $('preset'), $speed = $('speed');
+const $tour = $('bTour'), $mute = $('bMute'), $tourStatus = $('tourStatus'), $tourBadge = $('tourBadge'), $tourMsg = $('tourMsg');
+const $wrap = $('wrap'), $bHideCode = $('bHideCode'), $bShowCodeNav = $('bShowCodeNav');
+const RM = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches:false };
+
+function toggleCodePane(collapsed){
+  if (collapsed === undefined) collapsed = !$wrap.classList.contains('code-hidden');
+  if (collapsed){
+    $wrap.classList.add('code-hidden');
+    $bShowCodeNav.hidden = false;
+  } else {
+    $wrap.classList.remove('code-hidden');
+    $bShowCodeNav.hidden = true;
+  }
+}
+$bHideCode.addEventListener('click', function(){ toggleCodePane(true); });
+$bShowCodeNav.addEventListener('click', function(){ toggleCodePane(false); });
+
+/* ---------- Audio Walkthrough Tour ---------- */
+const audioAvailable = typeof Audio !== 'undefined';
+function makeAudio(src){
+  if (!audioAvailable) return null;
+  const a = new Audio(src);
+  a.preload = 'auto';
+  return a;
+}
+
+const WALKTHROUGHS = {
+  winBus: {
+    id: 'winBus',
+    name: 'Win: get change, take the bus',
+    match: function(cfg){
+      return cfg && cfg.name === 'Win: get change, take the bus';
+    },
+    clips: {
+      c1: makeAudio('../audio-walkthroughs/your-own-adventure/01-state-machine-and-finding-change.mp3'),
+      c2: makeAudio('../audio-walkthroughs/your-own-adventure/02-boarding-danfo-and-winning.mp3')
+    },
+    milestones: [
+      {
+        title: 'State Machine & Finding Change',
+        clip: 'c1',
+        startIdx: 0,
+        endIdx: 12,
+        cues: [
+          { time: 0.0, frameIdx: 0 },
+          { time: 5.5, frameIdx: 1 },
+          { time: 12.0, frameIdx: 2 },
+          { time: 17.5, frameIdx: 3 },
+          { time: 21.0, frameIdx: 4 },
+          { time: 22.5, frameIdx: 5 },
+          { time: 24.5, frameIdx: 6 },
+          { time: 26.5, frameIdx: 7 },
+          { time: 28.5, frameIdx: 8 },
+          { time: 33.0, frameIdx: 9 },
+          { time: 35.0, frameIdx: 10 },
+          { time: 36.5, frameIdx: 11 },
+          { time: 38.0, frameIdx: 12 }
+        ]
+      },
+      {
+        title: 'Boarding Danfo & Winning Commute',
+        clip: 'c2',
+        startIdx: 13,
+        endIdx: 25,
+        cues: [
+          { time: 0.0, frameIdx: 13 },
+          { time: 2.5, frameIdx: 14 },
+          { time: 4.0, frameIdx: 15 },
+          { time: 9.0, frameIdx: 16 },
+          { time: 11.5, frameIdx: 17 },
+          { time: 13.0, frameIdx: 18 },
+          { time: 14.5, frameIdx: 19 },
+          { time: 16.0, frameIdx: 20 },
+          { time: 17.5, frameIdx: 21 },
+          { time: 19.5, frameIdx: 22 },
+          { time: 21.0, frameIdx: 23 },
+          { time: 22.5, frameIdx: 24 },
+          { time: 25.5, frameIdx: 25 }
+        ]
+      }
+    ]
+  }
+};
+
+function getActiveWalkthrough(cfg){
+  if (!cfg) return null;
+  const keys = Object.keys(WALKTHROUGHS);
+  for (let i = 0; i < keys.length; i++){
+    const wt = WALKTHROUGHS[keys[i]];
+    if (wt.match(cfg)) return wt;
+  }
+  return null;
+}
+
+function getMilestones(wt){
+  if (!wt) return [];
+  return wt.milestones || [];
+}
+
+function getMilestoneTitle(wt, mIdx){
+  const milestones = getMilestones(wt);
+  const m = milestones[mIdx];
+  if (!m) return '';
+  return m.title || ('Milestone ' + (mIdx + 1));
+}
+
+function getMilestoneClip(wt, m){
+  if (!m) return null;
+  if (typeof m.clip === 'string' && wt.clips){
+    return wt.clips[m.clip] || null;
+  }
+  return null;
+}
+
+const rows = SRC.map(function(txt, i){
+  const r = document.createElement('div'); r.className = 'row';
+  const n = document.createElement('span'); n.className = 'ln'; n.textContent = String(i + 1);
+  const c = document.createElement('span'); c.textContent = txt;
+  r.appendChild(n); r.appendChild(c); $code.appendChild(r);
+  return r;
+});
+PRESETS.forEach(function(p, i){
+  const o = document.createElement('option'); o.value = String(i); o.textContent = p.name; $preset.appendChild(o);
+});
+
+/* ---------- three.js scene (perspective 3D) ---------- */
+const POS = {
+  flooded_road:[-3.2, 2.0], bus_stop:[0, 2.0], kiosk:[3.2, 2.0],
+  fired:[-3.2, -0.2], danfo:[0, -0.2],
+  bridge:[0, -2.4], office:[0, -4.6]
+};
+const PAD_W = 2.3, PAD_D = 1.0, PAD_H = 0.3, END_H = 0.7, TUBE_R = 0.07;
+const PLATE = { x0:-4.8, x1:4.8, z0:-5.6, z1:3.0 };
+const TRAY = { x:3.2, z:-1.2, w:2.3, d:1.6 };
+const COIN_HOME = { x:3.2, y:0.45, z:0.95 };
+const BLUE = '#3b82c4', GREEN = '#2f9e6a', WIN_COL = '#2e9e5b', LOSE_COL = '#c0392b', GOLD = '#f2b705', LOCK_RED = '#c0392b';
+const FOCUS_X = (PLATE.x0 + PLATE.x1) / 2, FOCUS_Z = (PLATE.z0 + PLATE.z1) / 2;
+const YAW0 = 0, PITCH0 = 1.0, YAW_MAX = 0.55, FOV = 32;
+let gl = false, renderer = null, scene = null, camera = null;
+let world = null, nodes = {}, tubes = {}, arrows = {}, pawn = null, bubble = null, coin = null, coinLab = null, invLab = null, locks = [], itemRoom = null, itemName = null;
+let dims = { halfW:5, halfZ:4.4, halfY:1.7, ty:0.6 };
+const view = { yaw:YAW0, pitch:PITCH0, dist:20 };
+const C = {};
+const texCache = new Map();
+const tweens = [];
+let raf = 0, drag = null;
+
+function showError(msg){ $err.hidden = false; $err.textContent = msg; }
+function readTheme(){
+  const cs = getComputedStyle(document.documentElement);
+  ['ink','muted','plate','accent'].forEach(function(k){ C[k] = cs.getPropertyValue('--' + k).trim() || '#888888'; });
+}
+try {
+  if (typeof THREE === 'undefined') throw new Error('three.js did not load');
+  renderer = new THREE.WebGLRenderer({ canvas:$cv, antialias:true, alpha:true });
+  renderer.setClearColor(0x000000, 0);
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(FOV, 4 / 3, 0.1, 200);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.58));
+  const dl = new THREE.DirectionalLight(0xffffff, 0.85); dl.position.set(-5, 10, 8); scene.add(dl);
+  gl = true;
+} catch (e) {
+  showError('The 3D view could not start (' + (e && e.message ? e.message : 'WebGL unavailable') + '). Check your connection or browser WebGL support. The code panel, captions and game text still step through the trace.');
+}
+
+function textTex(text, style){
+  const key = text + '|' + style.color + '|' + style.font;
+  let t = texCache.get(key);
+  if (t) return t;
+  const cv = document.createElement('canvas'), ctx = cv.getContext('2d');
+  ctx.font = style.font;
+  const w = Math.max(24, Math.ceil(ctx.measureText(text).width) + 16), h = 64;
+  cv.width = w; cv.height = h;
+  ctx.font = style.font; ctx.fillStyle = style.color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, w / 2, h / 2 + 2);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.minFilter = THREE.LinearFilter; tex.generateMipmaps = false;
+  t = { tex:tex, aspect:w / h };
+  texCache.set(key, t);
+  return t;
+}
+function clearTexCache(){ texCache.forEach(function(t){ t.tex.dispose(); }); texCache.clear(); }
+function makeSprite(){
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ transparent:true, depthTest:false }));
+  s.renderOrder = 10; s.visible = false; return s;
+}
+function setText(s, text, style, worldH){
+  if (!text){ s.visible = false; return; }
+  const t = textTex(text, style);
+  s.material.map = t.tex; s.material.needsUpdate = true;
+  s.scale.set(worldH * t.aspect, worldH, 1);
+  s.visible = true;
+}
+const SANS = '700 48px system-ui, -apple-system, "Segoe UI", sans-serif';
+function label(x, y, z, text, color, h){
+  const s = makeSprite(); s.position.set(x, y, z); setText(s, text, { font:SANS, color:color }, h); world.add(s); return s;
+}
+
+function clearWorld(){
+  tweens.length = 0;
+  if (!world) return;
+  world.traverse(function(o){
+    if (o.geometry) o.geometry.dispose();
+    if (o.material) o.material.dispose();
+  });
+  scene.remove(world); world = null;
+  nodes = {}; tubes = {}; arrows = {}; pawn = null; bubble = null; coin = null; coinLab = null; invLab = null; locks = []; itemRoom = null; itemName = null;
+}
+
+function edgeKey(a, b){ return a < b ? a + '|' + b : b + '|' + a; }
+function dirVec(a, b){
+  const dx = POS[b][0] - POS[a][0], dz = POS[b][1] - POS[a][1], len = Math.hypot(dx, dz);
+  return { x:dx / len, z:dz / len, len:len };
+}
+
+function build(cfg, keepView){
+  if (!gl) return;
+  clearWorld(); readTheme();
+  world = new THREE.Group(); scene.add(world);
+  const names = Object.keys(ROOMS);
+  names.forEach(function(n){ if (!POS[n]) throw new Error('no position for room ' + n); });
+
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(PLATE.x1 - PLATE.x0, 0.14, PLATE.z1 - PLATE.z0), new THREE.MeshLambertMaterial({ color:C.plate }));
+  floor.position.set(FOCUS_X, -0.07, FOCUS_Z); world.add(floor);
+
+  /* doors: one tube per pair, an arrowhead only when the door works one way */
+  names.forEach(function(a){
+    Object.keys(ROOMS[a].exits).forEach(function(cmd){
+      const b = ROOMS[a].exits[cmd], key = edgeKey(a, b);
+      const two = Object.keys(ROOMS[b].exits).some(function(c){ return ROOMS[b].exits[c] === a; });
+      const v = dirVec(a, b);
+      if (!tubes[key]){
+        const m = new THREE.Mesh(new THREE.CylinderGeometry(TUBE_R, TUBE_R, v.len, 12), new THREE.MeshLambertMaterial({ color:C.muted }));
+        m.position.set((POS[a][0] + POS[b][0]) / 2, 0.15, (POS[a][1] + POS[b][1]) / 2);
+        m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(v.x, 0, v.z));
+        world.add(m); tubes[key] = m;
+      }
+      if (!two){
+        const half = Math.abs(v.z) > Math.abs(v.x) ? PAD_D / 2 : PAD_W / 2, back = half + 0.24;
+        const h = Math.abs(v.z) > Math.abs(v.x) && ROOMS[b].ending ? 0.35 : 0.2;
+        const ar = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.44, 16), new THREE.MeshLambertMaterial({ color:C.muted }));
+        ar.position.set(POS[b][0] - v.x * back, h, POS[b][1] - v.z * back);
+        ar.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(v.x, 0, v.z));
+        world.add(ar); arrows[a + '>' + b] = ar;
+      }
+    });
+  });
+
+  /* rooms */
+  names.forEach(function(n){
+    const p = POS[n], end = ROOMS[n].ending || null, h = end ? END_H : PAD_H;
+    const body = new THREE.Mesh(new THREE.BoxGeometry(PAD_W, h, PAD_D), new THREE.MeshLambertMaterial({ color:BLUE }));
+    body.position.set(p[0], h / 2, p[1]);
+    const outline = new THREE.Mesh(new THREE.BoxGeometry(PAD_W + 0.2, h + 0.2, PAD_D + 0.2), new THREE.MeshBasicMaterial({ color:C.accent, side:THREE.BackSide }));
+    outline.position.set(p[0], h / 2, p[1]); outline.visible = false;
+    world.add(outline); world.add(body);
+    const nm = label(p[0], h + 0.22, p[1] + (end ? -0.15 : 0), n, '#ffffff', 0.38);
+    let tag = null;
+    if (end) tag = label(p[0], h + 0.22, p[1] + 0.24, 'ending: ' + end, '#ffffff', 0.26);
+    const badge = label(p[0] - 0.9, 0.6, p[1] - 0.72, '', C.ink, 0.32);
+    nodes[n] = { body:body, outline:outline, badge:badge, end:end, name:nm, tag:tag };
+  });
+
+  /* locked doors */
+  names.forEach(function(a){
+    const lm = ROOMS[a].locked || {};
+    Object.keys(lm).forEach(function(cmd){
+      const b = ROOMS[a].exits[cmd], v = dirVec(a, b), mx = (POS[a][0] + POS[b][0]) / 2, mz = (POS[a][1] + POS[b][1]) / 2;
+      const vertical = Math.abs(v.z) > Math.abs(v.x);
+      const box = new THREE.Mesh(new THREE.BoxGeometry(vertical ? 0.8 : 0.3, 0.42, vertical ? 0.3 : 0.8), new THREE.MeshLambertMaterial({ color:LOCK_RED }));
+      box.position.set(mx, 0.3, mz); world.add(box);
+      const lab = label(mx + 1.5, 0.6, mz, '', C.ink, 0.34);
+      locks.push({ a:a, b:b, need:lm[cmd], box:box, lab:lab });
+    });
+  });
+
+  /* item, inventory tray, compass */
+  names.forEach(function(n){ if (ROOMS[n].item){ itemRoom = n; itemName = ROOMS[n].item; } });
+  const tray = new THREE.Mesh(new THREE.BoxGeometry(TRAY.w, 0.14, TRAY.d), new THREE.MeshLambertMaterial({ color:'#8b96a5' }));
+  tray.position.set(TRAY.x, 0.07, TRAY.z); world.add(tray);
+  invLab = label(TRAY.x, 0.5, TRAY.z - 1.25, '', C.ink, 0.3);
+  if (itemName){
+    coin = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.12, 28), new THREE.MeshLambertMaterial({ color:GOLD }));
+    coin.position.set(COIN_HOME.x, COIN_HOME.y, COIN_HOME.z); world.add(coin);
+    coinLab = label(COIN_HOME.x, 1.05, COIN_HOME.z, itemName, C.ink, 0.32);
+  }
+  const north = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.9, 16), new THREE.MeshLambertMaterial({ color:C.muted }));
+  north.rotation.x = -Math.PI / 2; north.position.set(-4.1, 0.2, -3.6); world.add(north);
+  label(-4.1, 0.55, -4.45, 'NORTH', C.muted, 0.32);
+
+  /* the player */
+  pawn = new THREE.Group();
+  const cone = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.55, 20), new THREE.MeshLambertMaterial({ color:C.accent }));
+  cone.rotation.z = Math.PI; cone.position.y = 1.35; pawn.add(cone);
+  const you = makeSprite(); you.position.y = 1.85; setText(you, 'you', { font:SANS, color:C.accent }, 0.34); pawn.add(you);
+  bubble = makeSprite(); bubble.position.set(1.75, 0.7, 0.05); pawn.add(bubble);
+  pawn.visible = false; world.add(pawn);
+
+  if (!keepView){ view.yaw = YAW0; view.pitch = PITCH0; }
+  fitCamera();
+}
+
+function updateCamera(){
+  if (!gl) return;
+  const cp = Math.cos(view.pitch), sp = Math.sin(view.pitch);
+  camera.position.set(FOCUS_X + Math.sin(view.yaw) * cp * view.dist, dims.ty + sp * view.dist, FOCUS_Z + Math.cos(view.yaw) * cp * view.dist);
+  camera.lookAt(FOCUS_X, dims.ty, FOCUS_Z);
+  requestRender();
+}
+function fitCamera(){
+  if (!gl) return;
+  const w = $stage.clientWidth, h = $stage.clientHeight;
+  if (!w || !h) return;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(w, h, false);
+  const aspect = w / h, t = Math.tan(FOV * Math.PI / 360);
+  camera.aspect = aspect; camera.updateProjectionMatrix();
+  const vExt = dims.halfY * Math.cos(PITCH0) + dims.halfZ * Math.sin(PITCH0);
+  const hExt = dims.halfW * Math.cos(YAW_MAX) + dims.halfZ * Math.sin(YAW_MAX);
+  view.dist = Math.max(vExt / t, hExt / (t * aspect)) * 1.06;
+  updateCamera();
+}
+
+/* ---------- tweens and render loop ---------- */
+function settle(){ tweens.splice(0).forEach(function(tw){ tw.upd(1); }); }
+function requestRender(){ if (gl && !raf) raf = requestAnimationFrame(loop); }
+function loop(){
+  raf = 0;
+  const now = performance.now();
+  for (let i = tweens.length - 1; i >= 0; i--){
+    const tw = tweens[i];
+    const u = Math.max(0, Math.min(1, (now - tw.t0) / tw.dur));
+    tw.upd(u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2);
+    if (u >= 1) tweens.splice(i, 1);
+  }
+  renderer.render(scene, camera);
+  if (tweens.length) requestRender();
+}
+
+/* drag left or right to turn the scene; double-click resets the view */
+if (gl){
+  $cv.addEventListener('pointerdown', function(e){
+    drag = { x:e.clientX, yaw:view.yaw };
+    try { $cv.setPointerCapture(e.pointerId); } catch (err) { /* not needed for the drag to work */ }
+  });
+  $cv.addEventListener('pointermove', function(e){
+    if (!drag) return;
+    view.yaw = Math.max(-YAW_MAX, Math.min(YAW_MAX, drag.yaw + (e.clientX - drag.x) * 0.008));
+    updateCamera();
+  });
+  ['pointerup', 'pointercancel'].forEach(function(t){ $cv.addEventListener(t, function(){ drag = null; }); });
+  $cv.addEventListener('dblclick', function(){ view.yaw = YAW0; view.pitch = PITCH0; updateCamera(); });
+}
+
+/* ---------- playback state ---------- */
+const S = {
+  cfg: null,
+  frames: [],
+  out: [],
+  idx: 0,
+  state: 'paused',
+  timer: 0,
+  speed: 1300,
+  shown: -1,
+  audioMuted: false,
+  currentClip: null,
+  currentMilestoneIdx: -1,
+  cueTimers: [],
+  tourToken: 0
+};
+
+function clearCueTimers(){
+  while (S.cueTimers.length > 0){
+    clearTimeout(S.cueTimers.pop());
+  }
+}
+
+function stopAudio(){
+  clearCueTimers();
+  if (S.currentClip){
+    try {
+      S.currentClip.pause();
+      S.currentClip.currentTime = 0;
+    } catch(e){}
+    S.currentClip = null;
+  }
+  S.currentMilestoneIdx = -1;
+}
+
+function pauseAudio(){
+  clearCueTimers();
+  if (S.currentClip){
+    try { S.currentClip.pause(); } catch(e){}
+  }
+}
+
+function updateMuteButton(){
+  $mute.textContent = S.audioMuted ? '🔇' : '🔊';
+  $mute.title = S.audioMuted ? 'Unmute narration (M)' : 'Mute narration (M)';
+  $mute.setAttribute('aria-label', S.audioMuted ? 'Unmute audio' : 'Mute audio');
+}
+
+function updateTourStatus(){
+  const wt = getActiveWalkthrough(S.cfg);
+  if (!wt){
+    $tourStatus.hidden = true;
+    return;
+  }
+  $tourStatus.hidden = false;
+  const milestones = getMilestones(wt);
+  let curM = -1;
+  for (let i = 0; i < milestones.length; i++){
+    if (S.idx >= milestones[i].startIdx && S.idx <= milestones[i].endIdx){
+      curM = i;
+      break;
+    }
+  }
+  if (curM >= 0){
+    $tourBadge.textContent = 'Milestone ' + (curM + 1) + '/' + milestones.length;
+    $tourMsg.textContent = milestones[curM].title + (S.audioMuted ? ' (muted)' : '');
+  } else {
+    $tourBadge.textContent = 'Tour';
+    $tourMsg.textContent = wt.name;
+  }
+}
+
+function startMilestone(mIdx, fromTime){
+  const wt = getActiveWalkthrough(S.cfg);
+  if (!wt || !audioAvailable || S.audioMuted) return;
+
+  const milestones = getMilestones(wt);
+  if (mIdx < 0 || mIdx >= milestones.length) return;
+
+  const m = milestones[mIdx];
+  const clip = getMilestoneClip(wt, m);
+  if (!clip){
+    if (S.state === 'playing') schedule();
+    return;
+  }
+
+  S.currentMilestoneIdx = mIdx;
+  S.currentClip = clip;
+  const token = ++S.tourToken;
+  updateTourStatus();
+
+  clip.onended = function(){
+    if (token !== S.tourToken || S.state !== 'playing') return;
+    if (mIdx + 1 < milestones.length){
+      startMilestone(mIdx + 1, 0);
+    } else {
+      S.state = 'ended';
+      S.currentClip = null;
+      updateButtons();
+      updateTourStatus();
+    }
+  };
+
+  clip.onerror = function(){
+    if (token !== S.tourToken) return;
+    console.warn('Audio clip failed to play, switching to silent mode.');
+    $tourMsg.textContent = 'Audio clips unavailable; running in silent mode.';
+    S.audioMuted = true;
+    updateMuteButton();
+    if (S.state === 'playing') schedule();
+  };
+
+  try {
+    clip.currentTime = fromTime || 0;
+  } catch(e){}
+
+  clearCueTimers();
+  if (Array.isArray(m.cues)){
+    m.cues.forEach(function(cue){
+      const cueTime = cue.time || 0;
+      const targetFrame = cue.frameIdx;
+      if (cueTime >= (fromTime || 0)){
+        const delayMs = Math.max(0, (cueTime - (fromTime || 0)) * 1000);
+        const timerId = setTimeout(function(){
+          if (token === S.tourToken && S.state === 'playing'){
+            show(targetFrame, true);
+          }
+        }, delayMs);
+        S.cueTimers.push(timerId);
+      }
+    });
+  }
+
+  const playPromise = clip.play();
+  if (playPromise !== undefined){
+    playPromise.catch(function(err){
+      if (token !== S.tourToken) return;
+      if (err && err.name === 'NotAllowedError'){
+        $tourMsg.textContent = 'Click Audio Tour to allow sound in your browser.';
+      } else {
+        $tourMsg.textContent = 'Audio clips unavailable; running in silent mode.';
+      }
+      if (S.state === 'playing') schedule();
+    });
+  }
+}
+
+function playMilestoneForFrame(frameIdx){
+  const wt = getActiveWalkthrough(S.cfg);
+  if (!wt || !audioAvailable || S.audioMuted) return;
+
+  const milestones = getMilestones(wt);
+  let mIdx = -1;
+  for (let i = 0; i < milestones.length; i++){
+    const m = milestones[i];
+    if (frameIdx >= m.startIdx && frameIdx <= m.endIdx){
+      mIdx = i;
+      break;
+    }
+  }
+  if (mIdx < 0) return;
+
+  const m = milestones[mIdx];
+  const clip = getMilestoneClip(wt, m);
+  let fromTime = 0;
+  if (Array.isArray(m.cues)){
+    for (let c = m.cues.length - 1; c >= 0; c--){
+      if (frameIdx >= m.cues[c].frameIdx){
+        fromTime = m.cues[c].time || 0;
+        break;
+      }
+    }
+  }
+
+  if (S.currentClip === clip && !clip.ended && clip.currentTime > fromTime){
+    fromTime = clip.currentTime;
+  }
+
+  startMilestone(mIdx, fromTime);
+}
+
+function tweenDur(f){ return S.state === 'playing' ? Math.max(120, Math.min(600, S.speed * f.hold * 0.5)) : 450; }
+function easeProp(get, set, to, animate, f){
+  const from = get();
+  if (animate && !RM.matches && Math.abs(from - to) > 1e-6){
+    tweens.push({ t0:performance.now(), dur:tweenDur(f), upd:function(e){ set(from + (to - from) * e); } });
+  } else {
+    set(to);
+  }
+}
+function applyScene(f, animate){
+  if (!gl || !world) return;
+  const cur = f.room;
+
+  Object.keys(nodes).forEach(function(n){
+    const nd = nodes[n], vi = f.visited.indexOf(n), isCur = n === cur;
+    let col = BLUE;
+    if (nd.end === 'win') col = WIN_COL; else if (nd.end === 'lose') col = LOSE_COL; else if (vi >= 0) col = GREEN;
+    nd.body.material.color.set(col);
+    nd.body.material.emissive.set(isCur ? '#4a3a00' : '#000000');
+    nd.outline.visible = isCur;
+    setText(nd.badge, vi >= 0 ? '#' + (vi + 1) : '', { font:SANS, color:C.ink }, 0.32);
+  });
+
+  Object.keys(tubes).forEach(function(k){ tubes[k].material.color.set(C.muted); });
+  Object.keys(arrows).forEach(function(k){ arrows[k].material.color.set(C.muted); });
+  if (f.tryEdge && f.tryEdge.b){
+    const k = edgeKey(f.tryEdge.a, f.tryEdge.b);
+    if (tubes[k]) tubes[k].material.color.set(C.accent);
+    const ak = f.tryEdge.a + '>' + f.tryEdge.b;
+    if (arrows[ak]) arrows[ak].material.color.set(C.accent);
+  }
+
+  locks.forEach(function(lk){
+    const has = f.inv.indexOf(lk.need) >= 0;
+    const blocked = f.lock === 'blocked';
+    lk.box.material.color.set(has ? WIN_COL : LOCK_RED);
+    lk.box.material.emissive.set(blocked ? '#8a1c10' : '#000000');
+    setText(lk.lab, blocked ? 'blocked!' : (has ? 'open' : 'needs ' + lk.need), { font:SANS, color:blocked ? LOCK_RED : (has ? WIN_COL : C.ink) }, 0.34);
+  });
+
+  if (coin){
+    const has = f.inv.indexOf(itemName) >= 0;
+    const tx = has ? TRAY.x : COIN_HOME.x, ty = has ? 0.28 : COIN_HOME.y, tz = has ? TRAY.z : COIN_HOME.z;
+    easeProp(function(){ return coin.position.x; }, function(v){ coin.position.x = v; }, tx, animate, f);
+    easeProp(function(){ return coin.position.y; }, function(v){ coin.position.y = v; }, ty, animate, f);
+    easeProp(function(){ return coin.position.z; }, function(v){ coin.position.z = v; }, tz, animate, f);
+    easeProp(function(){ return coinLab.position.x; }, function(v){ coinLab.position.x = v; }, tx, animate, f);
+    easeProp(function(){ return coinLab.position.y; }, function(v){ coinLab.position.y = v; }, ty + 0.6, animate, f);
+    easeProp(function(){ return coinLab.position.z; }, function(v){ coinLab.position.z = v; }, tz, animate, f);
+  }
+  setText(invLab, 'inventory = [' + f.inv.map(function(s){ return '"' + s + '"'; }).join(', ') + ']', { font:SANS, color:C.ink }, 0.3);
+
+  if (!cur){ pawn.visible = false; setText(bubble, '', { font:SANS, color:C.ink }, 0.36); requestRender(); return; }
+  const p = POS[cur], was = pawn.visible;
+  pawn.visible = true;
+  if (!was){ pawn.position.set(p[0], 0, p[1]); }
+  easeProp(function(){ return pawn.position.x; }, function(v){ pawn.position.x = v; }, p[0], animate && was, f);
+  easeProp(function(){ return pawn.position.z; }, function(v){ pawn.position.z = v; }, p[1], animate && was, f);
+  setText(bubble, f.cmd ? '> ' + f.cmd : '', { font:SANS, color:C.ink }, 0.36);
+  requestRender();
+}
+
+function renderCode(f){
+  let firstActive = -1;
+  rows.forEach(function(r, i){
+    const a = f.lines.indexOf(i) >= 0;
+    r.classList.toggle('active', a);
+    if (a && firstActive < 0) firstActive = i;
+  });
+  if (firstActive >= 0){
+    const r = rows[firstActive];
+    if (r.offsetTop < $code.scrollTop) $code.scrollTop = r.offsetTop;
+    else if (r.offsetTop + r.offsetHeight > $code.scrollTop + $code.clientHeight) $code.scrollTop = r.offsetTop + r.offsetHeight - $code.clientHeight;
+  }
+}
+function renderScreen(f){
+  while ($screen.firstChild) $screen.removeChild($screen.firstChild);
+  for (let i = 0; i < f.outN; i++){
+    const d = document.createElement('div');
+    d.textContent = S.out[i];
+    if (S.out[i].indexOf('> ') === 0) d.className = 'cmd';
+    $screen.appendChild(d);
+  }
+  $screen.scrollTop = $screen.scrollHeight;
+}
+function invText(f){ return '[' + f.inv.map(function(s){ return s; }).join(', ') + ']'; }
+function describe(f){
+  return 'Room ' + f.room + '. Inventory ' + invText(f) + '. ' + (f.ended ? 'Game ended: ' + f.ended + '.' : 'Game running.');
+}
+function updateButtons(){
+  const last = S.frames.length - 1;
+  $back.disabled = S.idx <= 0;
+  $next.disabled = S.idx >= last;
+  $play.textContent = S.state === 'playing' ? 'Pause' : (S.idx >= last ? 'Replay' : 'Play');
+
+  const isTourPlaying = S.state === 'playing';
+  $tour.classList.toggle('playing', isTourPlaying);
+  const lbl = $tour.querySelector('.tour-label');
+  if (lbl){
+    lbl.textContent = isTourPlaying ? 'Pause' : (S.idx >= last ? 'Replay' : 'Audio Tour');
+  }
+  const icn = $tour.querySelector('.tour-icon');
+  if (icn){
+    icn.textContent = isTourPlaying ? '⏸' : '▶';
+  }
+}
+function show(i, animate){
+  const f = S.frames[i]; if (!f) return;
+  settle();
+  S.idx = i;
+  $cap.textContent = f.msg;
+  $watch.textContent = f.watch ? 'Watch for: ' + f.watch : '';
+  $tag.textContent = 'Step ' + (i + 1) + ' of ' + S.frames.length + ' \u00b7 inventory: ' + invText(f);
+  $cv.setAttribute('aria-label', describe(f));
+  renderCode(f);
+  renderScreen(f);
+  applyScene(f, animate && Math.abs(i - S.shown) === 1);
+  S.shown = i;
+  updateButtons();
+  updateTourStatus();
+}
+
+function clearTimer(){ if (S.timer){ clearTimeout(S.timer); S.timer = 0; } }
+function schedule(){
+  clearTimer();
+  if (S.state !== 'playing') return;
+  const wt = getActiveWalkthrough(S.cfg);
+  if (wt && audioAvailable && !S.audioMuted && S.currentClip && !S.currentClip.paused){
+    return;
+  }
+  S.timer = setTimeout(tick, S.speed * S.frames[S.idx].hold);
+}
+function tick(){
+  S.timer = 0;
+  if (S.state !== 'playing') return;
+  if (S.idx >= S.frames.length - 1){ S.state = 'ended'; updateButtons(); updateTourStatus(); return; }
+  show(S.idx + 1, true);
+  if (S.idx >= S.frames.length - 1){ S.state = 'ended'; updateButtons(); updateTourStatus(); return; }
+  schedule();
+}
+function pause(){
+  clearTimer();
+  settle();
+  pauseAudio();
+  if (S.state === 'playing' || S.state === 'ended') S.state = 'paused';
+  updateButtons();
+  updateTourStatus();
+}
+function play(){
+  if (S.state === 'playing'){ pause(); return; }
+  if (S.idx >= S.frames.length - 1) show(0, false);
+  S.state = 'playing';
+  updateButtons();
+  const wt = getActiveWalkthrough(S.cfg);
+  if (wt && audioAvailable && !S.audioMuted){
+    playMilestoneForFrame(S.idx);
+  } else {
+    updateTourStatus();
+    schedule();
+  }
+}
+function step(d){
+  stopAudio();
+  pause();
+  const j = S.idx + d;
+  if (j < 0 || j >= S.frames.length) return;
+  show(j, true);
+}
+function reset(){
+  stopAudio();
+  pause();
+  show(0, false);
+}
+function toggleMute(){
+  S.audioMuted = !S.audioMuted;
+  updateMuteButton();
+  if (S.audioMuted){
+    pauseAudio();
+    if (S.state === 'playing') schedule();
+  } else {
+    clearTimer();
+    if (S.state === 'playing') playMilestoneForFrame(S.idx);
+  }
+  updateTourStatus();
+}
+function loadPreset(i){
+  stopAudio();
+  pause();
+  $preset.value = String(i);
+  const p = PRESETS[i];
+  S.cfg = { name:p.name, cmds:p.cmds };
+  const r = simulate(p.cmds);
+  S.frames = r.frames; S.out = r.out; S.shown = -1; S.idx = 0;
+  build(S.cfg);
+  show(0, false);
+  updateTourStatus();
+}
+
+$tour.addEventListener('click', play);
+$mute.addEventListener('click', toggleMute);
+$back.addEventListener('click', function(){ step(-1); });
+$next.addEventListener('click', function(){ step(1); });
+$play.addEventListener('click', play);
+$reset.addEventListener('click', reset);
+$preset.addEventListener('change', function(){ loadPreset(Number($preset.value)); });
+$speed.addEventListener('change', function(){
+  S.speed = Number($speed.value);
+  if (S.state === 'playing') schedule();
+});
+document.addEventListener('keydown', function(e){
+  const t = e.target && e.target.tagName;
+  if (t === 'BUTTON' || t === 'SELECT' || t === 'INPUT' || t === 'TEXTAREA' || t === 'SUMMARY') return;
+  if (e.key === ' '){ e.preventDefault(); play(); }
+  else if (e.key === 'ArrowRight'){ step(1); }
+  else if (e.key === 'ArrowLeft'){ step(-1); }
+  else if (e.key === 'c' || e.key === 'C'){ e.preventDefault(); toggleCodePane(); }
+  else if (e.key === 'm' || e.key === 'M'){ e.preventDefault(); toggleMute(); }
+});
+document.addEventListener('visibilitychange', function(){ if (document.hidden && S.state === 'playing') pause(); });
+
+if (typeof ResizeObserver !== 'undefined') new ResizeObserver(fitCamera).observe($stage);
+else window.addEventListener('resize', fitCamera);
+
+function retheme(){
+  if (!gl) return;
+  clearTexCache(); readTheme(); build(S.cfg, true); S.shown = -1; show(S.idx, false);
+}
+try {
+  if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', retheme);
+} catch (e) { /* older browsers: theme refresh on reload */ }
+new MutationObserver(retheme).observe(document.documentElement, { attributes:true, attributeFilter:['data-theme'] });
+
+loadPreset(0);
+})();
+</script>
+
+</body></html>
