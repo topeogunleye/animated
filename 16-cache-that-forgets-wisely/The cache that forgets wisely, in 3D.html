@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The cache that forgets wisely, in 3D</title>
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --ink:#18212b; --muted:#5b6876; --line:#d5dbe3;
+  --hl-bg:#fff3bf; --hl-bar:#d99a00; --stage:#1b2433;
+  --plate:#2a3446; --accent:#e8a900;
+  --btn:#ffffff; --btnHover:#eef1f5;
+  color-scheme:light;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1318; --panel:#171c23; --ink:#e8edf3; --muted:#9aa7b6; --line:#2c3440;
+    --hl-bg:#4a3d0a; --hl-bar:#ffc400; --stage:#10151e;
+    --plate:#242c38; --accent:#ffc400;
+    --btn:#1d2430; --btnHover:#27303b; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1318; --panel:#171c23; --ink:#e8edf3; --muted:#9aa7b6; --line:#2c3440;
+  --hl-bg:#4a3d0a; --hl-bar:#ffc400; --stage:#10151e;
+  --plate:#242c38; --accent:#ffc400;
+  --btn:#1d2430; --btnHover:#27303b; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+main{max-width:1120px;margin:0 auto;padding:12px 14px 22px}
+h1{font-size:1.15rem;margin:4px 0 6px;font-weight:650}
+.goal{margin:0 0 12px;color:var(--muted)}
+.legend{margin-top:12px;font-size:.9rem;color:var(--muted)}
+.legend summary{cursor:pointer;color:var(--ink);font-weight:600}
+.wrap{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:start;transition:grid-template-columns 180ms ease}
+.wrap.code-hidden{grid-template-columns:minmax(0,1fr)}
+.wrap.code-hidden .code-pane{display:none}
+@media (max-width:760px){.wrap{grid-template-columns:minmax(0,1fr)}}
+.stagebox{position:relative;background:var(--stage);border:1px solid var(--line);border-radius:12px;overflow:hidden;aspect-ratio:4/3;min-height:260px;max-height:64vh;width:100%}
+#cv{display:block;width:100%;height:100%;touch-action:pan-y;cursor:grab}
+#cv:active{cursor:grabbing}
+.hint{position:absolute;right:10px;bottom:8px;font-size:11px;color:#aab6c8;pointer-events:none}
+.tag{position:absolute;top:8px;left:10px;right:10px;width:max-content;max-width:calc(100% - 20px);font:600 12px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--panel);border:1px solid var(--line);padding:2px 9px;border-radius:999px}
+.err{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;color:var(--ink);background:var(--stage)}
+.err[hidden]{display:none}
+#caption{margin:12px 2px 10px;min-height:3.6em;font-size:1rem}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button,select{font:inherit;font-size:.9rem;color:var(--ink);background:var(--btn);border:1px solid var(--line);border-radius:8px;padding:6px 12px;min-height:36px}
+button{cursor:pointer;min-width:64px}
+button:hover:not(:disabled){background:var(--btnHover)}
+button:disabled{opacity:.45;cursor:default}
+button:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.btn-tour{background:var(--accent);color:#111;font-weight:700;border:1px solid rgba(0,0,0,0.18);display:inline-flex;align-items:center;gap:6px;padding:6px 14px}
+.btn-tour:hover:not(:disabled){filter:brightness(1.08)}
+.btn-tour.playing{background:var(--btn);color:var(--ink);border-color:var(--accent)}
+.tour-icon{font-size:0.95em}
+.btn-mute{min-width:40px;padding:6px 10px;font-size:1rem;display:inline-flex;align-items:center;justify-content:center}
+.tour-status{display:flex;align-items:center;gap:8px;font-size:0.85rem;color:var(--muted);min-height:1.6rem;margin:8px 2px 0;padding:4px 10px;background:var(--panel);border:1px solid var(--line);border-radius:999px;width:fit-content;max-width:100%}
+.tour-badge{display:inline-block;font-size:0.75rem;font-weight:700;letter-spacing:0.02em;text-transform:uppercase;color:var(--ink);background:var(--bg);padding:2px 8px;border-radius:999px;border:1px solid var(--line);white-space:nowrap}
+.tour-msg{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:600px){.tour-status{border-radius:8px;flex-wrap:wrap}.tour-msg{white-space:normal}}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+#code{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 0;overflow:auto;max-height:70vh;font:13px/1.7 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+@media (max-width:420px){#code{font-size:12px}}
+.row{display:flex;min-width:max-content;white-space:pre;padding-right:12px;border-left:4px solid transparent}
+.ln{flex:0 0 2.4em;text-align:right;padding-right:12px;color:var(--muted);user-select:none}
+.row.active{background:var(--hl-bg);border-left-color:var(--hl-bar)}
+
+/* ---------- top navigation bar ---------- */
+.top-nav{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 0 10px;margin-bottom:10px;border-bottom:1px solid var(--line);font-size:0.875rem}
+.top-nav a{color:var(--ink);text-decoration:none;display:inline-flex;align-items:center;gap:6px;font-weight:550;padding:4px 8px;border-radius:6px;transition:background 120ms ease,color 120ms ease}
+.top-nav a:hover{background:var(--btnHover);color:var(--accent)}
+.top-nav a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.nav-back{display:inline-flex;align-items:center;gap:6px;font-weight:600}
+.nav-back .nav-arrow{font-size:1.05em;transition:transform 120ms ease}
+.nav-back:hover .nav-arrow{transform:translateX(-2px)}
+.nav-sequence{display:inline-flex;align-items:center;gap:6px}
+.nav-btn{background:var(--btn);border:1px solid var(--line);padding:3px 9px;border-radius:6px;color:var(--ink);text-decoration:none;display:inline-flex;align-items:center;gap:4px;font-size:0.82rem;font-weight:550}
+.nav-btn:hover:not(.disabled){background:var(--btnHover);border-color:var(--accent);color:var(--accent)}
+.nav-btn.disabled{opacity:0.35;cursor:not-allowed;pointer-events:none}
+.nav-indicator{font-size:0.8rem;color:var(--muted);padding:0 6px;font-variant-numeric:tabular-nums;user-select:none;font-weight:600}
+.nav-arrow{font-size:1em;line-height:1}
+@media (max-width:540px){
+  .top-nav{flex-wrap:wrap;gap:8px}
+  .nav-back span:not(.nav-arrow){font-size:0.82rem}
+  .btn-show-code .nav-label{display:none}
+  .btn-show-code{padding:3px 8px}
+}
+
+/* ---------- collapsible code pane & full-width mode ---------- */
+.code-pane{display:flex;flex-direction:column;min-width:0}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:5px 12px;background:var(--panel);border:1px solid var(--line);border-bottom:none;border-radius:12px 12px 0 0;font-size:0.8rem;font-weight:600;color:var(--muted)}
+.code-header .code-title{text-transform:uppercase;letter-spacing:0.06em;font-size:0.75rem}
+.code-pane #code{border-top-left-radius:0;border-top-right-radius:0}
+.btn-toggle-code{background:transparent;border:1px solid transparent;color:var(--muted);padding:2px 8px;border-radius:6px;font:inherit;font-size:0.78rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;min-height:unset;min-width:unset;transition:background 120ms ease,color 120ms ease,border-color 120ms ease}
+.btn-toggle-code:hover{background:var(--btnHover);color:var(--ink);border-color:var(--line)}
+.btn-toggle-code:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn-toggle-code .eye-icon{font-size:1em;line-height:1}
+.btn-show-code{display:inline-flex;align-items:center;gap:5px}
+.btn-show-code[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+  <nav class="top-nav" aria-label="Visualizations navigation">
+    <a class="nav-back" href="../index.html" title="Return to all algorithm visualizations">
+      <span class="nav-arrow" aria-hidden="true">←</span>
+      <span>All Visualizations</span>
+    </a>
+    <div class="nav-sequence">
+      <button id="bShowCodeNav" type="button" class="nav-btn btn-show-code" title="Show code panel (C)" aria-label="Show code panel" hidden><span class="eye-icon" aria-hidden="true">👁</span><span class="nav-label">Show Code</span></button>
+      <a class="nav-btn prev" href="../15-coins-bottom-up/Coins%2C%20bottom-up%2C%20in%203D.html" title="Previous visualization: Coins, bottom-up, in 3D"><span class="nav-arrow" aria-hidden="true">‹</span><span class="nav-label">Prev</span></a>
+      <span class="nav-indicator" aria-label="Visualization 19 of 20" title="Visualization 19 of 20">19 / 20</span>
+      <a class="nav-btn next" href="../insertion-sort/Insertion%20sort%20in%203D%2C%20step%20by%20step.html" title="Next visualization: Insertion Sort"><span class="nav-label">Next</span><span class="nav-arrow" aria-hidden="true">›</span></a>
+    </div>
+  </nav>
+  <h1>The cache that forgets wisely, in 3D</h1>
+  <p class="goal" id="goal">Goal: remember results, and when full throw out the least recently used or oldest key.</p>
+  <div class="wrap" id="wrap">
+    <div>
+      <div class="stagebox" id="stage">
+        <canvas id="cv" role="img" aria-label="3D visualization of cache rack and incoming call sequence"></canvas>
+        <div class="tag" id="tag"></div>
+        <div class="hint">drag to rotate · double-click to reset</div>
+        <div class="err" id="err" hidden></div>
+      </div>
+      <p id="caption" role="status" aria-live="polite"></p>
+      <div class="controls" role="group" aria-label="Playback controls">
+        <button id="bTour" type="button" class="btn-tour" title="Start guided audio tour (Space)">
+          <span class="tour-icon" aria-hidden="true">▶</span>
+          <span class="tour-label">Audio Tour</span>
+        </button>
+        <button id="bBack" type="button" title="Previous step (Left Arrow)">Back</button>
+        <button id="bNext" type="button" title="Next step (Right Arrow)">Next</button>
+        <button id="bReset" type="button" title="Reset to beginning">Reset</button>
+        <button id="bMute" type="button" class="btn-mute" aria-pressed="false" title="Mute voiceover (Silent animation)">
+          <span class="mute-icon" aria-hidden="true">🔊</span>
+        </button>
+        <label class="sr" for="preset">Input</label>
+        <select id="preset"></select>
+        <label class="sr" for="speed">Speed</label>
+        <select id="speed">
+          <option value="1300">Slow</option>
+          <option value="850" selected>Normal</option>
+          <option value="450">Fast</option>
+          <option value="220">Very fast</option>
+        </select>
+      </div>
+      <div class="tour-status" id="tourStatus" role="status" aria-live="polite">
+        <span class="tour-badge" id="tourBadge">Milestone 1/2</span>
+        <span class="tour-msg" id="tourMsg">Ready to start guided audio tour.</span>
+      </div>
+      <details class="legend"><summary>How to read this</summary><p>Back row: the calls in order. Grey = waiting, gold = active call, green = hit, orange = miss. Front row: the cache rack, slots left to right from <b>OLDEST</b> (thrown out first) to <b>NEWEST</b>. Each coloured block is a cached key; a raised block is the one just used or added. A red “evicted” label shows the key thrown out when full. Drag sideways to turn the view; double-click to reset.</p></details>
+    </div>
+    <div class="code-pane" id="codePane">
+      <div class="code-header">
+        <span class="code-title">Python Source</span>
+        <button id="bHideCode" type="button" class="btn-toggle-code" title="Hide code panel (C)" aria-label="Hide code panel">
+          <span class="eye-icon" aria-hidden="true">✕</span>
+          <span class="btn-label">Hide</span>
+        </button>
+      </div>
+      <div id="code" role="region" aria-label="Python source code"></div>
+    </div>
+  </div>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+
+/* CODE GENERATOR */
+function codeFor(l){
+  return [
+    ['def',   l ? 'def lru_cache(max_size):' : 'def fifo_cache(max_size):'],
+    ['dec',   '    def decorator(func):'],
+    ['init',  '        cache = {}'],
+    ['w',     '        def wrapper(*args):'],
+    ['cnt',   '            wrapper.calls += 1'],
+    ['key',   '            key = args[0] if len(args) == 1 else args'],
+    ['if',    '            if key in cache:'],
+    ['hit',   '                wrapper.hits += 1'],
+    ...(l ? [
+      ['mv1', '                value = cache.pop(key)'],
+      ['mv2', '                cache[key] = value'],
+      ['ret1','                return value']
+    ] : [
+      ['ret1','                return cache[key]']
+    ]),
+    ['miss',  '            wrapper.misses += 1'],
+    ['call',  '            value = func(*args)'],
+    ['zero',  '            if max_size == 0:'],
+    ['zret',  '                return value'],
+    ['full',  '            if max_size is not None and len(cache) >= max_size:'],
+    ['evict', '                del cache[next(iter(cache))]'],
+    ['store', '            cache[key] = value'],
+    ['ret2',  '            return value'],
+    ['set',   '        wrapper.calls = wrapper.hits = wrapper.misses = 0'],
+    ['keys',  '        wrapper.keys = lambda: list(cache)'],
+    ['rw',    '        return wrapper'],
+    ['rd',    '    return decorator']
+  ];
+}
+
+const E = [[1],[2],[1],[3],[2],[1]];
+const H = [[1],[2],[1],[3],[1],[4],[1]];
+
+const PRESETS = [
+  { name: 'LRU: 1,2,1,3,2,1 \u2192 1 hit, 5 misses', pol: 'lru', size: 2, calls: E, note: 'LRU bets that a key used recently will be used again soon. Here the sequence kept asking for the key LRU had just thrown out, so the bet lost.' },
+  { name: 'FIFO: same calls \u2192 2 hits, 4 misses', pol: 'fifo', size: 2, calls: E, note: 'FIFO ignores use and only looks at age. It won here by luck: key 2 was asked again before its turn to leave. That does not make FIFO the better policy.' },
+  { name: 'LRU: hot key 1 \u2192 3 hits', pol: 'lru', size: 2, calls: H, note: 'Key 1 is hot (asked every other call). LRU renews it on every hit, so it is never the one thrown out. Reuse of a few keys favours LRU.' },
+  { name: 'FIFO: hot key 1 \u2192 2 hits', pol: 'fifo', size: 2, calls: H, note: 'FIFO never renews key 1, so it was thrown out on its turn and had to be recomputed. A hot key favours LRU; a key read once, or an order with no pattern, gives FIFO no disadvantage.' },
+  { name: 'Edge: LRU, max_size 0', pol: 'lru', size: 0, calls: [[1],[1],[2]], note: 'Nothing is ever stored, so every call recomputes: 0 hits.' },
+  { name: 'Edge: LRU, max_size None', pol: 'lru', size: null, calls: [[1],[2],[3],[1],[2]], note: 'No limit, so the “is it full?” check is never true and nothing is evicted.' },
+  { name: 'Edge: LRU, two arguments', pol: 'lru', size: 2, calls: [[1,2],[1,2],[2,1]], note: 'With several arguments the key is the whole tuple, so (1,2) and (2,1) are different keys.' }
+];
+
+const kk = function(a){ return a.length === 1 ? String(a[0]) : '(' + a.join(',') + ')'; };
+
+function simulate(p){
+  const F = [], ca = [], res = [];
+  let h = 0, m = 0, c = 0, L = (p.pol === 'lru');
+  function snap(lines, msg, o){
+    o = o || {};
+    F.push(Object.assign({
+      lines: lines, msg: msg, rack: ca.slice(),
+      h: h, m: m, c: c, act: -1, out: null, i: -1, kind: '', res: res.slice()
+    }, o));
+  }
+  snap(['init'], p.size === 0
+    ? 'The cache starts empty, and max_size is 0, so it will never hold anything.'
+    : (p.size === null
+      ? 'The cache starts empty and has no size limit.'
+      : 'The cache starts empty with room for ' + p.size + ' keys. Left is the oldest key (thrown out first), right is the newest.'));
+
+  p.calls.forEach(function(a, i){
+    const k = kk(a), ix = ca.indexOf(k);
+    c++;
+    if (ix >= 0){
+      h++;
+      res[i] = 'H';
+      if (L){
+        ca.splice(ix, 1);
+        ca.push(k);
+        snap(['cnt','key','if','hit','mv1','mv2','ret1'],
+          'Call f(' + k + '): it is in the cache, a hit. LRU takes ' + k + ' out and puts it back, so ' + k + ' is now the newest.',
+          { i: i, act: ca.length - 1, kind: 'hit', res: res.slice() });
+      } else {
+        snap(['cnt','key','if','hit','ret1'],
+          'Call f(' + k + '): it is in the cache, a hit. FIFO leaves ' + k + ' where it is, because using a key does not change its age.',
+          { i: i, act: ix, kind: 'hit' });
+      }
+    } else {
+      m++;
+      res[i] = 'M';
+      if (p.size === 0){
+        snap(['cnt','key','if','miss','call','zero','zret'],
+          'Call f(' + k + '): a miss. It is computed, but max_size is 0, so it is not stored.',
+          { i: i, kind: 'miss' });
+      } else {
+        let out = null;
+        let lines = ['cnt','key','if','miss','call','zero','full','store','ret2'];
+        let msg = 'Call f(' + k + '): a miss. It is computed and stored as the newest. ' +
+          (p.size === null ? 'There is no limit, so nothing is evicted.' : 'There is a free slot, so nothing is evicted.');
+        if (p.size !== null && ca.length >= p.size){
+          out = ca.shift();
+          lines = ['cnt','key','if','miss','call','zero','full','evict','store','ret2'];
+          msg = 'Call f(' + k + '): a miss, and the cache is full. The oldest key ' + out + ' (far left) is evicted, then ' + k + ' goes in as the newest.';
+        }
+        ca.push(k);
+        snap(lines, msg, { i: i, act: ca.length - 1, out: out, kind: 'miss' });
+      }
+    }
+  });
+
+  snap([], 'Done: ' + h + ' hit' + (h === 1 ? '' : 's') + ', ' + m + ' miss' + (m === 1 ? '' : 'es') + '. ' + p.note);
+  return { frames: F };
+}
+
+/* DOM Elements */
+const $ = function(id){ return document.getElementById(id); };
+const $cv = $('cv'), $stage = $('stage'), $cap = $('caption'), $tag = $('tag'), $err = $('err'), $code = $('code');
+const $wrap = $('wrap'), $bHideCode = $('bHideCode'), $bShowCodeNav = $('bShowCodeNav');
+const $tour = $('bTour'), $back = $('bBack'), $next = $('bNext'), $reset = $('bReset'), $mute = $('bMute');
+const $preset = $('preset'), $speed = $('speed');
+const $tourStatus = $('tourStatus'), $tourBadge = $('tourBadge'), $tourMsg = $('tourMsg');
+const $goal = $('goal');
+const $tourIcon = $tour.querySelector('.tour-icon');
+const $tourLabel = $tour.querySelector('.tour-label');
+const $muteIcon = $mute.querySelector('.mute-icon');
+
+let rows = [];
+
+function toggleCode(){
+  const isHidden = $wrap.classList.toggle('code-hidden');
+  $bShowCodeNav.hidden = !isHidden;
+  $bHideCode.setAttribute('aria-expanded', String(!isHidden));
+  fitCamera();
+}
+$bHideCode.addEventListener('click', toggleCode);
+$bShowCodeNav.addEventListener('click', toggleCode);
+
+PRESETS.forEach(function(p, i){
+  const o = document.createElement('option');
+  o.value = String(i);
+  o.textContent = p.name;
+  $preset.appendChild(o);
+});
+
+/* Audio Walkthrough Assets */
+const audioAvailable = typeof Audio !== 'undefined';
+function makeAudio(src){
+  if (!audioAvailable) return null;
+  const a = new Audio();
+  a.preload = 'auto';
+  a.src = src;
+  return a;
+}
+
+const WALKTHROUGHS = {
+  lru: {
+    id: 'lru',
+    name: 'LRU: 1,2,1,3,2,1 \u2192 1 hit, 5 misses',
+    match: function(cfg){
+      return cfg && cfg.pol === 'lru' && cfg.size === 2 && cfg.calls === E;
+    },
+    clips: {
+      c1: makeAudio('../audio-walkthroughs/cache-that-forgets-wisely/01-lru-setup-and-first-hit.mp3'),
+      c2: makeAudio('../audio-walkthroughs/cache-that-forgets-wisely/02-lru-eviction-and-thrashing.mp3')
+    },
+    milestones: [
+      {
+        title: 'Cache Setup, Cold Misses & First Hit',
+        clip: 'c1',
+        startIdx: 0,
+        endIdx: 3,
+        cues: [
+          { time: 0.0, frameIdx: 0 },
+          { time: 11.5, frameIdx: 1 },
+          { time: 19.0, frameIdx: 2 },
+          { time: 25.5, frameIdx: 3 }
+        ]
+      },
+      {
+        title: 'Eviction, Thrashing & LRU Pathology',
+        clip: 'c2',
+        startIdx: 4,
+        endIdx: 7,
+        cues: [
+          { time: 0.0, frameIdx: 4 },
+          { time: 9.5, frameIdx: 5 },
+          { time: 19.0, frameIdx: 6 },
+          { time: 26.5, frameIdx: 7 }
+        ]
+      }
+    ]
+  },
+  fifo: {
+    id: 'fifo',
+    name: 'FIFO: same calls \u2192 2 hits, 4 misses',
+    match: function(cfg){
+      return cfg && cfg.pol === 'fifo' && cfg.size === 2 && cfg.calls === E;
+    },
+    clips: {
+      fifo: makeAudio('../audio-walkthroughs/cache-that-forgets-wisely/03-fifo-comparison.mp3')
+    },
+    milestones: [
+      {
+        title: 'FIFO Eviction by Age & Lucky Survival',
+        clip: 'fifo',
+        startIdx: 0,
+        endIdx: 7,
+        cues: [
+          { time: 0.0, frameIdx: 0 },
+          { time: 6.0, frameIdx: 1 },
+          { time: 10.0, frameIdx: 2 },
+          { time: 14.0, frameIdx: 3 },
+          { time: 24.5, frameIdx: 4 },
+          { time: 31.0, frameIdx: 5 },
+          { time: 36.0, frameIdx: 6 },
+          { time: 39.0, frameIdx: 7 }
+        ]
+      }
+    ]
+  }
+};
+
+function getActiveWalkthrough(cfg){
+  if (!cfg) return null;
+  const keys = Object.keys(WALKTHROUGHS);
+  for (let i = 0; i < keys.length; i++){
+    const wt = WALKTHROUGHS[keys[i]];
+    if (wt.match(cfg)) return wt;
+  }
+  return null;
+}
+
+function getMilestones(wt){
+  if (!wt) return [];
+  return wt.milestones || [];
+}
+
+function getMilestoneTitle(wt, mIdx){
+  const milestones = getMilestones(wt);
+  const m = milestones[mIdx];
+  if (!m) return '';
+  return m.title || ('Milestone ' + (mIdx + 1));
+}
+
+function getMilestoneClip(wt, m){
+  if (!m) return null;
+  if (typeof m.clip === 'string' && wt.clips){
+    return wt.clips[m.clip] || null;
+  }
+  return null;
+}
+
+/* 3D Scene Variables */
+let R = null, S = null, Cam = null, G = null;
+let BL = [], CT = [], LB = null, OUT = null;
+let yaw = 0, nS = 0, N = 1;
+const pal = [0xe07a5f, 0x3d9be9, 0x5fa77f, 0xb98a12, 0xa07cc0, 0x3aa8a4];
+
+function spr(w, h, sx, sy){
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const tx = new THREE.CanvasTexture(c);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tx, transparent: true, depthTest: false }));
+  s.scale.set(sx, sy, 1);
+  s.userData = { c: c, tx: tx };
+  return s;
+}
+
+function txt(s, t, col){
+  const c = s.userData.c, x = c.getContext('2d');
+  x.clearRect(0, 0, c.width, c.height);
+  let z = Math.round(c.height * 0.7);
+  x.font = 'bold ' + z + 'px system-ui,sans-serif';
+  while (x.measureText(t).width > c.width - 14 && z > 10){
+    z -= 4;
+    x.font = 'bold ' + z + 'px system-ui,sans-serif';
+  }
+  x.textAlign = 'center';
+  x.textBaseline = 'middle';
+  x.lineWidth = 7;
+  x.strokeStyle = '#0b0f16';
+  x.strokeText(t, c.width / 2, c.height / 2);
+  x.fillStyle = col;
+  x.fillText(t, c.width / 2, c.height / 2);
+  s.userData.tx.needsUpdate = true;
+}
+
+try {
+  if (typeof THREE === 'undefined') throw new Error('Three.js not loaded');
+  R = new THREE.WebGLRenderer({ canvas: $cv, antialias: true, alpha: true });
+  R.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  S = new THREE.Scene();
+  Cam = new THREE.PerspectiveCamera(32, 4/3, 0.1, 200);
+  S.add(new THREE.AmbientLight(0xffffff, 0.58));
+  const dl = new THREE.DirectionalLight(0xffffff, 0.85);
+  dl.position.set(3, 8, 6);
+  S.add(dl);
+} catch (e){
+  R = null;
+  $err.removeAttribute('hidden');
+  $err.textContent = '3D WebGL view is not supported on this browser. Code and captions will still operate step by step.';
+}
+
+const SX = function(j){ return (j - (nS - 1) / 2) * 1.25; };
+const CX = function(j){ return (j - (N - 1) / 2) * 0.95; };
+
+function buildScene(){
+  if (!R) return;
+  if (G){
+    S.remove(G);
+    G.traverse(function(o){
+      if (o.geometry) o.geometry.dispose();
+      if (o.material){
+        if (o.material.map) o.material.map.dispose();
+        o.material.dispose();
+      }
+    });
+  }
+  G = new THREE.Group();
+  S.add(G);
+
+  const cur = State.cfg;
+  const keys = Array.from(new Set(cur.calls.map(kk)));
+  cur.km = {};
+  keys.forEach(function(k, j){ cur.km[k] = pal[j % pal.length]; });
+
+  nS = (cur.size === 0 ? 0 : (cur.size === null ? keys.length : cur.size));
+  N = cur.calls.length;
+  BL = []; CT = [];
+
+  for (let j = 0; j < nS; j++){
+    const sl = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.1, 1.1), new THREE.MeshLambertMaterial({ color: 0x2a3446 }));
+    sl.position.set(SX(j), 0, 0.6);
+    const m = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.55, 0.95), new THREE.MeshLambertMaterial({ color: 0x888888 }));
+    m.position.set(SX(j), 0.35, 0.6);
+    const t = spr(128, 64, 1, 0.5);
+    t.position.set(SX(j), 0.8, 0.6);
+    G.add(sl, m, t);
+    BL.push({ m: m, t: t });
+  }
+
+  if (nS){
+    const a = spr(192, 64, 1.3, 0.43), b = spr(192, 64, 1.3, 0.43);
+    txt(a, 'OLDEST', '#ffb4b4');
+    txt(b, 'NEWEST', '#9be7b5');
+    a.position.set(SX(0), 0, 1.5);
+    b.position.set(SX(nS - 1), 0, 1.5);
+    G.add(a, b);
+  } else {
+    const z = spr(384, 64, 3, 0.5);
+    txt(z, 'max_size = 0: no slots', '#cbd5e6');
+    z.position.set(0, 0.4, 0.6);
+    G.add(z);
+  }
+
+  for (let j = 0; j < N; j++){
+    const m = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.12, 0.8), new THREE.MeshLambertMaterial({ color: 0x3b4a63 }));
+    m.position.set(CX(j), 0, -1.8);
+    const t = spr(128, 64, 0.8, 0.4);
+    t.position.set(CX(j), 0.4, -1.8);
+    txt(t, kk(cur.calls[j]), '#fff');
+    const r = spr(128, 48, 0.7, 0.26);
+    r.position.set(CX(j), 0.05, -1.15);
+    G.add(m, t, r);
+    CT.push({ m: m, r: r });
+  }
+
+  LB = spr(160, 64, 1.1, 0.44);
+  OUT = spr(320, 64, 2.2, 0.44);
+  G.add(LB, OUT);
+  fitCamera();
+}
+
+function fitCamera(){
+  if (!R) return;
+  const w = $stage.clientWidth || 600, h = $stage.clientHeight || 450;
+  R.setSize(w, h, false);
+  Cam.aspect = w / h;
+  const half = Math.max(nS * 1.25, N * 0.95, 3.4) / 2 + 0.8;
+  const d = half / (Math.tan(16 * Math.PI / 180) * Cam.aspect);
+  Cam.position.set(0, d * 0.72, d * 0.7);
+  Cam.lookAt(0, 0.2, -0.5);
+  Cam.updateProjectionMatrix();
+  renderScene();
+}
+
+function renderScene(){
+  if (!R || !G || !State.frames[State.idx]) return;
+  const f = State.frames[State.idx];
+  G.rotation.y = yaw;
+
+  BL.forEach(function(b, j){
+    const k = f.rack[j], on = (k !== undefined);
+    b.m.visible = b.t.visible = on;
+    if (on){
+      b.m.material.color.setHex(State.cfg.km[k]);
+      txt(b.t, k, '#fff');
+      const u = (j === f.act) ? 0.3 : 0;
+      b.m.position.y = 0.35 + u;
+      b.t.position.y = 0.8 + u;
+    }
+  });
+
+  CT.forEach(function(c, j){
+    const r = f.res[j];
+    let col = 0x3b4a63;
+    if (j === f.i) col = 0xe0a526;
+    else if (r === 'H') col = 0x2f7d5b;
+    else if (r === 'M') col = 0xc2692a;
+    c.m.material.color.setHex(col);
+    txt(c.r, r === 'H' ? 'hit' : (r === 'M' ? 'miss' : ''), '#fff');
+  });
+
+  LB.visible = Boolean(f.kind);
+  if (f.kind){
+    txt(LB, f.kind === 'hit' ? 'HIT' : 'MISS', f.kind === 'hit' ? '#7ee2a8' : '#ffb27a');
+    LB.position.set(f.act >= 0 ? SX(f.act) : 0, 1.5, 0.6);
+  }
+
+  OUT.visible = (f.out !== null && f.out !== undefined);
+  if (f.out !== null && f.out !== undefined){
+    txt(OUT, 'evicted ' + f.out, '#ff9a9a');
+    OUT.position.set(SX(0), 2.1, 0.6);
+  }
+
+  R.render(S, Cam);
+}
+
+/* Mouse / drag controls */
+if (R){
+  let dx0 = null, y0 = 0;
+  $stage.addEventListener('pointerdown', function(e){
+    dx0 = e.clientX; y0 = yaw;
+    try { $cv.setPointerCapture(e.pointerId); } catch(err){}
+  });
+  window.addEventListener('pointerup', function(){ dx0 = null; });
+  $stage.addEventListener('pointermove', function(e){
+    if (dx0 !== null){
+      yaw = Math.max(-0.55, Math.min(0.55, y0 + (e.clientX - dx0) / 200));
+      renderScene();
+    }
+  });
+  $stage.addEventListener('dblclick', function(){ yaw = 0; renderScene(); });
+}
+
+/* Playback state */
+const State = {
+  cfg: null, frames: [], idx: 0, state: 'paused', timer: 0, speed: 850,
+  audioMuted: false, currentClip: null, currentMilestoneIdx: -1, cueTimers: [], tourToken: 0
+};
+
+function renderCodeLines(f){
+  const ids = f.lines || [];
+  let firstActive = null;
+  rows.forEach(function(r){
+    const on = ids.indexOf(r.dataset.id) >= 0;
+    r.classList.toggle('active', on);
+    if (on && !firstActive) firstActive = r;
+  });
+  if (firstActive){
+    if (firstActive.offsetTop < $code.scrollTop){
+      $code.scrollTop = firstActive.offsetTop;
+    } else if (firstActive.offsetTop + firstActive.offsetHeight > $code.scrollTop + $code.clientHeight){
+      $code.scrollTop = firstActive.offsetTop + firstActive.offsetHeight - $code.clientHeight;
+    }
+  }
+}
+
+function updateButtons(){
+  const last = State.frames.length - 1;
+  $back.disabled = State.idx <= 0;
+  $next.disabled = State.idx >= last;
+  if (State.state === 'playing'){
+    $tour.classList.add('playing');
+    if ($tourIcon) $tourIcon.textContent = '⏸';
+    if ($tourLabel) $tourLabel.textContent = 'Pause Tour';
+    $tour.title = 'Pause guided tour (Space)';
+  } else {
+    $tour.classList.remove('playing');
+    if (State.idx >= last){
+      if ($tourIcon) $tourIcon.textContent = '↺';
+      if ($tourLabel) $tourLabel.textContent = 'Replay Tour';
+      $tour.title = 'Replay guided tour from start (Space)';
+    } else if (State.idx > 0){
+      if ($tourIcon) $tourIcon.textContent = '▶';
+      if ($tourLabel) $tourLabel.textContent = 'Resume Tour';
+      $tour.title = 'Resume guided tour (Space)';
+    } else {
+      if ($tourIcon) $tourIcon.textContent = '▶';
+      if ($tourLabel) $tourLabel.textContent = 'Audio Tour';
+      $tour.title = 'Start guided audio tour (Space)';
+    }
+  }
+}
+
+function updateTourStatus(){
+  const wt = getActiveWalkthrough(State.cfg);
+  if (wt){
+    const milestones = getMilestones(wt);
+    const totalM = milestones.length;
+    let mIdx = State.currentMilestoneIdx;
+    if (mIdx < 0 || mIdx >= totalM){
+      mIdx = 0;
+      for (let i = 0; i < milestones.length; i++){
+        if (State.idx >= milestones[i].startIdx && State.idx <= milestones[i].endIdx){
+          mIdx = i;
+          break;
+        }
+      }
+    }
+    const title = getMilestoneTitle(wt, mIdx);
+
+    if (State.state === 'playing'){
+      $tourBadge.textContent = 'Milestone ' + (mIdx + 1) + '/' + totalM;
+      $tourMsg.textContent = State.audioMuted ? (title + ' (silent mode)') : title;
+    } else if (State.state === 'ended'){
+      $tourBadge.textContent = 'Completed';
+      $tourMsg.textContent = 'Guided tour finished for ' + wt.name + '.';
+    } else {
+      $tourBadge.textContent = 'Milestone ' + (mIdx + 1) + '/' + totalM;
+      if (State.idx === 0){
+        $tourMsg.textContent = 'Ready to start guided audio tour for ' + wt.name + '.';
+      } else {
+        $tourMsg.textContent = 'Tour paused at step ' + (State.idx + 1) + ' of ' + State.frames.length + '.';
+      }
+    }
+  } else {
+    $tourBadge.textContent = 'Preset';
+    if (State.state === 'ended'){
+      $tourMsg.textContent = 'Run complete.';
+    } else if (State.state === 'playing'){
+      $tourMsg.textContent = 'Playing ' + (State.cfg ? State.cfg.name : 'simulation') + ' (silent mode).';
+    } else {
+      $tourMsg.textContent = 'Ready to run ' + (State.cfg ? State.cfg.name : 'preset') + '.';
+    }
+  }
+}
+
+function updateMuteButton(){
+  $mute.setAttribute('aria-pressed', String(State.audioMuted));
+  if ($muteIcon) $muteIcon.textContent = State.audioMuted ? '🔇' : '🔊';
+  $mute.title = State.audioMuted ? 'Unmute voiceover (Space or M)' : 'Mute voiceover (Silent animation)';
+}
+
+function clearCueTimers(){
+  if (Array.isArray(State.cueTimers)){
+    State.cueTimers.forEach(function(t){ clearTimeout(t); });
+  }
+  State.cueTimers = [];
+}
+
+function stopAudio(){
+  clearCueTimers();
+  State.tourToken = (State.tourToken || 0) + 1;
+  if (State.currentClip){
+    try {
+      State.currentClip.pause();
+      State.currentClip.currentTime = 0;
+      State.currentClip.onended = null;
+    } catch(e){}
+    State.currentClip = null;
+  }
+  State.currentMilestoneIdx = -1;
+}
+
+function pauseAudio(){
+  clearCueTimers();
+  if (State.currentClip){
+    try { State.currentClip.pause(); } catch(e){}
+  }
+}
+
+function startMilestone(mIdx, fromTime){
+  const wt = getActiveWalkthrough(State.cfg);
+  if (!wt || !audioAvailable || State.audioMuted) return;
+
+  const milestones = getMilestones(wt);
+  if (mIdx < 0 || mIdx >= milestones.length) return;
+
+  const m = milestones[mIdx];
+  const clip = getMilestoneClip(wt, m);
+  if (!clip){
+    if (State.state === 'playing') schedule();
+    return;
+  }
+
+  State.currentMilestoneIdx = mIdx;
+  State.currentClip = clip;
+  const token = ++State.tourToken;
+  updateTourStatus();
+
+  clip.onended = function(){
+    if (token !== State.tourToken || State.state !== 'playing') return;
+    if (mIdx + 1 < milestones.length){
+      startMilestone(mIdx + 1, 0);
+    } else {
+      State.state = 'ended';
+      State.currentClip = null;
+      updateButtons();
+      updateTourStatus();
+    }
+  };
+
+  clip.onerror = function(){
+    if (token !== State.tourToken) return;
+    console.warn('Audio clip failed to play, switching to silent mode.');
+    $tourMsg.textContent = 'Audio clips unavailable; running in silent mode.';
+    State.audioMuted = true;
+    updateMuteButton();
+    if (State.state === 'playing') schedule();
+  };
+
+  try {
+    clip.currentTime = fromTime || 0;
+  } catch(e){}
+
+  clearCueTimers();
+  if (Array.isArray(m.cues)){
+    m.cues.forEach(function(cue){
+      const cueTime = cue.time || 0;
+      const targetFrame = cue.frameIdx;
+      if (cueTime >= (fromTime || 0)){
+        const delayMs = Math.max(0, (cueTime - (fromTime || 0)) * 1000);
+        const timerId = setTimeout(function(){
+          if (token === State.tourToken && State.state === 'playing'){
+            show(targetFrame, true);
+          }
+        }, delayMs);
+        State.cueTimers.push(timerId);
+      }
+    });
+  }
+
+  const playPromise = clip.play();
+  if (playPromise !== undefined){
+    playPromise.catch(function(err){
+      if (token !== State.tourToken) return;
+      if (err && err.name === 'NotAllowedError'){
+        $tourMsg.textContent = 'Click Audio Tour to allow sound in your browser.';
+      } else {
+        $tourMsg.textContent = 'Audio clips unavailable; running in silent mode.';
+      }
+      if (State.state === 'playing') schedule();
+    });
+  }
+}
+
+function playMilestoneForFrame(frameIdx){
+  const wt = getActiveWalkthrough(State.cfg);
+  if (!wt || !audioAvailable || State.audioMuted) return;
+
+  const milestones = getMilestones(wt);
+  let mIdx = -1;
+  for (let i = 0; i < milestones.length; i++){
+    const m = milestones[i];
+    if (frameIdx >= m.startIdx && frameIdx <= m.endIdx){
+      mIdx = i;
+      break;
+    }
+  }
+  if (mIdx < 0) return;
+
+  const m = milestones[mIdx];
+  const clip = getMilestoneClip(wt, m);
+  let fromTime = 0;
+  if (Array.isArray(m.cues)){
+    for (let c = m.cues.length - 1; c >= 0; c--){
+      if (frameIdx >= m.cues[c].frameIdx){
+        fromTime = m.cues[c].time || 0;
+        break;
+      }
+    }
+  }
+
+  if (State.currentClip === clip && !clip.ended && clip.currentTime > fromTime){
+    fromTime = clip.currentTime;
+  }
+
+  startMilestone(mIdx, fromTime);
+}
+
+function show(i, animate){
+  const f = State.frames[i]; if (!f) return;
+  State.idx = i;
+  $cap.textContent = f.msg;
+  $tag.textContent = 'Step ' + (i + 1) + ' of ' + State.frames.length + ' \u00b7 calls ' + f.c + ' \u00b7 hits ' + f.h + ' \u00b7 misses ' + f.m;
+  renderCodeLines(f);
+  renderScene();
+  updateButtons();
+  updateTourStatus();
+}
+
+function clearTimer(){ if (State.timer){ clearTimeout(State.timer); State.timer = 0; } }
+function schedule(){
+  clearTimer();
+  if (State.state !== 'playing') return;
+  const wt = getActiveWalkthrough(State.cfg);
+  if (wt && audioAvailable && !State.audioMuted && State.currentClip && !State.currentClip.paused){
+    return;
+  }
+  State.timer = setTimeout(tick, State.speed * (State.frames[State.idx] && State.frames[State.idx].kind ? 1 : 1.2));
+}
+function tick(){
+  State.timer = 0;
+  if (State.state !== 'playing') return;
+  if (State.idx >= State.frames.length - 1){
+    State.state = 'ended';
+    updateButtons();
+    updateTourStatus();
+    return;
+  }
+  show(State.idx + 1, true);
+  if (State.idx >= State.frames.length - 1){
+    State.state = 'ended';
+    updateButtons();
+    updateTourStatus();
+    return;
+  }
+  schedule();
+}
+function pause(){
+  clearTimer();
+  pauseAudio();
+  if (State.state === 'playing' || State.state === 'ended') State.state = 'paused';
+  updateButtons();
+  updateTourStatus();
+}
+function play(){
+  if (State.state === 'playing'){
+    pause();
+    return;
+  }
+  if (State.idx >= State.frames.length - 1){
+    show(0, false);
+  }
+  State.state = 'playing';
+  updateButtons();
+
+  const wt = getActiveWalkthrough(State.cfg);
+  if (wt && audioAvailable && !State.audioMuted){
+    playMilestoneForFrame(State.idx);
+  } else {
+    updateTourStatus();
+    schedule();
+  }
+}
+function step(d){
+  stopAudio();
+  pause();
+  const j = State.idx + d;
+  if (j < 0 || j >= State.frames.length) return;
+  show(j, true);
+}
+function reset(){
+  stopAudio();
+  pause();
+  show(0, false);
+}
+function toggleMute(){
+  State.audioMuted = !State.audioMuted;
+  updateMuteButton();
+  if (State.audioMuted){
+    pauseAudio();
+    if (State.state === 'playing') schedule();
+  } else {
+    clearTimer();
+    if (State.state === 'playing') playMilestoneForFrame(State.idx);
+  }
+  updateTourStatus();
+}
+function loadPreset(i){
+  stopAudio();
+  pause();
+  $preset.value = String(i);
+  const p = PRESETS[i];
+  State.cfg = p;
+  State.frames = simulate(p).frames;
+  State.idx = 0;
+
+  // Re-render code panel for LRU vs FIFO
+  $code.innerHTML = '';
+  rows = [];
+  const lines = codeFor(p.pol === 'lru');
+  lines.forEach(function(pair, lnIdx){
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.dataset.id = pair[0];
+    const num = document.createElement('span');
+    num.className = 'ln';
+    num.textContent = String(lnIdx + 1);
+    const codeSpan = document.createElement('span');
+    codeSpan.textContent = pair[1];
+    row.appendChild(num);
+    row.appendChild(codeSpan);
+    $code.appendChild(row);
+    rows.push(row);
+  });
+
+  const isLru = (p.pol === 'lru');
+  const sz = (p.size === null ? 'None' : p.size);
+  $goal.textContent = (isLru ? 'lru_cache' : 'fifo_cache') + '(' + sz + ') on f(x) = x * x \u2014 Goal: remember results, and when full throw out the ' +
+    (isLru ? 'least recently used key (a hit renews a key).' : 'oldest inserted key (a hit changes nothing).');
+
+  buildScene();
+  show(0, false);
+  updateTourStatus();
+}
+
+$tour.addEventListener('click', play);
+$back.addEventListener('click', function(){ step(-1); });
+$next.addEventListener('click', function(){ step(1); });
+$reset.addEventListener('click', reset);
+$mute.addEventListener('click', toggleMute);
+$preset.addEventListener('change', function(){ loadPreset(Number($preset.value)); });
+$speed.addEventListener('change', function(){
+  State.speed = Number($speed.value);
+  if (State.state === 'playing') schedule();
+});
+document.addEventListener('keydown', function(e){
+  const t = e.target && e.target.tagName;
+  if (t === 'BUTTON' || t === 'SELECT' || t === 'INPUT' || t === 'TEXTAREA') return;
+  if (e.key === ' '){ e.preventDefault(); play(); }
+  else if (e.key === 'ArrowRight'){ step(1); }
+  else if (e.key === 'ArrowLeft'){ step(-1); }
+  else if (e.key === 'm' || e.key === 'M'){ toggleMute(); }
+  else if (e.key === 'c' || e.key === 'C'){ toggleCode(); }
+});
+document.addEventListener('visibilitychange', function(){ if (document.hidden && State.state === 'playing') pause(); });
+
+window.addEventListener('resize', fitCamera);
+
+loadPreset(0);
+})();
+</script>
+</body>
+</html>
