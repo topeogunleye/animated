@@ -24,8 +24,12 @@ Turn a coding question and/or solution into **one self-contained HTML page** tha
 - **Drag to Rotate**: Pointer drag rotates yaw only (clamped to ±0.55 rad); double-click resets view. `touch-action: pan-y` preserves vertical scrolling on touch devices. Camera distance auto-fits so the floor and tallest pillar remain visible at extreme angles.
 - **Motion & On-Demand Rendering**: Eased tweens for pointers and slab when stepping one frame; instant jumps on Reset, preset change, or `prefers-reduced-motion`. Render on demand (only while tweening or interacting). No particles or camera tours.
 - **Code Panel**: Comment-free code, exact indentation, 1-based line numbers, monospace. Highlights `frame.lines` only (fill plus solid left bar); never speculative next lines. Populated with `textContent`; scrolls only inside its own container.
-- **Playback Controls**: Back, Play/Pause/Replay, Next, Reset, preset select (3 to 5), speed select (Slow 1300ms, Normal 850ms, Fast 450ms, Very fast 220ms, times `frame.hold`). Space and arrow keys for keyboard navigation. Pauses when tab is hidden.
+- **Playback & 1-Click Guided Audio Tour**: Hero Tour button (`#bTour`, `▶ Audio Tour` / `⏸ Pause Tour`) starts synchronized visuals and ElevenLabs audio directly on click (bypassing browser autoplay blocks). Audio-driven milestones serve as the master clock, triggering visual frame cues (`{ time, frameIdx }`). Back, Next, Reset provide manual stepping and pause audio cleanly. Mute toggle (`#bMute`, `🔊` / `🔇`) switches to silent timer-based stepping. Live tour status pill (`#tourStatus`) displays active milestone and caption. Space and arrow keys for keyboard navigation. Pauses automatically on tab switch (`visibilitychange`).
 - **Theming & Resilience**: CSS variables on `:root` and `:root[data-theme="dark"]`. Explicit body background; safe-area padding; no horizontal overflow at 380 px. Rebuilds scene and text sprites on theme change. If WebGL fails, shows a concise message inside the stage while captions and code panel remain functional.
+
+## References
+- **Spatial 3D Mappings**: Consult [`references/3d-patterns.md`](./references/3d-patterns.md) for algorithm-specific spatial mappings (binary search, sorting, DP grids, trees, graphs, recursion).
+- **Audio Tour Playbook & Universal Prompt**: Consult [`references/audio-tour-playbook.md`](./references/audio-tour-playbook.md) for audio milestone integration, timestamp cue structures, and the Universal Refactor Prompt.
 
 ## Algorithm Mapping (`references/3d-patterns.md`)
 
