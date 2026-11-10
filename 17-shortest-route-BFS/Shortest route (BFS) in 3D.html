@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Shortest route (BFS) in 3D</title>
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --ink:#18212b; --muted:#5b6876; --line:#d5dbe3;
+  --hl-bg:#fff3bf; --hl-bar:#d99a00; --stage:#eef1f5;
+  --plate:#c3ccd7; --accent:#e8a900;
+  --btn:#ffffff; --btnHover:#eef1f5;
+  color-scheme:light;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1318; --panel:#171c23; --ink:#e8edf3; --muted:#9aa7b6; --line:#2c3440;
+    --hl-bg:#4a3d0a; --hl-bar:#ffc400; --stage:#141a21;
+    --plate:#3a4452; --accent:#ffc400;
+    --btn:#1d2430; --btnHover:#27303b; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1318; --panel:#171c23; --ink:#e8edf3; --muted:#9aa7b6; --line:#2c3440;
+  --hl-bg:#4a3d0a; --hl-bar:#ffc400; --stage:#141a21;
+  --plate:#3a4452; --accent:#ffc400;
+  --btn:#1d2430; --btnHover:#27303b; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+main{max-width:1120px;margin:0 auto;padding:12px 14px 22px}
+h1{font-size:1.15rem;margin:4px 0 2px;font-weight:650}
+.goal{margin:0 0 12px;color:var(--muted)}
+.legend{margin-top:10px;font-size:.9rem;color:var(--muted)}
+.legend summary{cursor:pointer;color:var(--ink);font-weight:600}
+.legend ul{margin:6px 0;padding-left:18px}
+.wrap{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:start;transition:grid-template-columns 180ms ease}
+.wrap.code-hidden{grid-template-columns:minmax(0,1fr)}
+.wrap.code-hidden .code-pane{display:none}
+@media (max-width:760px){.wrap{grid-template-columns:minmax(0,1fr)}}
+.stagebox{position:relative;background:var(--stage);border:1px solid var(--line);border-radius:12px;overflow:hidden;aspect-ratio:4/3;min-height:260px;max-height:64vh;width:100%}
+#cv{display:block;width:100%;height:100%;touch-action:pan-y;cursor:grab}
+#cv:active{cursor:grabbing}
+.hint{position:absolute;right:10px;bottom:8px;font-size:11px;color:var(--muted);pointer-events:none}
+.tag{position:absolute;top:8px;left:10px;right:10px;width:max-content;max-width:calc(100% - 20px);font:600 12px ui-monospace,Menlo,Consolas,monospace;background:var(--panel);border:1px solid var(--line);padding:2px 9px;border-radius:999px}
+.err{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;background:var(--stage);color:var(--ink)}
+.err[hidden]{display:none}
+#caption{margin:12px 2px 8px;min-height:3.2em;font-size:1rem}
+#pmap{margin:0 0 10px;padding:6px 10px;background:var(--panel);border:1px solid var(--line);border-radius:8px;font:12.5px/1.5 ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;color:var(--ink)}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button,select{font:inherit;font-size:.9rem;color:var(--ink);background:var(--btn);border:1px solid var(--line);border-radius:8px;padding:6px 12px;min-height:36px}
+button{cursor:pointer;min-width:64px}
+button:hover:not(:disabled){background:var(--btnHover)}
+button:disabled{opacity:.45;cursor:default}
+button:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.btn-tour{background:var(--accent);color:#111;font-weight:700;border:1px solid rgba(0,0,0,0.18);display:inline-flex;align-items:center;gap:6px;padding:6px 14px}
+.btn-tour:hover:not(:disabled){filter:brightness(1.08)}
+.btn-tour.playing{background:var(--btn);color:var(--ink);border-color:var(--accent)}
+.tour-icon{font-size:0.95em}
+.btn-mute{min-width:40px;padding:6px 10px;font-size:1rem;display:inline-flex;align-items:center;justify-content:center}
+.tour-status{display:flex;align-items:center;gap:8px;font-size:0.85rem;color:var(--muted);min-height:1.6rem;margin:8px 2px 0;padding:4px 10px;background:var(--panel);border:1px solid var(--line);border-radius:999px;width:fit-content;max-width:100%}
+.tour-badge{display:inline-block;font-size:0.75rem;font-weight:700;letter-spacing:0.02em;text-transform:uppercase;color:var(--ink);background:var(--bg);padding:2px 8px;border-radius:999px;border:1px solid var(--line);white-space:nowrap}
+.tour-msg{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:600px){.tour-status{border-radius:8px;flex-wrap:wrap}.tour-msg{white-space:normal}}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+#code,#full{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:auto;font:13px/1.7 ui-monospace,Menlo,Consolas,monospace}
+#code{padding:8px 0;max-height:70vh}
+#full{padding:8px 12px;margin:8px 0;white-space:pre;font-size:12px;line-height:1.5}
+.row{display:flex;min-width:max-content;white-space:pre;padding-right:12px;border-left:4px solid transparent}
+.ln{flex:0 0 2.4em;text-align:right;padding-right:12px;color:var(--muted);user-select:none}
+.row.active{background:var(--hl-bg);border-left-color:var(--hl-bar)}
+
+/* ---------- top navigation bar ---------- */
+.top-nav{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 0 10px;margin-bottom:10px;border-bottom:1px solid var(--line);font-size:0.875rem}
+.top-nav a{color:var(--ink);text-decoration:none;display:inline-flex;align-items:center;gap:6px;font-weight:550;padding:4px 8px;border-radius:6px;transition:background 120ms ease,color 120ms ease}
+.top-nav a:hover{background:var(--btnHover);color:var(--accent)}
+.top-nav a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.nav-back{display:inline-flex;align-items:center;gap:6px;font-weight:600}
+.nav-back .nav-arrow{font-size:1.05em;transition:transform 120ms ease}
+.nav-back:hover .nav-arrow{transform:translateX(-2px)}
+.nav-sequence{display:inline-flex;align-items:center;gap:6px}
+.nav-btn{background:var(--btn);border:1px solid var(--line);padding:3px 9px;border-radius:6px;color:var(--ink);text-decoration:none;display:inline-flex;align-items:center;gap:4px;font-size:0.82rem;font-weight:550}
+.nav-btn:hover:not(.disabled){background:var(--btnHover);border-color:var(--accent);color:var(--accent)}
+.nav-btn.disabled{opacity:0.35;cursor:not-allowed;pointer-events:none}
+.nav-indicator{font-size:0.8rem;color:var(--muted);padding:0 6px;font-variant-numeric:tabular-nums;user-select:none;font-weight:600}
+.nav-arrow{font-size:1em;line-height:1}
+@media (max-width:540px){
+  .top-nav{flex-wrap:wrap;gap:8px}
+  .nav-back span:not(.nav-arrow){font-size:0.82rem}
+  .btn-show-code .nav-label{display:none}
+  .btn-show-code{padding:3px 8px}
+}
+
+/* ---------- collapsible code pane & full-width mode ---------- */
+.code-pane{display:flex;flex-direction:column;min-width:0}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:5px 12px;background:var(--panel);border:1px solid var(--line);border-bottom:none;border-radius:12px 12px 0 0;font-size:0.8rem;font-weight:600;color:var(--muted)}
+.code-header .code-title{text-transform:uppercase;letter-spacing:0.06em;font-size:0.75rem}
+.code-pane #code{border-top-left-radius:0;border-top-right-radius:0}
+.btn-toggle-code{background:transparent;border:1px solid transparent;color:var(--muted);padding:2px 8px;border-radius:6px;font:inherit;font-size:0.78rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;min-height:unset;min-width:unset;transition:background 120ms ease,color 120ms ease,border-color 120ms ease}
+.btn-toggle-code:hover{background:var(--btnHover);color:var(--ink);border-color:var(--line)}
+.btn-toggle-code:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn-toggle-code .eye-icon{font-size:1em;line-height:1}
+.btn-show-code{display:inline-flex;align-items:center;gap:5px}
+.btn-show-code[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+  <nav class="top-nav" aria-label="Visualizations navigation">
+    <a class="nav-back" href="../index.html" title="Return to all algorithm visualizations">
+      <span class="nav-arrow" aria-hidden="true">←</span>
+      <span>All Visualizations</span>
+    </a>
+    <div class="nav-sequence">
+      <button id="bShowCodeNav" type="button" class="nav-btn btn-show-code" title="Show code panel (C)" aria-label="Show code panel" hidden><span class="eye-icon" aria-hidden="true">👁</span><span class="nav-label">Show Code</span></button>
+      <a class="nav-btn prev" href="../16-cache-that-forgets-wisely/The%20cache%20that%20forgets%20wisely%2C%20in%203D.html" title="Previous visualization: The Cache That Forgets Wisely"><span class="nav-arrow" aria-hidden="true">‹</span><span class="nav-label">Prev</span></a>
+      <span class="nav-indicator" aria-label="Visualization 20 of 22" title="Visualization 20 of 22">20 / 22</span>
+      <a class="nav-btn next" href="../18-edit-distance-table/Edit%20distance%20table%20in%203D.html" title="Next visualization: Edit Distance Table"><span class="nav-label">Next</span><span class="nav-arrow" aria-hidden="true">›</span></a>
+    </div>
+  </nav>
+  <h1>Shortest route with BFS, in 3D</h1>
+  <p class="goal" id="goal">Goal: return one route from start to goal using the fewest arrows, or [] if there is no route.</p>
+  <div class="wrap" id="wrap">
+    <div>
+      <div class="stagebox" id="stage">
+        <canvas id="cv" role="img" aria-label="3D network of nodes and arrows with a queue rack"></canvas>
+        <div class="tag" id="tag"></div>
+        <div class="hint">drag to rotate · double-click to reset</div>
+        <div class="err" id="err" hidden></div>
+      </div>
+      <p id="caption" role="status" aria-live="polite"></p>
+      <div id="pmap" aria-label="Queue and parent map state"></div>
+      <div class="controls" role="group" aria-label="Playback controls">
+        <button id="bTour" type="button" class="btn-tour" title="Start guided audio tour (Space)">
+          <span class="tour-icon" aria-hidden="true">▶</span>
+          <span class="tour-label">Audio Tour</span>
+        </button>
+        <button id="bBack" type="button" title="Previous step (Left Arrow)">Back</button>
+        <button id="bNext" type="button" title="Next step (Right Arrow)">Next</button>
+        <button id="bReset" type="button" title="Reset to beginning">Reset</button>
+        <button id="bMute" type="button" class="btn-mute" aria-pressed="false" title="Mute voiceover (Silent animation)">
+          <span class="mute-icon" aria-hidden="true">🔊</span>
+        </button>
+        <label class="sr" for="preset">Input</label>
+        <select id="preset"></select>
+        <label class="sr" for="speed">Speed</label>
+        <select id="speed">
+          <option value="1300">Slow</option>
+          <option value="850" selected>Normal</option>
+          <option value="450">Fast</option>
+          <option value="220">Very fast</option>
+        </select>
+      </div>
+      <div class="tour-status" id="tourStatus" role="status" aria-live="polite">
+        <span class="tour-badge" id="tourBadge">Milestone 1/2</span>
+        <span class="tour-msg" id="tourMsg">Ready to start guided audio tour.</span>
+      </div>
+      <details class="legend"><summary>How to read this</summary><ul>
+        <li><b>Grey sphere</b>: not discovered yet. <b>Blue sphere with gold ring</b>: discovered, waiting in the queue.</li>
+        <li><b>Raised gold sphere</b>: the node being processed now. <b>Green sphere</b>: already taken from the queue.</li>
+        <li><b>Purple sphere and thick purple arrows</b>: the final route. <b>d=2</b> under a node: arrows from the start.</li>
+        <li><b>Arrows</b> are one-way. Blue arrow: "we first reached this node from there" (parent map). Thick gold arrow: the arrow being evaluated now.</li>
+        <li><b>Rack in front</b>: the queue, a plain list. <b>head</b> marks the next item to take. Faded blocks were processed without slow O(n) deletions.</li>
+      </ul></details>
+    </div>
+    <div class="code-pane" id="codePane">
+      <div class="code-header">
+        <span class="code-title">Python Source</span>
+        <button id="bHideCode" type="button" class="btn-toggle-code" title="Hide code panel (C)" aria-label="Hide code panel">
+          <span class="eye-icon" aria-hidden="true">✕</span>
+          <span class="btn-label">Hide</span>
+        </button>
+      </div>
+      <div id="code" role="region" aria-label="Python source code of shortest_path"></div>
+      <details style="margin-top:10px;"><summary style="cursor:pointer;font-weight:600;color:var(--muted);font-size:0.82rem;">Full solution (all three functions, with comments)</summary><div id="full"></div></details>
+    </div>
+  </div>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+
+const SRC = [
+  "def shortest_path(graph, start, goal):",
+  "    if start not in graph or goal not in graph:",
+  "        return []",
+  "    parent = {start: None}",
+  "    queue = [start]",
+  "    head = 0",
+  "    while head < len(queue):",
+  "        node = queue[head]",
+  "        head += 1",
+  "        if node == goal:",
+  "            path = []",
+  "            while node is not None:",
+  "                path.append(node)",
+  "                node = parent[node]",
+  "            return path[::-1]",
+  "        for nxt in graph.get(node, []):",
+  "            if nxt not in parent:",
+  "                parent[nxt] = node",
+  "                queue.append(nxt)",
+  "    return []"
+];
+
+const FULL = "def shortest_path(graph, start, goal):\n    if start not in graph or goal not in graph:\n        return []\n    parent = {start: None}          # visited nodes -> the node we came from\n    queue = [start]\n    head = 0\n    # Why not queue.pop(0)? Removing the first item of a list shifts every\n    # other item one step left, so each pop costs O(n) and a whole search\n    # becomes O(n^2). Moving an index pointer forward costs O(1) per step.\n    while head < len(queue):\n        node = queue[head]\n        head += 1\n        if node == goal:\n            path = []\n            while node is not None:\n                path.append(node)\n                node = parent[node]\n            return path[::-1]\n        for nxt in graph.get(node, []):\n            if nxt not in parent:\n                parent[nxt] = node\n                queue.append(nxt)\n    return []\n\n\ndef reachable(graph, start):\n    if start not in graph:\n        return 0\n    seen = {start: True}\n    queue = [start]\n    head = 0\n    while head < len(queue):\n        node = queue[head]\n        head += 1\n        for nxt in graph.get(node, []):\n            if nxt not in seen:\n                seen[nxt] = True\n                queue.append(nxt)\n    return len(queue)\n\n\ndef has_cycle(graph):\n    state = {}                      # 1 = on the current route, 2 = fully explored\n    for root in graph:\n        if root in state:\n            continue\n        state[root] = 1\n        stack = [(root, 0)]         # (node, index of next neighbour to try)\n        while stack:\n            node, i = stack[-1]\n            nbrs = graph.get(node, [])\n            if i == len(nbrs):\n                state[node] = 2\n                stack.pop()\n                continue\n            stack[-1] = (node, i + 1)\n            nxt = nbrs[i]\n            if state.get(nxt) == 1:\n                return True         # we met a node that is still on our route\n            if nxt not in state:\n                state[nxt] = 1\n                stack.append((nxt, 0))\n    return False\n";
+
+const G1 = { A:['B','C'], B:['D'], C:['D','E'], D:['F'], E:['F'], F:[] };
+const P1 = { A:[-4,0], B:[-1.7,-1.3], C:[-1.7,1.3], D:[0.8,-0.9], E:[0.8,1.5], F:[3.3,0.3] };
+
+const PRESETS = [
+  { name: 'Example: A to F', g: G1, pos: P1, s: 'A', t: 'F', expect: ['A','B','D','F'] },
+  { name: 'Two routes: shorter wins', g: { S:['A','B'], A:['C'], B:['G'], C:['G'], G:[] }, pos: { S:[-4,0], A:[-1.8,-1.4], B:[-1.8,1.4], C:[0.6,-1.4], G:[3,0] }, s: 'S', t: 'G', expect: ['S','B','G'] },
+  { name: 'Loop in the graph', g: { A:['B'], B:['C'], C:['A','D'], D:[] }, pos: { A:[-3.5,0], B:[-1,-1.6], C:[1.5,0], D:[4,0.9] }, s: 'A', t: 'D', expect: ['A','B','C','D'] },
+  { name: 'Start is the goal', g: G1, pos: P1, s: 'A', t: 'A', expect: ['A'] },
+  { name: 'No path (F to A)', g: G1, pos: P1, s: 'F', t: 'A', expect: [] },
+  { name: 'Node with no connections', g: { A:[], B:['A'] }, pos: { A:[-2,0], B:[2,0] }, s: 'A', t: 'B', expect: [] },
+  { name: 'Unknown goal (Z)', g: G1, pos: P1, s: 'A', t: 'Z', expect: [] }
+];
+
+/* SIMULATE */
+function simulate(g, start, goal){
+  const F = []; let q = [], head = 0, parent = {}, dist = {}, cur = null, look = null, edge = null, path = null, result = null;
+  const has = function(o, k){ return Object.prototype.hasOwnProperty.call(o, k); };
+  const snap = function(lines, msg, kind, hold){
+    F.push({
+      lines: lines, msg: msg, kind: kind, hold: hold,
+      q: q.slice(), head: head, parent: Object.assign({}, parent), dist: Object.assign({}, dist),
+      cur: cur, look: look, edge: edge && edge.slice(), path: path && path.slice(),
+      result: result && result.slice(), start: start, goal: goal
+    });
+  };
+  snap([], 'Key idea: explore level by level. Everything 1 arrow away comes before anything 2 arrows away, so the first time we reach the goal is the fewest-arrows route.', 'start', 1.4);
+  if (!has(g, start) || !has(g, goal)){
+    result = [];
+    snap([1, 2], '"' + (has(g, start) ? goal : start) + '" is not a node in this graph, so there is nothing to search. Return [] straight away.', 'end', 1.5);
+    return F;
+  }
+  parent[start] = null; dist[start] = 0; q = [start]; head = 0;
+  snap([3, 4, 5], 'Start at ' + start + '. parent remembers how we reached each node (start has none), queue holds nodes waiting to be visited, head = 0 is the next one to take.', 'init', 1.3);
+  while (head < q.length){
+    cur = q[head]; head++; look = null; edge = null;
+    snap([6, 7, 8], 'Take ' + cur + ' from the queue (it is ' + dist[cur] + ' arrow' + (dist[cur] === 1 ? '' : 's') + ' from the start). head moves to ' + head + '; nothing is deleted, so it is instant.', 'pick', 1);
+    if (cur === goal){
+      snap([9, 10], cur + ' is the goal! We reached it as early as possible, because every node closer to the start was taken first. Now rebuild the route by following parents backwards.', 'goal', 1.5);
+      let n = cur; path = [];
+      while (n !== null){
+        path.push(n);
+        snap([11, 12, 13], parent[n] === null ? ('Add ' + n + '. Its parent is None, so we are back at the start.') : ('Add ' + n + ' to the path, then step back to its parent ' + parent[n] + '.'), 'trace', 1.2);
+        n = parent[n];
+      }
+      cur = null; result = path.slice().reverse();
+      snap([11, 14], 'The path was built backwards, so reverse it. Return [' + result.join(', ') + ']: ' + (result.length - 1) + ' arrow' + (result.length === 2 ? '' : 's') + ', the fewest possible.', 'end', 1.6);
+      return F;
+    }
+    const nb = has(g, cur) ? g[cur] : [];
+    snap([9, 15], cur + ' is not the goal. ' + (nb.length ? ('Look at its neighbours: ' + nb.join(', ') + '.') : 'It has no connections: a dead end, nothing to add.'), 'step', 1);
+    for (let i = 0; i < nb.length; i++){
+      const nx = nb[i]; look = nx; edge = [cur, nx];
+      if (!has(parent, nx)){
+        parent[nx] = cur; dist[nx] = dist[cur] + 1; q.push(nx);
+        snap([15, 16, 17, 18], nx + ' is new: remember parent[' + nx + '] = ' + cur + ' (distance ' + dist[nx] + ') and add it to the back of the queue.', 'add', 1.3);
+      } else {
+        snap([15, 16], nx + ' is already in parent, so skip it. This stops loops, and keeps the first route found, which is the shortest.', 'skip', 1.3);
+      }
+    }
+    look = null; edge = null;
+  }
+  cur = null; result = [];
+  snap([6, 19], 'The queue is empty and ' + goal + ' was never reached, so there is no route. Return [].', 'end', 1.5);
+  return F;
+}
+
+/* DOM Elements */
+const $ = function(id){ return document.getElementById(id); };
+const $cv = $('cv'), $stage = $('stage'), $cap = $('caption'), $tag = $('tag'), $err = $('err'), $code = $('code'), $pmap = $('pmap');
+const $wrap = $('wrap'), $bHideCode = $('bHideCode'), $bShowCodeNav = $('bShowCodeNav');
+const $tour = $('bTour'), $back = $('bBack'), $next = $('bNext'), $reset = $('bReset'), $mute = $('bMute');
+const $preset = $('preset'), $speed = $('speed');
+const $tourStatus = $('tourStatus'), $tourBadge = $('tourBadge'), $tourMsg = $('tourMsg');
+const $goal = $('goal');
+const $tourIcon = $tour.querySelector('.tour-icon');
+const $tourLabel = $tour.querySelector('.tour-label');
+const $muteIcon = $mute.querySelector('.mute-icon');
+
+$('full').textContent = FULL;
+
+function toggleCode(){
+  const isHidden = $wrap.classList.toggle('code-hidden');
+  $bShowCodeNav.hidden = !isHidden;
+  $bHideCode.setAttribute('aria-expanded', String(!isHidden));
+  fitCamera();
+}
+$bHideCode.addEventListener('click', toggleCode);
+$bShowCodeNav.addEventListener('click', toggleCode);
+
+const rows = SRC.map(function(t, i){
+  const r = document.createElement('div');
+  r.className = 'row';
+  const n = document.createElement('span');
+  n.className = 'ln';
+  n.textContent = String(i + 1);
+  const c = document.createElement('span');
+  c.textContent = t;
+  r.appendChild(n);
+  r.appendChild(c);
+  $code.appendChild(r);
+  return r;
+});
+
+PRESETS.forEach(function(p, i){
+  const o = document.createElement('option');
+  o.value = String(i);
+  o.textContent = p.name;
+  $preset.appendChild(o);
+});
+
+/* Audio Walkthrough Assets */
+const audioAvailable = typeof Audio !== 'undefined';
+function makeAudio(src){
+  if (!audioAvailable) return null;
+  const a = new Audio();
+  a.preload = 'auto';
+  a.src = src;
+  return a;
+}
+
+const WALKTHROUGHS = {
+  aToF: {
+    id: 'aToF',
+    name: 'Example: A to F',
+    match: function(cfg){
+      return cfg && cfg.s === 'A' && cfg.t === 'F';
+    },
+    clips: {
+      c1: makeAudio('../audio-walkthroughs/shortest-route-BFS/01-bfs-queue-and-discovery.mp3'),
+      c2: makeAudio('../audio-walkthroughs/shortest-route-BFS/02-reaching-goal-and-backtracking.mp3')
+    },
+    milestones: [
+      {
+        title: 'Queue Mechanics & Level-by-Level Discovery',
+        clip: 'c1',
+        startIdx: 0,
+        endIdx: 12,
+        cues: [
+          { time: 0.0, frameIdx: 0 },
+          { time: 7.0, frameIdx: 1 },
+          { time: 12.0, frameIdx: 2 },
+          { time: 19.5, frameIdx: 3 },
+          { time: 22.0, frameIdx: 4 },
+          { time: 24.0, frameIdx: 5 },
+          { time: 25.5, frameIdx: 6 },
+          { time: 27.5, frameIdx: 8 },
+          { time: 29.5, frameIdx: 9 },
+          { time: 32.0, frameIdx: 11 },
+          { time: 34.5, frameIdx: 12 }
+        ]
+      },
+      {
+        title: 'Reaching Goal F & Reconstructing Shortest Path',
+        clip: 'c2',
+        startIdx: 13,
+        endIdx: 25,
+        cues: [
+          { time: 0.0, frameIdx: 13 },
+          { time: 2.5, frameIdx: 14 },
+          { time: 5.0, frameIdx: 15 },
+          { time: 7.5, frameIdx: 16 },
+          { time: 10.5, frameIdx: 18 },
+          { time: 12.5, frameIdx: 19 },
+          { time: 14.5, frameIdx: 20 },
+          { time: 23.5, frameIdx: 21 },
+          { time: 26.0, frameIdx: 22 },
+          { time: 28.5, frameIdx: 23 },
+          { time: 30.5, frameIdx: 24 },
+          { time: 32.5, frameIdx: 25 }
+        ]
+      }
+    ]
+  },
+  shorterWins: {
+    id: 'shorterWins',
+    name: 'Two routes: shorter wins',
+    match: function(cfg){
+      return cfg && cfg.s === 'S' && cfg.t === 'G';
+    },
+    clips: {
+      shorter: makeAudio('../audio-walkthroughs/shortest-route-BFS/03-shorter-route-wins.mp3')
+    },
+    milestones: [
+      {
+        title: 'Level-by-Level Exploration Proof',
+        clip: 'shorter',
+        startIdx: 0,
+        endIdx: 20,
+        cues: [
+          { time: 0.0, frameIdx: 0 },
+          { time: 2.5, frameIdx: 1 },
+          { time: 4.5, frameIdx: 2 },
+          { time: 6.5, frameIdx: 4 },
+          { time: 8.0, frameIdx: 5 },
+          { time: 9.5, frameIdx: 6 },
+          { time: 12.5, frameIdx: 8 },
+          { time: 15.0, frameIdx: 9 },
+          { time: 18.0, frameIdx: 11 },
+          { time: 20.0, frameIdx: 12 },
+          { time: 22.0, frameIdx: 14 },
+          { time: 23.5, frameIdx: 15 },
+          { time: 25.5, frameIdx: 16 },
+          { time: 27.5, frameIdx: 17 },
+          { time: 29.0, frameIdx: 19 },
+          { time: 30.5, frameIdx: 20 }
+        ]
+      }
+    ]
+  }
+};
+
+function getActiveWalkthrough(cfg){
+  if (!cfg) return null;
+  const keys = Object.keys(WALKTHROUGHS);
+  for (let i = 0; i < keys.length; i++){
+    const wt = WALKTHROUGHS[keys[i]];
+    if (wt.match(cfg)) return wt;
+  }
+  return null;
+}
+
+function getMilestones(wt){
+  if (!wt) return [];
+  return wt.milestones || [];
+}
+
+function getMilestoneTitle(wt, mIdx){
+  const milestones = getMilestones(wt);
+  const m = milestones[mIdx];
+  if (!m) return '';
+  return m.title || ('Milestone ' + (mIdx + 1));
+}
+
+function getMilestoneClip(wt, m){
+  if (!m) return null;
+  if (typeof m.clip === 'string' && wt.clips){
+    return wt.clips[m.clip] || null;
+  }
+  return null;
+}
+
+/* 3D Scene setup */
+const UNSEEN='#8d99a8', FRONT='#3b82c4', DONE='#2e9e5b', PATH='#7c3aed', GOLD='#f2b705', TREE='#2563a8', SLOT=1.0;
+const Z0=-2.7, Z1=4.9, FOCUS_Z=(Z0+Z1)/2, RZ=3.9, YAW0=-0.12, PITCH0=0.78, YAW_MAX=0.55, FOV=32, HALF_W=5.3, HALF_Y=1.5, TY=0.4;
+let gl=false, renderer=null, scene=null, camera=null, world=null, nodes={}, edges={}, rack={}, headG=null;
+const view={ yaw:YAW0, pitch:PITCH0, dist:20 }, C={}, texCache=new Map(), tweens=[]; let raf=0, drag=null;
+
+function showError(m){ $err.hidden=false; $err.textContent=m; }
+function readTheme(){
+  const cs=getComputedStyle(document.documentElement);
+  ['ink','muted','plate','accent'].forEach(function(k){
+    C[k]=cs.getPropertyValue('--'+k).trim()||'#888888';
+  });
+}
+
+try {
+  if (typeof THREE === 'undefined') throw new Error('three.js did not load');
+  renderer = new THREE.WebGLRenderer({ canvas: $cv, antialias: true, alpha: true });
+  renderer.setClearColor(0, 0);
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(FOV, 4/3, 0.1, 200);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.58));
+  const dl = new THREE.DirectionalLight(0xffffff, 0.85);
+  dl.position.set(-5, 10, 8);
+  scene.add(dl);
+  gl = true;
+} catch (e){
+  showError('The 3D view could not start (' + (e && e.message ? e.message : 'WebGL unavailable') + '). Code, captions, and queue summary still step.');
+}
+
+const SANS = '700 48px system-ui,-apple-system,"Segoe UI",sans-serif';
+function textTex(text, style){
+  const key = text + '|' + style.color;
+  let t = texCache.get(key);
+  if (t) return t;
+  const cv = document.createElement('canvas'), ctx = cv.getContext('2d');
+  ctx.font = SANS;
+  const w = Math.max(24, Math.ceil(ctx.measureText(text).width) + 16), h = 64;
+  cv.width = w; cv.height = h;
+  ctx.font = SANS; ctx.fillStyle = style.color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, w / 2, h / 2 + 2);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.minFilter = THREE.LinearFilter; tex.generateMipmaps = false;
+  t = { tex: tex, aspect: w / h };
+  texCache.set(key, t);
+  return t;
+}
+
+function makeSprite(){
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthTest: false }));
+  s.renderOrder = 10; s.visible = false;
+  return s;
+}
+
+function setText(s, text, color, h){
+  if (!text){ s.visible = false; return; }
+  const t = textTex(text, { color: color });
+  s.material.map = t.tex; s.material.needsUpdate = true;
+  s.scale.set(h * t.aspect, h, 1);
+  s.visible = true;
+}
+
+function slotX(i, n){ return (i - (n - 1) / 2) * SLOT; }
+
+function clearWorld(){
+  tweens.length = 0; if (!world) return;
+  world.traverse(function(o){
+    if (o.geometry) o.geometry.dispose();
+    if (o.material) o.material.dispose();
+  });
+  scene.remove(world); world = null; nodes = {}; edges = {}; rack = {}; headG = null;
+  texCache.forEach(function(t){ t.tex.dispose(); }); texCache.clear();
+}
+
+function buildScene(cfg, keep){
+  if (!gl) return;
+  clearWorld(); readTheme();
+  world = new THREE.Group(); scene.add(world);
+
+  const names = cfg.names, slots = names.length + 1;
+  function box(w, h, d, col, x, y, z, op){
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color: col, transparent: op !== undefined }));
+    m.position.set(x, y, z); world.add(m); return m;
+  }
+  box(10.4, 0.14, 5.4, C.plate, 0, -0.07, 0);
+  box(slots * SLOT + 0.8, 0.14, 1.5, C.plate, 0, -0.07, RZ);
+
+  const lab = makeSprite(); lab.position.set(0, 0.12, RZ + 1.1);
+  setText(lab, 'queue (a plain list)', C.muted, 0.4); world.add(lab);
+
+  const Y = new THREE.Vector3(0, 1, 0);
+  Object.keys(cfg.g).forEach(function(a){
+    cfg.g[a].forEach(function(b){
+      if (!cfg.pos[a] || !cfg.pos[b]) return;
+      const p0 = new THREE.Vector3(cfg.pos[a][0], 0.5, cfg.pos[a][1]);
+      const p1 = new THREE.Vector3(cfg.pos[b][0], 0.5, cfg.pos[b][1]);
+      const d = p1.clone().sub(p0), L = d.length(); d.normalize();
+      const q = new THREE.Quaternion().setFromUnitVectors(Y, d), cl = Math.max(L - 1.2, 0.1);
+      const mat = new THREE.MeshLambertMaterial({ color: C.muted });
+      const cyl = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, cl, 10), mat);
+      cyl.position.copy(p0).addScaledVector(d, 0.45 + cl / 2); cyl.quaternion.copy(q);
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(0.17, 0.32, 14), mat);
+      cone.position.copy(p1).addScaledVector(d, -0.61); cone.quaternion.copy(q);
+      world.add(cyl); world.add(cone);
+      edges[a + '>' + b] = { mat: mat, cyl: cyl, cone: cone };
+    });
+  });
+
+  names.forEach(function(nm){
+    const x = cfg.pos[nm][0], z = cfg.pos[nm][1];
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.42, 24, 16), new THREE.MeshLambertMaterial({ color: UNSEEN }));
+    body.position.set(x, 0.5, z);
+    const ring = new THREE.Mesh(new THREE.SphereGeometry(0.42, 24, 16), new THREE.MeshBasicMaterial({ color: GOLD, side: THREE.BackSide }));
+    ring.position.set(x, 0.5, z); ring.scale.setScalar(1.22); ring.visible = false;
+    const let_ = makeSprite(); let_.position.set(x, 1.35, z); setText(let_, nm, C.ink, 0.7);
+    const info = makeSprite(); info.position.set(x, 0.1, z + 0.85);
+    world.add(ring); world.add(body); world.add(let_); world.add(info);
+    nodes[nm] = { body: body, ring: ring, info: info, y: 0.5 };
+
+    const bm = box(0.84, 0.5, 0.84, GOLD, 0, 0.25, RZ, 1); bm.visible = false;
+    const bs = makeSprite(); bs.position.set(0, 0.95, RZ); setText(bs, nm, C.ink, 0.55); bs.visible = false;
+    world.add(bs); rack[nm] = { m: bm, s: bs };
+  });
+
+  headG = new THREE.Group();
+  const hc = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.5, 20), new THREE.MeshLambertMaterial({ color: '#c46a14' }));
+  hc.rotation.z = Math.PI; hc.position.y = 1.55;
+  const hl = makeSprite(); hl.position.y = 2.15; setText(hl, 'head', '#c46a14', 0.45);
+  headG.add(hc); headG.add(hl); headG.position.z = RZ; headG.visible = false; world.add(headG);
+
+  if (!keep){ view.yaw = YAW0; view.pitch = PITCH0; }
+  fitCamera();
+}
+
+function updateCamera(){
+  if (!gl) return;
+  const cp = Math.cos(view.pitch), sp = Math.sin(view.pitch);
+  camera.position.set(Math.sin(view.yaw) * cp * view.dist, TY + sp * view.dist, FOCUS_Z + Math.cos(view.yaw) * cp * view.dist);
+  camera.lookAt(0, TY, FOCUS_Z);
+  requestRender();
+}
+
+function fitCamera(){
+  if (!gl) return;
+  const w = $stage.clientWidth || 600, h = $stage.clientHeight || 450;
+  if (!w || !h) return;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(w, h, false);
+  const asp = w / h, t = Math.tan(FOV * Math.PI / 360), hz = (Z1 - Z0) / 2;
+  camera.aspect = asp; camera.updateProjectionMatrix();
+  const vE = HALF_Y * Math.cos(PITCH0) + hz * Math.sin(PITCH0), hE = HALF_W * Math.cos(YAW_MAX) + hz * Math.sin(YAW_MAX);
+  view.dist = Math.max(vE / t, hE / (t * asp)) * 1.15;
+  updateCamera();
+}
+
+function settle(){ tweens.splice(0).forEach(function(tw){ tw.upd(1); }); }
+function requestRender(){ if (gl && !raf) raf = requestAnimationFrame(loop); }
+function loop(){
+  raf = 0; const now = performance.now();
+  for (let i = tweens.length - 1; i >= 0; i--){
+    const tw = tweens[i], u = Math.max(0, Math.min(1, (now - tw.t0) / tw.dur));
+    tw.upd(u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2);
+    if (u >= 1) tweens.splice(i, 1);
+  }
+  renderer.render(scene, camera);
+  if (tweens.length) requestRender();
+}
+
+if (gl){
+  $cv.addEventListener('pointerdown', function(e){
+    drag = { x: e.clientX, yaw: view.yaw };
+    try { $cv.setPointerCapture(e.pointerId); } catch(err){}
+  });
+  $cv.addEventListener('pointermove', function(e){
+    if (!drag) return;
+    view.yaw = Math.max(-YAW_MAX, Math.min(YAW_MAX, drag.yaw + (e.clientX - drag.x) * 0.008));
+    updateCamera();
+  });
+  ['pointerup','pointercancel'].forEach(function(t){
+    $cv.addEventListener(t, function(){ drag = null; });
+  });
+  $cv.addEventListener('dblclick', function(){
+    view.yaw = YAW0; view.pitch = PITCH0; updateCamera();
+  });
+}
+
+/* Playback State */
+const State = {
+  cfg: null, frames: [], idx: 0, state: 'paused', timer: 0, speed: 850, shown: -1,
+  audioMuted: false, currentClip: null, currentMilestoneIdx: -1, cueTimers: [], tourToken: 0
+};
+
+function applyScene(f, animate){
+  if (!gl || !world) return;
+  const cfg = State.cfg, slots = cfg.names.length + 1, pathSet = new Set(f.path || []);
+  cfg.names.forEach(function(nm){
+    const o = nodes[nm], qi = f.q.indexOf(nm), isCur = (f.cur === nm), onP = pathSet.has(nm);
+    let col = UNSEEN, ring = false, em = '#000000', lift = 0;
+    if (onP){ col = PATH; }
+    else if (isCur){ col = GOLD; em = '#5a4300'; lift = 0.3; }
+    else if (qi >= 0 && qi < f.head){ col = DONE; }
+    else if (qi >= f.head){ col = FRONT; ring = true; }
+
+    if (f.look === nm && !isCur && !onP) em = '#5a4300';
+    o.body.material.color.set(col); o.body.material.emissive.set(em); o.ring.visible = ring;
+    o.body.position.y = 0.5 + lift;
+    const role = (nm === f.start ? 'start' : '') + (nm === f.goal ? (nm === f.start ? ' = goal' : 'goal') : '');
+    const parts = []; if (role) parts.push(role);
+    if (Object.prototype.hasOwnProperty.call(f.dist, nm)) parts.push('d=' + f.dist[nm]);
+    setText(o.info, parts.join(' · '), C.muted, 0.36);
+
+    const b = rack[nm];
+    if (qi < 0){ b.m.visible = false; b.s.visible = false; }
+    else {
+      const x = slotX(qi, slots), taken = (qi < f.head);
+      b.m.visible = true; b.s.visible = true;
+      b.m.position.x = x; b.s.position.x = x;
+      b.m.material.color.set(taken ? UNSEEN : GOLD);
+      b.m.material.opacity = taken ? 0.4 : 1;
+      b.s.material.opacity = taken ? 0.5 : 1;
+    }
+  });
+
+  Object.keys(edges).forEach(function(k){
+    const ab = k.split('>'), a = ab[0], b = ab[1], e = edges[k];
+    let c = C.muted, s = 1;
+    if (f.parent[b] === a) c = TREE;
+    if (f.edge && f.edge[0] === a && f.edge[1] === b){ c = GOLD; s = 1.8; }
+    if (pathSet.has(a) && pathSet.has(b) && f.parent[b] === a){ c = PATH; s = 2.2; }
+    e.mat.color.set(c); e.cyl.scale.set(s, 1, s); e.cone.scale.set(s, 1, s);
+  });
+
+  if (f.q.length){
+    const x = slotX(f.head, slots), was = headG.visible;
+    headG.visible = true;
+    if (!was) headG.position.x = x;
+    const from = headG.position.x;
+    if (animate && was && Math.abs(from - x) > 1e-6){
+      tweens.push({ t0: performance.now(), dur: 350, upd: function(e){ headG.position.x = from + (x - from) * e; } });
+    } else {
+      headG.position.x = x;
+    }
+  } else {
+    headG.visible = false;
+  }
+  requestRender();
+}
+
+function renderCode(f){
+  let first = -1;
+  rows.forEach(function(r, i){
+    const a = f.lines.indexOf(i) >= 0;
+    r.classList.toggle('active', a);
+    if (a && first < 0) first = i;
+  });
+  if (first >= 0){
+    const r = rows[first];
+    if (r.offsetTop < $code.scrollTop) $code.scrollTop = r.offsetTop;
+    else if (r.offsetTop + r.offsetHeight > $code.scrollTop + $code.clientHeight){
+      $code.scrollTop = r.offsetTop + r.offsetHeight - $code.clientHeight;
+    }
+  }
+}
+
+function pmapText(f){
+  const pk = Object.keys(f.parent).map(function(k){ return k + ': ' + (f.parent[k] === null ? 'None' : f.parent[k]); });
+  const nxt = f.head < f.q.length ? (' (next: ' + f.q[f.head] + ')') : (f.q.length ? ' (nothing left)' : '');
+  let t = 'queue  = [' + f.q.join(', ') + ']   head = ' + f.head + nxt + '\nparent = {' + pk.join(', ') + '}';
+  if (f.result) t += '\nreturn ' + JSON.stringify(f.result).replace(/"/g, "'").replace(/,/g, ', ');
+  return t;
+}
+
+function updateButtons(){
+  const last = State.frames.length - 1;
+  $back.disabled = State.idx <= 0;
+  $next.disabled = State.idx >= last;
+  if (State.state === 'playing'){
+    $tour.classList.add('playing');
+    if ($tourIcon) $tourIcon.textContent = '⏸';
+    if ($tourLabel) $tourLabel.textContent = 'Pause Tour';
+    $tour.title = 'Pause guided tour (Space)';
+  } else {
+    $tour.classList.remove('playing');
+    if (State.idx >= last){
+      if ($tourIcon) $tourIcon.textContent = '↺';
+      if ($tourLabel) $tourLabel.textContent = 'Replay Tour';
+      $tour.title = 'Replay guided tour from start (Space)';
+    } else if (State.idx > 0){
+      if ($tourIcon) $tourIcon.textContent = '▶';
+      if ($tourLabel) $tourLabel.textContent = 'Resume Tour';
+      $tour.title = 'Resume guided tour (Space)';
+    } else {
+      if ($tourIcon) $tourIcon.textContent = '▶';
+      if ($tourLabel) $tourLabel.textContent = 'Audio Tour';
+      $tour.title = 'Start guided audio tour (Space)';
+    }
+  }
+}
+
+function updateTourStatus(){
+  const wt = getActiveWalkthrough(State.cfg);
+  if (wt){
+    const milestones = getMilestones(wt);
+    const totalM = milestones.length;
+    let mIdx = State.currentMilestoneIdx;
+    if (mIdx < 0 || mIdx >= totalM){
+      mIdx = 0;
+      for (let i = 0; i < milestones.length; i++){
+        if (State.idx >= milestones[i].startIdx && State.idx <= milestones[i].endIdx){
+          mIdx = i;
+          break;
+        }
+      }
+    }
+    const title = getMilestoneTitle(wt, mIdx);
+
+    if (State.state === 'playing'){
+      $tourBadge.textContent = 'Milestone ' + (mIdx + 1) + '/' + totalM;
+      $tourMsg.textContent = State.audioMuted ? (title + ' (silent mode)') : title;
+    } else if (State.state === 'ended'){
+      $tourBadge.textContent = 'Completed';
+      $tourMsg.textContent = 'Guided tour finished for ' + wt.name + '.';
+    } else {
+      $tourBadge.textContent = 'Milestone ' + (mIdx + 1) + '/' + totalM;
+      if (State.idx === 0){
+        $tourMsg.textContent = 'Ready to start guided audio tour for ' + wt.name + '.';
+      } else {
+        $tourMsg.textContent = 'Tour paused at step ' + (State.idx + 1) + ' of ' + State.frames.length + '.';
+      }
+    }
+  } else {
+    $tourBadge.textContent = 'Preset';
+    if (State.state === 'ended'){
+      $tourMsg.textContent = 'Run complete.';
+    } else if (State.state === 'playing'){
+      $tourMsg.textContent = 'Playing ' + (State.cfg ? State.cfg.name : 'simulation') + ' (silent mode).';
+    } else {
+      $tourMsg.textContent = 'Ready to run ' + (State.cfg ? State.cfg.name : 'preset') + '.';
+    }
+  }
+}
+
+function updateMuteButton(){
+  $mute.setAttribute('aria-pressed', String(State.audioMuted));
+  if ($muteIcon) $muteIcon.textContent = State.audioMuted ? '🔇' : '🔊';
+  $mute.title = State.audioMuted ? 'Unmute voiceover (Space or M)' : 'Mute voiceover (Silent animation)';
+}
+
+function clearCueTimers(){
+  if (Array.isArray(State.cueTimers)){
+    State.cueTimers.forEach(function(t){ clearTimeout(t); });
+  }
+  State.cueTimers = [];
+}
+
+function stopAudio(){
+  clearCueTimers();
+  State.tourToken = (State.tourToken || 0) + 1;
+  if (State.currentClip){
+    try {
+      State.currentClip.pause();
+      State.currentClip.currentTime = 0;
+      State.currentClip.onended = null;
+    } catch(e){}
+    State.currentClip = null;
+  }
+  State.currentMilestoneIdx = -1;
+}
+
+function pauseAudio(){
+  clearCueTimers();
+  if (State.currentClip){
+    try { State.currentClip.pause(); } catch(e){}
+  }
+}
+
+function startMilestone(mIdx, fromTime){
+  const wt = getActiveWalkthrough(State.cfg);
+  if (!wt || !audioAvailable || State.audioMuted) return;
+
+  const milestones = getMilestones(wt);
+  if (mIdx < 0 || mIdx >= milestones.length) return;
+
+  const m = milestones[mIdx];
+  const clip = getMilestoneClip(wt, m);
+  if (!clip){
+    if (State.state === 'playing') schedule();
+    return;
+  }
+
+  State.currentMilestoneIdx = mIdx;
+  State.currentClip = clip;
+  const token = ++State.tourToken;
+  updateTourStatus();
+
+  clip.onended = function(){
+    if (token !== State.tourToken || State.state !== 'playing') return;
+    if (mIdx + 1 < milestones.length){
+      startMilestone(mIdx + 1, 0);
+    } else {
+      State.state = 'ended';
+      State.currentClip = null;
+      updateButtons();
+      updateTourStatus();
+    }
+  };
+
+  clip.onerror = function(){
+    if (token !== State.tourToken) return;
+    console.warn('Audio clip failed to play, switching to silent mode.');
+    $tourMsg.textContent = 'Audio clips unavailable; running in silent mode.';
+    State.audioMuted = true;
+    updateMuteButton();
+    if (State.state === 'playing') schedule();
+  };
+
+  try {
+    clip.currentTime = fromTime || 0;
+  } catch(e){}
+
+  clearCueTimers();
+  if (Array.isArray(m.cues)){
+    m.cues.forEach(function(cue){
+      const cueTime = cue.time || 0;
+      const targetFrame = cue.frameIdx;
+      if (cueTime >= (fromTime || 0)){
+        const delayMs = Math.max(0, (cueTime - (fromTime || 0)) * 1000);
+        const timerId = setTimeout(function(){
+          if (token === State.tourToken && State.state === 'playing'){
+            show(targetFrame, true);
+          }
+        }, delayMs);
+        State.cueTimers.push(timerId);
+      }
+    });
+  }
+
+  const playPromise = clip.play();
+  if (playPromise !== undefined){
+    playPromise.catch(function(err){
+      if (token !== State.tourToken) return;
+      if (err && err.name === 'NotAllowedError'){
+        $tourMsg.textContent = 'Click Audio Tour to allow sound in your browser.';
+      } else {
+        $tourMsg.textContent = 'Audio clips unavailable; running in silent mode.';
+      }
+      if (State.state === 'playing') schedule();
+    });
+  }
+}
+
+function playMilestoneForFrame(frameIdx){
+  const wt = getActiveWalkthrough(State.cfg);
+  if (!wt || !audioAvailable || State.audioMuted) return;
+
+  const milestones = getMilestones(wt);
+  let mIdx = -1;
+  for (let i = 0; i < milestones.length; i++){
+    const m = milestones[i];
+    if (frameIdx >= m.startIdx && frameIdx <= m.endIdx){
+      mIdx = i;
+      break;
+    }
+  }
+  if (mIdx < 0) return;
+
+  const m = milestones[mIdx];
+  const clip = getMilestoneClip(wt, m);
+  let fromTime = 0;
+  if (Array.isArray(m.cues)){
+    for (let c = m.cues.length - 1; c >= 0; c--){
+      if (frameIdx >= m.cues[c].frameIdx){
+        fromTime = m.cues[c].time || 0;
+        break;
+      }
+    }
+  }
+
+  if (State.currentClip === clip && !clip.ended && clip.currentTime > fromTime){
+    fromTime = clip.currentTime;
+  }
+
+  startMilestone(mIdx, fromTime);
+}
+
+function show(i, animate){
+  const f = State.frames[i]; if (!f) return;
+  settle(); State.idx = i;
+  $cap.textContent = f.msg;
+  $tag.textContent = 'Step ' + (i + 1) + ' of ' + State.frames.length + ' \u00b7 ' + f.start + ' to ' + f.goal;
+  $pmap.textContent = pmapText(f);
+  $cv.setAttribute('aria-label', 'Graph search from ' + f.start + ' to ' + f.goal + '. Queue ' + f.q.join(', ') + ', head ' + f.head + '.');
+  renderCode(f);
+  applyScene(f, animate && Math.abs(i - State.shown) === 1);
+  State.shown = i;
+  updateButtons();
+  updateTourStatus();
+}
+
+function clearTimer(){ if (State.timer){ clearTimeout(State.timer); State.timer = 0; } }
+function schedule(){
+  clearTimer();
+  if (State.state !== 'playing') return;
+  const wt = getActiveWalkthrough(State.cfg);
+  if (wt && audioAvailable && !State.audioMuted && State.currentClip && !State.currentClip.paused){
+    return;
+  }
+  const hold = (State.frames[State.idx] && State.frames[State.idx].hold) ? State.frames[State.idx].hold : 1;
+  State.timer = setTimeout(tick, State.speed * hold);
+}
+function tick(){
+  State.timer = 0;
+  if (State.state !== 'playing') return;
+  if (State.idx >= State.frames.length - 1){
+    State.state = 'ended';
+    updateButtons();
+    updateTourStatus();
+    return;
+  }
+  show(State.idx + 1, true);
+  if (State.idx >= State.frames.length - 1){
+    State.state = 'ended';
+    updateButtons();
+    updateTourStatus();
+    return;
+  }
+  schedule();
+}
+function pause(){
+  clearTimer();
+  settle();
+  pauseAudio();
+  if (State.state === 'playing' || State.state === 'ended') State.state = 'paused';
+  updateButtons();
+  updateTourStatus();
+}
+function play(){
+  if (State.state === 'playing'){
+    pause();
+    return;
+  }
+  if (State.idx >= State.frames.length - 1){
+    show(0, false);
+  }
+  State.state = 'playing';
+  updateButtons();
+
+  const wt = getActiveWalkthrough(State.cfg);
+  if (wt && audioAvailable && !State.audioMuted){
+    playMilestoneForFrame(State.idx);
+  } else {
+    updateTourStatus();
+    schedule();
+  }
+}
+function step(d){
+  stopAudio();
+  pause();
+  const j = State.idx + d;
+  if (j < 0 || j >= State.frames.length) return;
+  show(j, true);
+}
+function reset(){
+  stopAudio();
+  pause();
+  show(0, false);
+}
+function toggleMute(){
+  State.audioMuted = !State.audioMuted;
+  updateMuteButton();
+  if (State.audioMuted){
+    pauseAudio();
+    if (State.state === 'playing') schedule();
+  } else {
+    clearTimer();
+    if (State.state === 'playing') playMilestoneForFrame(State.idx);
+  }
+  updateTourStatus();
+}
+function loadPreset(i){
+  stopAudio();
+  pause();
+  $preset.value = String(i);
+  const p = PRESETS[i];
+  State.cfg = { name: p.name, g: p.g, pos: p.pos, names: Object.keys(p.pos), s: p.s, t: p.t };
+  State.frames = simulate(p.g, p.s, p.t);
+  State.shown = -1;
+  State.idx = 0;
+  $goal.textContent = 'shortest_path(graph, \'' + p.s + '\', \'' + p.t + '\') \u2014 Goal: return one route from ' + p.s + ' to ' + p.t + ' using the fewest arrows, or [] if unreachable.';
+  buildScene(State.cfg);
+  show(0, false);
+  updateTourStatus();
+}
+
+$tour.addEventListener('click', play);
+$back.addEventListener('click', function(){ step(-1); });
+$next.addEventListener('click', function(){ step(1); });
+$reset.addEventListener('click', reset);
+$mute.addEventListener('click', toggleMute);
+$preset.addEventListener('change', function(){ loadPreset(Number($preset.value)); });
+$speed.addEventListener('change', function(){
+  State.speed = Number($speed.value);
+  if (State.state === 'playing') schedule();
+});
+document.addEventListener('keydown', function(e){
+  const t = e.target && e.target.tagName;
+  if (t === 'BUTTON' || t === 'SELECT' || t === 'INPUT' || t === 'TEXTAREA' || t === 'SUMMARY') return;
+  if (e.key === ' '){ e.preventDefault(); play(); }
+  else if (e.key === 'ArrowRight'){ step(1); }
+  else if (e.key === 'ArrowLeft'){ step(-1); }
+  else if (e.key === 'm' || e.key === 'M'){ toggleMute(); }
+  else if (e.key === 'c' || e.key === 'C'){ toggleCode(); }
+});
+document.addEventListener('visibilitychange', function(){ if (document.hidden && State.state === 'playing') pause(); });
+
+if (typeof ResizeObserver !== 'undefined') new ResizeObserver(fitCamera).observe($stage);
+else window.addEventListener('resize', fitCamera);
+
+function retheme(){
+  if (!gl || !State.cfg) return;
+  buildScene(State.cfg, true);
+  State.shown = -1;
+  show(State.idx, false);
+}
+try { if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', retheme); } catch(e){}
+new MutationObserver(retheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+loadPreset(0);
+})();
+</script>
+</body>
+</html>
