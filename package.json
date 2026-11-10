@@ -1,5 +1,5 @@
 {
-  "name": "animated-solutions",
+  "name": "animated",
   "version": "1.0.0",
   "description": "A collection of standalone, browser-based algorithm visualizations. Open [`index.html`](./index.html) locally or publish the project as a static website.",
   "type": "module",
