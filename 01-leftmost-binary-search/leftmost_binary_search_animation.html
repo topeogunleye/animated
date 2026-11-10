@@ -284,9 +284,13 @@ const audioAvailable = typeof Audio !== 'undefined' && (function(){
 })();
 
 function makeAudio(relPath){
-  const a = new Audio(relPath);
-  a.preload = 'auto';
-  return a;
+  if (typeof Audio === 'undefined') return null;
+  try {
+    const a = new Audio();
+    a.preload = 'none';
+    a.src = relPath;
+    return a;
+  } catch(e) { return null; }
 }
 
 const WALKTHROUGHS = {

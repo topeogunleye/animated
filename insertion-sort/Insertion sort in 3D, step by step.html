@@ -501,10 +501,13 @@ if (gl){
 const audioAvailable = typeof Audio !== 'undefined';
 
 function makeAudio(url){
-  if (!audioAvailable) return null;
-  const a = new Audio(url);
-  a.preload = 'auto';
-  return a;
+  if (typeof Audio === 'undefined') return null;
+  try {
+    const a = new Audio();
+    a.preload = 'none';
+    a.src = url;
+    return a;
+  } catch(e) { return null; }
 }
 
 const WALKTHROUGHS = {

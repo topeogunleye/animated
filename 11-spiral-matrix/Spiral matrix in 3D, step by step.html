@@ -863,10 +863,11 @@ if (gl){
 const audioAvailable = typeof Audio !== 'undefined';
 
 function makeAudio(src){
-  if (!audioAvailable) return null;
+  if (typeof Audio === 'undefined') return null;
   try {
-    const a = new Audio(src);
-    a.preload = 'auto';
+    const a = new Audio();
+    a.preload = 'none';
+    a.src = src;
     return a;
   } catch(e) { return null; }
 }

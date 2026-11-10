@@ -185,9 +185,12 @@ function simulate(nums, target){
 /* ---------- Audio Walkthrough Milestones ---------- */
 function makeAudio(url){
   if (typeof Audio === 'undefined') return null;
-  const a = new Audio(url);
-  a.preload = 'auto';
-  return a;
+  try {
+    const a = new Audio();
+    a.preload = 'none';
+    a.src = url;
+    return a;
+  } catch(e) { return null; }
 }
 
 const WALKTHROUGHS = {

@@ -303,10 +303,13 @@ const $recover = $('bRecover');
 const audioAvailable = typeof window !== 'undefined' && typeof Audio !== 'undefined';
 
 function makeAudio(src){
-  const a = new Audio();
-  a.preload = 'auto';
-  a.src = src;
-  return a;
+  if (typeof Audio === 'undefined') return null;
+  try {
+    const a = new Audio();
+    a.preload = 'none';
+    a.src = src;
+    return a;
+  } catch(e) { return null; }
 }
 
 const WALKTHROUGHS = {

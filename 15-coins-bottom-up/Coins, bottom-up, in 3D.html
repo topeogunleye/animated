@@ -305,11 +305,13 @@ PRESETS.forEach(function(p, i){
 /* ---------- Audio Walkthrough Assets ---------- */
 const audioAvailable = typeof Audio !== 'undefined';
 function makeAudio(src){
-  if (!audioAvailable) return null;
-  const a = new Audio();
-  a.preload = 'auto';
-  a.src = src;
-  return a;
+  if (typeof Audio === 'undefined') return null;
+  try {
+    const a = new Audio();
+    a.preload = 'none';
+    a.src = src;
+    return a;
+  } catch(e) { return null; }
 }
 
 const WALKTHROUGHS = {
