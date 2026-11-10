@@ -32,7 +32,9 @@ html,body{margin:0}
 body{background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
 main{max-width:1120px;margin:0 auto;padding:12px 14px 22px}
 h1{font-size:1.15rem;margin:4px 0 12px;font-weight:650}
-.wrap{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:start}
+.wrap{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:start;transition:grid-template-columns 180ms ease}
+.wrap.code-hidden{grid-template-columns:minmax(0,1fr)}
+.wrap.code-hidden .code-pane{display:none}
 @media (max-width:760px){.wrap{grid-template-columns:minmax(0,1fr)}}
 .stagebox{position:relative;background:var(--stage);border:1px solid var(--line);border-radius:12px;overflow:hidden;aspect-ratio:4/3;min-height:260px;max-height:64vh;width:100%}
 #cv{display:block;width:100%;height:100%;touch-action:pan-y;cursor:grab}
@@ -48,7 +50,15 @@ button{cursor:pointer;min-width:64px}
 button:hover:not(:disabled){background:var(--btnHover)}
 button:disabled{opacity:.45;cursor:default}
 button:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
-.narration-status{margin:8px 2px 0;font-size:.82rem;color:var(--muted);min-height:1.2em}
+.btn-tour{background:var(--accent);color:#111;font-weight:700;border:1px solid rgba(0,0,0,0.18);display:inline-flex;align-items:center;gap:6px;padding:6px 14px}
+.btn-tour:hover:not(:disabled){filter:brightness(1.08)}
+.btn-tour.playing{background:var(--btn);color:var(--ink);border-color:var(--accent)}
+.tour-icon{font-size:0.95em}
+.btn-mute{min-width:40px;padding:6px 10px;font-size:1rem;display:inline-flex;align-items:center;justify-content:center}
+.tour-status{display:flex;align-items:center;gap:8px;font-size:0.85rem;color:var(--muted);min-height:1.6rem;margin:8px 2px 0;padding:4px 10px;background:var(--panel);border:1px solid var(--line);border-radius:999px;width:fit-content;max-width:100%}
+.tour-badge{display:inline-block;font-size:0.75rem;font-weight:700;letter-spacing:0.02em;text-transform:uppercase;color:var(--ink);background:var(--bg);padding:2px 8px;border-radius:999px;border:1px solid var(--line);white-space:nowrap}
+.tour-msg{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:600px){.tour-status{border-radius:8px;flex-wrap:wrap}.tour-msg{white-space:normal}}
 button.active{background:var(--hl-bg);border-color:var(--hl-bar)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 #code{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 0;overflow:auto;max-height:70vh;font:13px/1.7 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
@@ -67,12 +77,57 @@ button.active{background:var(--hl-bg);border-color:var(--hl-bar)}
 .word-form input:focus-visible,button:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .word-help{flex-basis:100%;margin:0;color:var(--muted);font-size:.82rem}
 .word-status{flex-basis:100%;margin:0;color:var(--muted);font-size:.82rem}
+
+/* ---------- top navigation bar ---------- */
+.top-nav{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 0 10px;margin-bottom:10px;border-bottom:1px solid var(--line);font-size:0.875rem}
+.top-nav a{color:var(--ink);text-decoration:none;display:inline-flex;align-items:center;gap:6px;font-weight:550;padding:4px 8px;border-radius:6px;transition:background 120ms ease,color 120ms ease}
+.top-nav a:hover{background:var(--btnHover);color:var(--accent)}
+.top-nav a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.nav-back{display:inline-flex;align-items:center;gap:6px;font-weight:600}
+.nav-back .nav-arrow{font-size:1.05em;transition:transform 120ms ease}
+.nav-back:hover .nav-arrow{transform:translateX(-2px)}
+.nav-sequence{display:inline-flex;align-items:center;gap:6px}
+.nav-btn{background:var(--btn);border:1px solid var(--line);padding:3px 9px;border-radius:6px;color:var(--ink);text-decoration:none;display:inline-flex;align-items:center;gap:4px;font-size:0.82rem;font-weight:550}
+.nav-btn:hover:not(.disabled){background:var(--btnHover);border-color:var(--accent);color:var(--accent)}
+.nav-btn.disabled{opacity:0.35;cursor:not-allowed;pointer-events:none}
+.nav-indicator{font-size:0.8rem;color:var(--muted);padding:0 6px;font-variant-numeric:tabular-nums;user-select:none;font-weight:600}
+.nav-arrow{font-size:1em;line-height:1}
+@media (max-width:540px){
+  .top-nav{flex-wrap:wrap;gap:8px}
+  .nav-back span:not(.nav-arrow){font-size:0.82rem}
+  .btn-show-code .nav-label{display:none}
+  .btn-show-code{padding:3px 8px}
+}
+
+/* ---------- collapsible code pane & full-width mode ---------- */
+.code-pane{display:flex;flex-direction:column;min-width:0}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:5px 12px;background:var(--panel);border:1px solid var(--line);border-bottom:none;border-radius:12px 12px 0 0;font-size:0.8rem;font-weight:600;color:var(--muted)}
+.code-header .code-title{text-transform:uppercase;letter-spacing:0.06em;font-size:0.75rem}
+.code-pane #code{border-top-left-radius:0;border-top-right-radius:0}
+.btn-toggle-code{background:transparent;border:1px solid transparent;color:var(--muted);padding:2px 8px;border-radius:6px;font:inherit;font-size:0.78rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;min-height:unset;min-width:unset;transition:background 120ms ease,color 120ms ease,border-color 120ms ease}
+.btn-toggle-code:hover{background:var(--btnHover);color:var(--ink);border-color:var(--line)}
+.btn-toggle-code:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn-toggle-code .eye-icon{font-size:1em;line-height:1}
+.btn-show-code{display:inline-flex;align-items:center;gap:5px}
+.btn-show-code[hidden]{display:none!important}
 </style>
 </head>
 <body>
 <main>
+  <nav class="top-nav" aria-label="Visualizations navigation">
+    <a class="nav-back" href="../index.html" title="Return to all algorithm visualizations">
+      <span class="nav-arrow" aria-hidden="true">←</span>
+      <span>All Visualizations</span>
+    </a>
+    <div class="nav-sequence">
+      <button id="bShowCodeNav" type="button" class="nav-btn btn-show-code" title="Show code panel (C)" aria-label="Show code panel" hidden><span class="eye-icon" aria-hidden="true">👁</span><span class="nav-label">Show Code</span></button>
+      <a class="nav-btn prev" href="../08-hangman/Hangman%20in%203D,%20step%20by%20step.html" title="Previous visualization: Hangman in 3D"><span class="nav-arrow" aria-hidden="true">‹</span><span class="nav-label">Prev</span></a>
+      <span class="nav-indicator" aria-label="Visualization 11 of 24" title="Visualization 11 of 24">11 / 24</span>
+      <a class="nav-btn next" href="../09-subsets-and-permutations/Subsets%20and%20permutations%20in%203D-bonus.html" title="Next visualization: Subsets & Permutations"><span class="nav-label">Next</span><span class="nav-arrow" aria-hidden="true">›</span></a>
+    </div>
+  </nav>
   <h1>Hangman in 3D, step by step</h1>
-  <div class="wrap">
+  <div class="wrap" id="wrap">
     <div>
       <div class="stagebox" id="stage">
         <canvas id="cv" role="img" aria-label="3D hangman word letters and wrong-guess slots"></canvas>
@@ -82,11 +137,15 @@ button.active{background:var(--hl-bg);border-color:var(--hl-bar)}
       </div>
       <p id="caption" role="status" aria-live="polite"></p>
       <div class="controls" role="group" aria-label="Playback controls">
-        <button id="bBack" type="button">Back</button>
-        <button id="bPlay" type="button">Play</button>
-        <button id="bNext" type="button">Next</button>
-        <button id="bReset" type="button">Reset</button>
-        <button id="bNarration" type="button" aria-pressed="false" aria-describedby="narrationStatus">Narration: Off</button>
+        <button id="bTour" type="button" class="btn-tour" title="Start guided audio tour (Space)">
+          <span class="tour-icon" aria-hidden="true">▶</span>
+          <span class="tour-label">Audio Tour</span>
+        </button>
+        <button id="bBack" type="button" title="Previous step (Left Arrow)">Back</button>
+        <button id="bPlay" type="button" title="Play / Pause (Space)">Play</button>
+        <button id="bNext" type="button" title="Next step (Right Arrow)">Next</button>
+        <button id="bReset" type="button" title="Reset to start">Reset</button>
+        <button id="bMute" type="button" class="btn-mute" title="Mute/unmute voiceover (M)" aria-label="Mute audio">🔊</button>
         <label class="sr" for="preset">Input</label>
         <select id="preset"></select>
         <label class="sr" for="speed">Speed</label>
@@ -96,12 +155,11 @@ button.active{background:var(--hl-bg);border-color:var(--hl-bar)}
           <option value="450">Fast</option>
           <option value="220">Very fast</option>
         </select>
-        <label class="sr" for="voice">Voice</label>
-        <select id="voice" aria-label="Narration voice">
-          <option value="auto">Automatic (prefer natural English)</option>
-        </select>
       </div>
-      <div class="narration-status" id="narrationStatus" role="status" aria-live="polite">Narration is off. Recorded clips play automatically on supported presets when enabled.</div>
+      <div id="tourStatus" class="tour-status" hidden>
+        <span id="tourBadge" class="tour-badge">Tour</span>
+        <span id="tourMsg" class="tour-msg"></span>
+      </div>
       <div class="pad" id="pad" role="group" aria-label="Letter guesses" hidden></div>
       <form class="word-form" id="wordForm" hidden>
         <label for="customWord">Choose your secret word
@@ -112,7 +170,16 @@ button.active{background:var(--hl-bg);border-color:var(--hl-bar)}
         <p class="word-status" id="wordStatus" role="status" aria-live="polite"></p>
       </form>
     </div>
-    <div id="code" role="region" aria-label="Python source code"></div>
+    <div class="code-pane" id="codePane">
+      <div class="code-header">
+        <span class="code-title">Python Code</span>
+        <button id="bHideCode" type="button" class="btn-toggle-code" title="Hide code panel (C)">
+          <span class="eye-icon" aria-hidden="true">✕</span>
+          <span>Hide Code</span>
+        </button>
+      </div>
+      <div id="code" role="region" aria-label="Python source code"></div>
+    </div>
   </div>
 </main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -209,9 +276,24 @@ function simulate(word, guesses, max){
 /* ---------- DOM ---------- */
 const $ = function(id){ return document.getElementById(id); };
 const $cv = $('cv'), $stage = $('stage'), $cap = $('caption'), $tag = $('tag'), $err = $('err'), $code = $('code');
-const $back = $('bBack'), $play = $('bPlay'), $next = $('bNext'), $reset = $('bReset'), $preset = $('preset'), $speed = $('speed');
-const $narration = $('bNarration'), $narrationStatus = $('narrationStatus'), $voice = $('voice');
+const $wrap = $('wrap'), $codePane = $('codePane'), $bHideCode = $('bHideCode'), $bShowCodeNav = $('bShowCodeNav');
+const $tour = $('bTour'), $back = $('bBack'), $play = $('bPlay'), $next = $('bNext'), $reset = $('bReset'), $mute = $('bMute');
+const $preset = $('preset'), $speed = $('speed');
+const $tourStatus = $('tourStatus'), $tourBadge = $('tourBadge'), $tourMsg = $('tourMsg');
 const RM = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches:false };
+
+function toggleCodePane(collapsed){
+  const willHide = (collapsed !== undefined) ? collapsed : !$wrap.classList.contains('code-hidden');
+  $wrap.classList.toggle('code-hidden', willHide);
+  if ($bShowCodeNav) $bShowCodeNav.hidden = !willHide;
+  if (willHide && $bShowCodeNav) {
+    try { $bShowCodeNav.focus(); } catch(e){}
+  } else if (!willHide && $bHideCode) {
+    try { $bHideCode.focus(); } catch(e){}
+  }
+}
+if ($bHideCode) $bHideCode.addEventListener('click', function(){ toggleCodePane(true); });
+if ($bShowCodeNav) $bShowCodeNav.addEventListener('click', function(){ toggleCodePane(false); });
 
 const rows = SRC.map(function(txt, i){
   const r = document.createElement('div'); r.className = 'row';
@@ -403,56 +485,12 @@ if (gl){
   $cv.addEventListener('dblclick', function(){ view.yaw = YAW0; view.pitch = PITCH0; updateCamera(); });
 }
 
-/* ---------- voice narration and recorded audio ---------- */
-const speechAvailable = typeof window !== 'undefined' && 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined';
+/* ---------- Audio Walkthrough Tour ---------- */
 const audioAvailable = typeof Audio !== 'undefined';
-const narrationAvailable = speechAvailable || audioAvailable;
-let availableVoices = [];
-
-function voiceScore(v){
-  let s = 0;
-  const lang = (v.lang || '').toLowerCase();
-  const name = (v.name || '').toLowerCase();
-  if (lang.indexOf('en') === 0) s += 100;
-  if (lang.indexOf('en-us') === 0 || lang.indexOf('en_us') === 0) s += 40;
-  if (name.indexOf('natural') >= 0) s += 60;
-  if (name.indexOf('premium') >= 0) s += 50;
-  if (name.indexOf('neural') >= 0) s += 50;
-  if (name.indexOf('google') >= 0) s += 30;
-  if (name.indexOf('samantha') >= 0) s += 25;
-  if (name.indexOf('karen') >= 0) s += 20;
-  return s;
-}
-
-function refreshVoices(){
-  if (!speechAvailable) return;
-  try {
-    availableVoices = window.speechSynthesis.getVoices() || [];
-  } catch (e) {
-    availableVoices = [];
-  }
-  const selected = $voice.value || 'auto';
-  $voice.innerHTML = '';
-  const automatic = document.createElement('option');
-  automatic.value = 'auto';
-  automatic.textContent = 'Voice: Lauren (recorded) / System';
-  $voice.appendChild(automatic);
-  availableVoices.slice().sort(function(a, b){
-    return voiceScore(b) - voiceScore(a) || a.name.localeCompare(b.name);
-  }).forEach(function(voice){
-    const option = document.createElement('option');
-    option.value = voice.voiceURI;
-    option.textContent = voice.name + ' (' + voice.lang + ')' + (voiceScore(voice) >= 180 ? ' · natural' : '');
-    $voice.appendChild(option);
-  });
-  $voice.value = Array.from($voice.options).some(function(option){ return option.value === selected; }) ? selected : 'auto';
-  S.voiceURI = $voice.value;
-}
-
 function makeAudio(src){
-  const a = new Audio();
+  if (!audioAvailable) return null;
+  const a = new Audio(src);
   a.preload = 'auto';
-  a.src = src;
   return a;
 }
 
@@ -467,28 +505,30 @@ const WALKTHROUGHS = {
       setupAndEarly: makeAudio('../audio-walkthroughs/hangman/apple-won/01-setup-and-early-guesses.mp3'),
       solvingAndVictory: makeAudio('../audio-walkthroughs/hangman/apple-won/02-solving-and-victory.mp3')
     },
-    mapping: [
+    milestones: [
       {
+        title: 'Setup & Early Guesses',
         clip: 'setupAndEarly',
         startIdx: 0,
         endIdx: 4,
         cues: [
-          { time: 0, idx: 0 },
-          { time: 17.0, idx: 1 },
-          { time: 24.0, idx: 2 },
-          { time: 31.0, idx: 3 },
-          { time: 38.0, idx: 4 }
+          { time: 0, frameIdx: 0 },
+          { time: 17.0, frameIdx: 1 },
+          { time: 24.0, frameIdx: 2 },
+          { time: 31.0, frameIdx: 3 },
+          { time: 38.0, frameIdx: 4 }
         ]
       },
       {
+        title: 'Solving & Victory',
         clip: 'solvingAndVictory',
         startIdx: 5,
         endIdx: 8,
         cues: [
-          { time: 0, idx: 5 },
-          { time: 6.0, idx: 6 },
-          { time: 18.0, idx: 7 },
-          { time: 22.0, idx: 8 }
+          { time: 0, frameIdx: 5 },
+          { time: 6.0, frameIdx: 6 },
+          { time: 18.0, frameIdx: 7 },
+          { time: 22.0, frameIdx: 8 }
         ]
       }
     ]
@@ -503,26 +543,28 @@ const WALKTHROUGHS = {
       setupAndMisses: makeAudio('../audio-walkthroughs/hangman/python-lost/01-setup-and-consecutive-misses.mp3'),
       finalMissAndLoss: makeAudio('../audio-walkthroughs/hangman/python-lost/02-final-miss-and-loss.mp3')
     },
-    mapping: [
+    milestones: [
       {
+        title: 'Setup & Consecutive Misses',
         clip: 'setupAndMisses',
         startIdx: 0,
         endIdx: 3,
         cues: [
-          { time: 0, idx: 0 },
-          { time: 9.0, idx: 1 },
-          { time: 14.0, idx: 2 },
-          { time: 19.0, idx: 3 }
+          { time: 0, frameIdx: 0 },
+          { time: 9.0, frameIdx: 1 },
+          { time: 14.0, frameIdx: 2 },
+          { time: 19.0, frameIdx: 3 }
         ]
       },
       {
+        title: 'Final Miss & Loss',
         clip: 'finalMissAndLoss',
         startIdx: 4,
         endIdx: 6,
         cues: [
-          { time: 0, idx: 4 },
-          { time: 16.0, idx: 5 },
-          { time: 21.0, idx: 6 }
+          { time: 0, frameIdx: 4 },
+          { time: 16.0, frameIdx: 5 },
+          { time: 21.0, frameIdx: 6 }
         ]
       }
     ]
@@ -537,27 +579,29 @@ const WALKTHROUGHS = {
       setupAndRepeat: makeAudio('../audio-walkthroughs/hangman/python-repeat/01-setup-and-repeat-guess.mp3'),
       revealAndIncomplete: makeAudio('../audio-walkthroughs/hangman/python-repeat/02-reveal-and-incomplete-game.mp3')
     },
-    mapping: [
+    milestones: [
       {
+        title: 'Setup & Repeat Guess',
         clip: 'setupAndRepeat',
         startIdx: 0,
         endIdx: 3,
         cues: [
-          { time: 0, idx: 0 },
-          { time: 8.5, idx: 1 },
-          { time: 13.0, idx: 2 },
-          { time: 20.0, idx: 3 }
+          { time: 0, frameIdx: 0 },
+          { time: 8.5, frameIdx: 1 },
+          { time: 13.0, frameIdx: 2 },
+          { time: 20.0, frameIdx: 3 }
         ]
       },
       {
+        title: 'Reveal & Incomplete Game',
         clip: 'revealAndIncomplete',
         startIdx: 4,
         endIdx: 7,
         cues: [
-          { time: 0, idx: 4 },
-          { time: 7.5, idx: 5 },
-          { time: 17.5, idx: 6 },
-          { time: 22.5, idx: 7 }
+          { time: 0, frameIdx: 4 },
+          { time: 7.5, frameIdx: 5 },
+          { time: 17.5, frameIdx: 6 },
+          { time: 22.5, frameIdx: 7 }
         ]
       }
     ]
@@ -571,17 +615,18 @@ const WALKTHROUGHS = {
     clips: {
       emptyGuesses: makeAudio('../audio-walkthroughs/hangman/a-no-guesses/01-empty-guesses-edge-case.mp3')
     },
-    mapping: [
+    milestones: [
       {
+        title: 'Empty Guesses Edge Case',
         clip: 'emptyGuesses',
         startIdx: 0,
         endIdx: 4,
         cues: [
-          { time: 0, idx: 0 },
-          { time: 8.0, idx: 1 },
-          { time: 11.5, idx: 2 },
-          { time: 16.0, idx: 3 },
-          { time: 23.5, idx: 4 }
+          { time: 0, frameIdx: 0 },
+          { time: 8.0, frameIdx: 1 },
+          { time: 11.5, frameIdx: 2 },
+          { time: 16.0, frameIdx: 3 },
+          { time: 23.5, frameIdx: 4 }
         ]
       }
     ]
@@ -596,28 +641,30 @@ const WALKTHROUGHS = {
       multiLetterAndMiss: makeAudio('../audio-walkthroughs/hangman/banana-own/01-setup-multi-letter-hits-and-miss.mp3'),
       tripleHitAndVictory: makeAudio('../audio-walkthroughs/hangman/banana-own/02-triple-hit-and-victory.mp3')
     },
-    mapping: [
+    milestones: [
       {
+        title: 'Setup & Multi-Letter Hits',
         clip: 'multiLetterAndMiss',
         startIdx: 0,
         endIdx: 4,
         cues: [
-          { time: 0, idx: 0 },
-          { time: 7.0, idx: 1 },
-          { time: 11.0, idx: 2 },
-          { time: 19.5, idx: 3 },
-          { time: 25.0, idx: 4 }
+          { time: 0, frameIdx: 0 },
+          { time: 7.0, frameIdx: 1 },
+          { time: 11.0, frameIdx: 2 },
+          { time: 19.5, frameIdx: 3 },
+          { time: 25.0, frameIdx: 4 }
         ]
       },
       {
+        title: 'Triple Hit & Victory',
         clip: 'tripleHitAndVictory',
         startIdx: 5,
         endIdx: 8,
         cues: [
-          { time: 0, idx: 5 },
-          { time: 11.5, idx: 6 },
-          { time: 21.0, idx: 7 },
-          { time: 24.5, idx: 8 }
+          { time: 0, frameIdx: 5 },
+          { time: 11.5, frameIdx: 6 },
+          { time: 21.0, frameIdx: 7 },
+          { time: 24.5, frameIdx: 8 }
         ]
       }
     ]
@@ -634,168 +681,206 @@ function getActiveWalkthrough(cfg){
   return null;
 }
 
-function narrationStatusMessage(cfg){
-  const wt = getActiveWalkthrough(cfg);
-  if (wt){
-    return 'Narration enabled (using recorded voice walkthrough for ' + wt.name + ').';
-  }
-  return 'Narration enabled (using browser speech synthesis for custom/other inputs).';
+function getMilestones(wt){
+  if (!wt) return [];
+  return wt.milestones || [];
 }
 
-function tutorNarration(frame){
-  if (!frame) return '';
-  return frame.msg;
+function getMilestoneTitle(wt, mIdx){
+  const milestones = getMilestones(wt);
+  const m = milestones[mIdx];
+  if (!m) return '';
+  return m.title || ('Milestone ' + (mIdx + 1));
 }
 
-function speakTutor(frame, token, onComplete){
-  if (!speechAvailable || !S.narration || token !== S.narrationToken){
-    if (onComplete) onComplete();
-    return;
+function getMilestoneClip(wt, m){
+  if (!m) return null;
+  if (typeof m.clip === 'string' && wt.clips){
+    return wt.clips[m.clip] || null;
   }
-  try { window.speechSynthesis.cancel(); } catch(e){}
-  const text = tutorNarration(frame);
-  if (!text){
-    if (onComplete) onComplete();
-    return;
-  }
-  const u = new SpeechSynthesisUtterance(text);
-  if (S.voiceURI && S.voiceURI !== 'auto'){
-    const chosen = availableVoices.find(function(v){ return v.voiceURI === S.voiceURI; });
-    if (chosen) u.voice = chosen;
-  }
-  u.onend = function(){
-    if (token === S.narrationToken && onComplete) onComplete();
-  };
-  u.onerror = function(){
-    if (token === S.narrationToken && onComplete) onComplete();
-  };
-  try {
-    window.speechSynthesis.speak(u);
-  } catch(e){
-    if (onComplete) onComplete();
-  }
+  return m.clip || null;
 }
+
+/* ---------- playback state ---------- */
+const S = {
+  cfg: null,
+  frames: [],
+  idx: 0,
+  state: 'paused',
+  timer: 0,
+  speed: 1300,
+  shown: -1,
+  audioMuted: false,
+  currentClip: null,
+  currentMilestoneIdx: -1,
+  cueTimers: [],
+  tourToken: 0
+};
 
 function clearCueTimers(){
-  while (S.cueTimers.length){
+  while (S.cueTimers.length > 0){
     clearTimeout(S.cueTimers.pop());
   }
 }
 
-function cancelNarration(){
-  const wasPending = S.narrationPending;
-  S.narrationToken += 1;
-  S.narrationPending = false;
+function stopAudio(){
   clearCueTimers();
-  S.currentClip = null;
-  Object.keys(WALKTHROUGHS).forEach(function(wKey){
-    const clips = WALKTHROUGHS[wKey].clips;
-    Object.keys(clips).forEach(function(k){
-      const c = clips[k];
-      c.pause();
-      c.currentTime = 0;
-      c.onended = null;
-      c.onerror = null;
-    });
-  });
-  if (speechAvailable && wasPending){
-    try { window.speechSynthesis.cancel(); } catch(e){}
+  if (S.currentClip){
+    try {
+      S.currentClip.pause();
+      S.currentClip.currentTime = 0;
+    } catch(e){}
+    S.currentClip = null;
+  }
+  S.currentMilestoneIdx = -1;
+}
+
+function pauseAudio(){
+  clearCueTimers();
+  if (S.currentClip){
+    try { S.currentClip.pause(); } catch(e){}
   }
 }
 
-function speakFrame(frame){
-  const wt = getActiveWalkthrough(S.cfg);
-  let milestone = null;
-  if (wt){
-    milestone = wt.mapping.find(function(m){ return S.idx >= m.startIdx && S.idx <= m.endIdx; });
-  }
+function updateMuteButton(){
+  $mute.textContent = S.audioMuted ? '🔇' : '🔊';
+  $mute.title = S.audioMuted ? 'Unmute voiceover (M)' : 'Mute voiceover (M)';
+  $mute.setAttribute('aria-label', S.audioMuted ? 'Unmute audio' : 'Mute audio');
+}
 
-  const expectedClip = (wt && milestone) ? wt.clips[milestone.clip] : null;
-  if (expectedClip && S.currentClip === expectedClip && !expectedClip.paused && !expectedClip.ended){
+function updateTourStatus(){
+  const wt = getActiveWalkthrough(S.cfg);
+  if (!wt){
+    $tourStatus.hidden = true;
+    return;
+  }
+  $tourStatus.hidden = false;
+  const milestones = getMilestones(wt);
+  let curM = -1;
+  for (let i = 0; i < milestones.length; i++){
+    if (S.idx >= milestones[i].startIdx && S.idx <= milestones[i].endIdx){
+      curM = i;
+      break;
+    }
+  }
+  if (curM >= 0){
+    $tourBadge.textContent = 'Milestone ' + (curM + 1) + '/' + milestones.length;
+    $tourMsg.textContent = milestones[curM].title + (S.audioMuted ? ' (muted)' : '');
+  } else {
+    $tourBadge.textContent = 'Tour';
+    $tourMsg.textContent = wt.name;
+  }
+}
+
+function startMilestone(mIdx, fromTime){
+  const wt = getActiveWalkthrough(S.cfg);
+  if (!wt || !audioAvailable || S.audioMuted) return;
+
+  const milestones = getMilestones(wt);
+  if (mIdx < 0 || mIdx >= milestones.length) return;
+
+  const m = milestones[mIdx];
+  const clip = getMilestoneClip(wt, m);
+  if (!clip){
+    if (S.state === 'playing') schedule();
     return;
   }
 
-  cancelNarration();
-  if (!S.narration || !narrationAvailable) return;
+  S.currentMilestoneIdx = mIdx;
+  S.currentClip = clip;
+  const token = ++S.tourToken;
+  updateTourStatus();
 
-  const token = S.narrationToken;
-  const finish = function(){
-    if (token !== S.narrationToken) return;
-    S.narrationPending = false;
-    S.currentClip = null;
-    clearCueTimers();
-    if (S.state === 'playing'){
-      if (S.idx >= S.frames.length - 1){
-        S.state = 'ended';
-        updateButtons();
-      } else {
-        schedule();
-      }
+  clip.onended = function(){
+    if (token !== S.tourToken || S.state !== 'playing') return;
+    if (mIdx + 1 < milestones.length){
+      startMilestone(mIdx + 1, 0);
+    } else {
+      S.state = 'ended';
+      S.currentClip = null;
+      updateButtons();
+      updateTourStatus();
     }
   };
-  S.narrationPending = true;
 
-  if (wt && audioAvailable && milestone){
-    const clip = wt.clips[milestone.clip];
-    S.currentClip = clip;
-    let fellBack = false;
-    const fallback = function(){
-      if (fellBack || token !== S.narrationToken) return;
-      fellBack = true;
-      clip.onended = null;
-      clip.onerror = null;
-      S.currentClip = null;
-      clearCueTimers();
-      $narrationStatus.textContent = 'A recorded narration clip could not play; using browser speech instead.';
-      speakTutor(frame, token, finish);
-    };
+  clip.onerror = function(){
+    if (token !== S.tourToken) return;
+    console.warn('Audio clip failed to play, switching to silent mode.');
+    $tourMsg.textContent = 'Audio clips unavailable; running in silent mode.';
+    S.audioMuted = true;
+    updateMuteButton();
+    if (S.state === 'playing') schedule();
+  };
 
-    clip.onended = finish;
-    clip.onerror = fallback;
+  try {
+    clip.currentTime = fromTime || 0;
+  } catch(e){}
 
-    let currentCue = null;
-    for (let c = milestone.cues.length - 1; c >= 0; c--){
-      if (S.idx >= milestone.cues[c].idx){
-        currentCue = milestone.cues[c];
-        break;
+  clearCueTimers();
+  if (Array.isArray(m.cues)){
+    m.cues.forEach(function(cue){
+      const cueTime = cue.time || 0;
+      const targetFrame = cue.frameIdx !== undefined ? cue.frameIdx : cue.idx;
+      if (cueTime >= (fromTime || 0)){
+        const delayMs = Math.max(0, (cueTime - (fromTime || 0)) * 1000);
+        const timerId = setTimeout(function(){
+          if (token === S.tourToken && S.state === 'playing'){
+            show(targetFrame, true);
+          }
+        }, delayMs);
+        S.cueTimers.push(timerId);
       }
-    }
-    if (!currentCue) currentCue = milestone.cues[0];
+    });
+  }
 
-    try { clip.currentTime = currentCue.time; } catch(e){}
-
-    if (S.state === 'playing'){
-      milestone.cues.forEach(function(cue){
-        if (cue.time > currentCue.time){
-          const delay = (cue.time - currentCue.time) * 1000;
-          const tid = setTimeout(function(){
-            if (token === S.narrationToken && S.state === 'playing'){
-              show(cue.idx, true);
-            }
-          }, delay);
-          S.cueTimers.push(tid);
-        }
-      });
-    }
-
-    const playPromise = clip.play();
-    if (playPromise !== undefined){
-      playPromise.catch(function(err){
-        if (err && err.name === 'NotAllowedError'){
-          $narrationStatus.textContent = 'Audio playback was blocked by browser autoplay policy. Click Play or Next to enable sound.';
-          fallback();
-        } else {
-          fallback();
-        }
-      });
-    }
-  } else {
-    speakTutor(frame, token, finish);
+  const playPromise = clip.play();
+  if (playPromise !== undefined){
+    playPromise.catch(function(err){
+      if (token !== S.tourToken) return;
+      if (err && err.name === 'NotAllowedError'){
+        $tourMsg.textContent = 'Click Audio Tour to allow sound in your browser.';
+      } else {
+        $tourMsg.textContent = 'Audio clips unavailable; running in silent mode.';
+      }
+      if (S.state === 'playing') schedule();
+    });
   }
 }
 
-/* ---------- playback state ---------- */
-const S = { cfg:null, frames:[], idx:0, state:'paused', timer:0, speed:1300, shown:-1, narration:false, voiceURI:'auto', narrationPending:false, narrationToken:0, currentClip:null, cueTimers:[] };
+function playMilestoneForFrame(frameIdx){
+  const wt = getActiveWalkthrough(S.cfg);
+  if (!wt || !audioAvailable || S.audioMuted) return;
+
+  const milestones = getMilestones(wt);
+  let mIdx = -1;
+  for (let i = 0; i < milestones.length; i++){
+    const m = milestones[i];
+    if (frameIdx >= m.startIdx && frameIdx <= m.endIdx){
+      mIdx = i;
+      break;
+    }
+  }
+  if (mIdx < 0) return;
+
+  const m = milestones[mIdx];
+  const clip = getMilestoneClip(wt, m);
+  let fromTime = 0;
+  if (Array.isArray(m.cues)){
+    for (let c = m.cues.length - 1; c >= 0; c--){
+      const fIdx = m.cues[c].frameIdx !== undefined ? m.cues[c].frameIdx : m.cues[c].idx;
+      if (frameIdx >= fIdx){
+        fromTime = m.cues[c].time || 0;
+        break;
+      }
+    }
+  }
+
+  if (S.currentClip === clip && !clip.ended && clip.currentTime > fromTime){
+    fromTime = clip.currentTime;
+  }
+
+  startMilestone(mIdx, fromTime);
+}
 
 function tweenDur(f){ return S.state === 'playing' ? Math.max(120, Math.min(600, S.speed * f.hold * 0.5)) : 450; }
 function easeProp(get, set, to, animate, f){
@@ -853,6 +938,17 @@ function updateButtons(){
   $back.disabled = S.idx <= 0;
   $next.disabled = S.idx >= last;
   $play.textContent = S.state === 'playing' ? 'Pause' : (S.idx >= last ? 'Replay' : 'Play');
+
+  const isTourPlaying = S.state === 'playing';
+  $tour.classList.toggle('playing', isTourPlaying);
+  const lbl = $tour.querySelector('.tour-label');
+  if (lbl){
+    lbl.textContent = isTourPlaying ? 'Pause' : (S.idx >= last ? 'Replay' : 'Audio Tour');
+  }
+  const icn = $tour.querySelector('.tour-icon');
+  if (icn){
+    icn.textContent = isTourPlaying ? '⏸' : '▶';
+  }
 }
 function show(i, animate){
   const f = S.frames[i]; if (!f) return;
@@ -863,129 +959,91 @@ function show(i, animate){
   $cv.setAttribute('aria-label', describe(f));
   renderCode(f);
   applyScene(f, animate && Math.abs(i - S.shown) === 1);
-  speakFrame(f);
   S.shown = i;
   updateButtons();
+  updateTourStatus();
 }
 
 function clearTimer(){ if (S.timer){ clearTimeout(S.timer); S.timer = 0; } }
 function schedule(){
   clearTimer();
-  if (S.state !== 'playing' || S.narrationPending) return;
+  if (S.state !== 'playing') return;
+  const wt = getActiveWalkthrough(S.cfg);
+  if (wt && audioAvailable && !S.audioMuted && S.currentClip && !S.currentClip.paused){
+    return;
+  }
   S.timer = setTimeout(tick, S.speed * S.frames[S.idx].hold);
 }
 function tick(){
   S.timer = 0;
   if (S.state !== 'playing') return;
-  if (S.idx >= S.frames.length - 1){ S.state = 'ended'; updateButtons(); return; }
+  if (S.idx >= S.frames.length - 1){ S.state = 'ended'; updateButtons(); updateTourStatus(); return; }
   show(S.idx + 1, true);
-  if (S.idx >= S.frames.length - 1){ S.state = 'ended'; updateButtons(); return; }
+  if (S.idx >= S.frames.length - 1){ S.state = 'ended'; updateButtons(); updateTourStatus(); return; }
   schedule();
 }
 function pause(){
   clearTimer();
-  clearCueTimers();
-  if (S.currentClip && !S.currentClip.paused){
-    S.currentClip.pause();
-  } else {
-    cancelNarration();
-  }
   settle();
+  pauseAudio();
   if (S.state === 'playing' || S.state === 'ended') S.state = 'paused';
   updateButtons();
+  updateTourStatus();
 }
 function play(){
   if (S.state === 'playing'){ pause(); return; }
   if (S.idx >= S.frames.length - 1) show(0, false);
   S.state = 'playing'; updateButtons();
-  if (S.narration){
-    const wt = getActiveWalkthrough(S.cfg);
-    if (wt && S.currentClip && S.currentClip.paused && !S.currentClip.ended){
-      const token = S.narrationToken;
-      const milestone = wt.mapping.find(function(m){ return S.idx >= m.startIdx && S.idx <= m.endIdx; });
-      if (milestone){
-        clearCueTimers();
-        const curTime = S.currentClip.currentTime;
-        milestone.cues.forEach(function(cue){
-          if (cue.time > curTime){
-            const delay = (cue.time - curTime) * 1000;
-            const tid = setTimeout(function(){
-              if (token === S.narrationToken && S.state === 'playing'){
-                show(cue.idx, true);
-              }
-            }, delay);
-            S.cueTimers.push(tid);
-          }
-        });
-      }
-      S.narrationPending = true;
-      S.currentClip.play().catch(function(){ speakFrame(S.frames[S.idx]); });
-    } else {
-      speakFrame(S.frames[S.idx]);
-    }
+  const wt = getActiveWalkthrough(S.cfg);
+  if (wt && audioAvailable && !S.audioMuted){
+    playMilestoneForFrame(S.idx);
+  } else {
+    updateTourStatus();
+    schedule();
   }
-  schedule();
 }
 function step(d){
-  cancelNarration();
+  stopAudio();
   pause();
   const j = S.idx + d;
   if (j < 0 || j >= S.frames.length) return;
   show(j, true);
 }
 function reset(){
-  cancelNarration();
+  stopAudio();
   pause();
   show(0, false);
 }
+function toggleMute(){
+  S.audioMuted = !S.audioMuted;
+  updateMuteButton();
+  if (S.audioMuted){
+    pauseAudio();
+    if (S.state === 'playing') schedule();
+  } else {
+    clearTimer();
+    if (S.state === 'playing') playMilestoneForFrame(S.idx);
+  }
+  updateTourStatus();
+}
 function loadPreset(i){
-  cancelNarration();
+  stopAudio();
   pause();
+  $preset.value = String(i);
   const p = PRESETS[i];
   S.cfg = { name:p.name, word:p.args[0], guesses:p.args[1], max:p.args[2] };
   S.frames = simulate.apply(null, p.args).frames; S.shown = -1; S.idx = 0;
   build(S.cfg);
-  if (S.narration){
-    $narrationStatus.textContent = narrationStatusMessage(S.cfg);
-  }
   show(0, false);
+  updateTourStatus();
 }
 
-function toggleNarration(){
-  if (!narrationAvailable){
-    $narrationStatus.textContent = 'Voice narration is unavailable in this environment.';
-    return;
-  }
-  S.narration = !S.narration;
-  $narration.textContent = S.narration ? 'Narration: On' : 'Narration: Off';
-  $narration.setAttribute('aria-pressed', S.narration ? 'true' : 'false');
-  if (S.narration){
-    $narrationStatus.textContent = narrationStatusMessage(S.cfg);
-    speakFrame(S.frames[S.idx]);
-  } else {
-    cancelNarration();
-    $narrationStatus.textContent = 'Narration muted.';
-    if (S.state === 'playing') schedule();
-  }
-  updateButtons();
-}
-
+$tour.addEventListener('click', play);
+$mute.addEventListener('click', toggleMute);
 $back.addEventListener('click', function(){ step(-1); });
 $next.addEventListener('click', function(){ step(1); });
 $play.addEventListener('click', play);
 $reset.addEventListener('click', reset);
-$narration.addEventListener('click', toggleNarration);
-$voice.addEventListener('change', function(){
-  S.voiceURI = $voice.value;
-  if (S.narration && !getActiveWalkthrough(S.cfg)) speakFrame(S.frames[S.idx]);
-});
-$narration.disabled = !narrationAvailable;
-if (speechAvailable){
-  refreshVoices();
-  window.speechSynthesis.onvoiceschanged = refreshVoices;
-} else {
-  $voice.disabled = true;
-}
 $preset.addEventListener('change', function(){
   if ($preset.value === 'play'){ startGame(); return; }
   G.on = false; G.over = false; $pad.hidden = true; $wordForm.hidden = true; loadPreset(Number($preset.value));
@@ -996,10 +1054,16 @@ $speed.addEventListener('change', function(){
 });
 document.addEventListener('keydown', function(e){
   const t = e.target && e.target.tagName;
-  if (t === 'BUTTON' || t === 'SELECT' || t === 'INPUT' || t === 'TEXTAREA') return;
+  if (t === 'BUTTON' || t === 'SELECT' || t === 'INPUT' || t === 'TEXTAREA' || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (G.on){
+    if (/^[a-z]$/i.test(e.key)) guess(e.key.toLowerCase());
+    return;
+  }
   if (e.key === ' '){ e.preventDefault(); play(); }
   else if (e.key === 'ArrowRight'){ step(1); }
   else if (e.key === 'ArrowLeft'){ step(-1); }
+  else if (e.key === 'c' || e.key === 'C'){ e.preventDefault(); toggleCodePane(); }
+  else if (e.key === 'm' || e.key === 'M'){ e.preventDefault(); toggleMute(); }
 });
 document.addEventListener('visibilitychange', function(){ if (document.hidden && S.state === 'playing') pause(); });
 
@@ -1022,7 +1086,7 @@ function refreshPad(){
   Object.keys(padBtn).forEach(function(l){ padBtn[l].disabled = G.over || G.guesses.indexOf(l) >= 0; });
 }
 function startGame(customWord){
-  cancelNarration();
+  stopAudio();
   pause();
   const hasCustomWord = typeof customWord !== 'undefined';
   let w = customWord;
@@ -1045,10 +1109,8 @@ function startGame(customWord){
   S.cfg = { name:'Play', word:w, guesses:G.guesses, max:G.max };
   S.frames = simulate(w, [], G.max).frames; S.shown = -1; S.idx = 1;
   build(S.cfg);
-  if (S.narration){
-    $narrationStatus.textContent = narrationStatusMessage(S.cfg);
-  }
   show(1, false);
+  updateTourStatus();
   refreshPad();
 }
 function guess(letter){
@@ -1063,11 +1125,6 @@ function guess(letter){
 $wordForm.addEventListener('submit', function(e){
   e.preventDefault();
   startGame($customWord.value);
-});
-document.addEventListener('keydown', function(e){
-  const t = e.target && e.target.tagName;
-  if (!G.on || t === 'SELECT' || t === 'INPUT' || t === 'TEXTAREA' || e.ctrlKey || e.metaKey || e.altKey) return;
-  if (/^[a-z]$/i.test(e.key)) guess(e.key.toLowerCase());
 });
 
 loadPreset(0);
