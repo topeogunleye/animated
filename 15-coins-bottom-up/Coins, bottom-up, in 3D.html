@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Coins, bottom-up, in 3D</title>
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --ink:#18212b; --muted:#5b6876; --line:#d5dbe3;
+  --hl-bg:#fff3bf; --hl-bar:#d99a00; --stage:#1b2433;
+  --plate:#2a3446; --accent:#e8a900;
+  --btn:#ffffff; --btnHover:#eef1f5;
+  color-scheme:light;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1318; --panel:#171c23; --ink:#e8edf3; --muted:#9aa7b6; --line:#2c3440;
+    --hl-bg:#4a3d0a; --hl-bar:#ffc400; --stage:#10151e;
+    --plate:#242c38; --accent:#ffc400;
+    --btn:#1d2430; --btnHover:#27303b; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1318; --panel:#171c23; --ink:#e8edf3; --muted:#9aa7b6; --line:#2c3440;
+  --hl-bg:#4a3d0a; --hl-bar:#ffc400; --stage:#10151e;
+  --plate:#242c38; --accent:#ffc400;
+  --btn:#1d2430; --btnHover:#27303b; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+main{max-width:1120px;margin:0 auto;padding:12px 14px 22px}
+h1{font-size:1.15rem;margin:4px 0 6px;font-weight:650}
+.goal{margin:0 0 12px;color:var(--muted)}
+.legend{margin-top:12px;font-size:.9rem;color:var(--muted)}
+.legend summary{cursor:pointer;color:var(--ink);font-weight:600}
+.wrap{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:start;transition:grid-template-columns 180ms ease}
+.wrap.code-hidden{grid-template-columns:minmax(0,1fr)}
+.wrap.code-hidden .code-pane{display:none}
+@media (max-width:760px){.wrap{grid-template-columns:minmax(0,1fr)}}
+.stagebox{position:relative;background:var(--stage);border:1px solid var(--line);border-radius:12px;overflow:hidden;aspect-ratio:4/3;min-height:260px;max-height:64vh;width:100%}
+#cv{display:block;width:100%;height:100%;touch-action:pan-y;cursor:grab}
+#cv:active{cursor:grabbing}
+.hint{position:absolute;right:10px;bottom:8px;font-size:11px;color:#aab6c8;pointer-events:none}
+.tag{position:absolute;top:8px;left:10px;right:10px;width:max-content;max-width:calc(100% - 20px);font:600 12px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--panel);border:1px solid var(--line);padding:2px 9px;border-radius:999px}
+.err{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;color:var(--ink);background:var(--stage)}
+.err[hidden]{display:none}
+#caption{margin:12px 2px 10px;min-height:3em;font-size:1rem}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button,select{font:inherit;font-size:.9rem;color:var(--ink);background:var(--btn);border:1px solid var(--line);border-radius:8px;padding:6px 12px;min-height:36px}
+button{cursor:pointer;min-width:64px}
+button:hover:not(:disabled){background:var(--btnHover)}
+button:disabled{opacity:.45;cursor:default}
+button:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.btn-tour{background:var(--accent);color:#111;font-weight:700;border:1px solid rgba(0,0,0,0.18);display:inline-flex;align-items:center;gap:6px;padding:6px 14px}
+.btn-tour:hover:not(:disabled){filter:brightness(1.08)}
+.btn-tour.playing{background:var(--btn);color:var(--ink);border-color:var(--accent)}
+.tour-icon{font-size:0.95em}
+.btn-mute{min-width:40px;padding:6px 10px;font-size:1rem;display:inline-flex;align-items:center;justify-content:center}
+.tour-status{display:flex;align-items:center;gap:8px;font-size:0.85rem;color:var(--muted);min-height:1.6rem;margin:8px 2px 0;padding:4px 10px;background:var(--panel);border:1px solid var(--line);border-radius:999px;width:fit-content;max-width:100%}
+.tour-badge{display:inline-block;font-size:0.75rem;font-weight:700;letter-spacing:0.02em;text-transform:uppercase;color:var(--ink);background:var(--bg);padding:2px 8px;border-radius:999px;border:1px solid var(--line);white-space:nowrap}
+.tour-msg{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:600px){.tour-status{border-radius:8px;flex-wrap:wrap}.tour-msg{white-space:normal}}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+#code{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 0;overflow:auto;max-height:70vh;font:13px/1.7 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+@media (max-width:420px){#code{font-size:12px}}
+.row{display:flex;min-width:max-content;white-space:pre;padding-right:12px;border-left:4px solid transparent}
+.ln{flex:0 0 2.4em;text-align:right;padding-right:12px;color:var(--muted);user-select:none}
+.row.active{background:var(--hl-bg);border-left-color:var(--hl-bar)}
+
+/* ---------- top navigation bar ---------- */
+.top-nav{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 0 10px;margin-bottom:10px;border-bottom:1px solid var(--line);font-size:0.875rem}
+.top-nav a{color:var(--ink);text-decoration:none;display:inline-flex;align-items:center;gap:6px;font-weight:550;padding:4px 8px;border-radius:6px;transition:background 120ms ease,color 120ms ease}
+.top-nav a:hover{background:var(--btnHover);color:var(--accent)}
+.top-nav a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.nav-back{display:inline-flex;align-items:center;gap:6px;font-weight:600}
+.nav-back .nav-arrow{font-size:1.05em;transition:transform 120ms ease}
+.nav-back:hover .nav-arrow{transform:translateX(-2px)}
+.nav-sequence{display:inline-flex;align-items:center;gap:6px}
+.nav-btn{background:var(--btn);border:1px solid var(--line);padding:3px 9px;border-radius:6px;color:var(--ink);text-decoration:none;display:inline-flex;align-items:center;gap:4px;font-size:0.82rem;font-weight:550}
+.nav-btn:hover:not(.disabled){background:var(--btnHover);border-color:var(--accent);color:var(--accent)}
+.nav-btn.disabled{opacity:0.35;cursor:not-allowed;pointer-events:none}
+.nav-indicator{font-size:0.8rem;color:var(--muted);padding:0 6px;font-variant-numeric:tabular-nums;user-select:none;font-weight:600}
+.nav-arrow{font-size:1em;line-height:1}
+@media (max-width:540px){
+  .top-nav{flex-wrap:wrap;gap:8px}
+  .nav-back span:not(.nav-arrow){font-size:0.82rem}
+  .btn-show-code .nav-label{display:none}
+  .btn-show-code{padding:3px 8px}
+}
+
+/* ---------- collapsible code pane & full-width mode ---------- */
+.code-pane{display:flex;flex-direction:column;min-width:0}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:5px 12px;background:var(--panel);border:1px solid var(--line);border-bottom:none;border-radius:12px 12px 0 0;font-size:0.8rem;font-weight:600;color:var(--muted)}
+.code-header .code-title{text-transform:uppercase;letter-spacing:0.06em;font-size:0.75rem}
+.code-pane #code{border-top-left-radius:0;border-top-right-radius:0}
+.btn-toggle-code{background:transparent;border:1px solid transparent;color:var(--muted);padding:2px 8px;border-radius:6px;font:inherit;font-size:0.78rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;min-height:unset;min-width:unset;transition:background 120ms ease,color 120ms ease,border-color 120ms ease}
+.btn-toggle-code:hover{background:var(--btnHover);color:var(--ink);border-color:var(--line)}
+.btn-toggle-code:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn-toggle-code .eye-icon{font-size:1em;line-height:1}
+.btn-show-code{display:inline-flex;align-items:center;gap:5px}
+.btn-show-code[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+  <nav class="top-nav" aria-label="Visualizations navigation">
+    <a class="nav-back" href="../index.html" title="Return to all algorithm visualizations">
+      <span class="nav-arrow" aria-hidden="true">←</span>
+      <span>All Visualizations</span>
+    </a>
+    <div class="nav-sequence">
+      <button id="bShowCodeNav" type="button" class="nav-btn btn-show-code" title="Show code panel (C)" aria-label="Show code panel" hidden><span class="eye-icon" aria-hidden="true">👁</span><span class="nav-label">Show Code</span></button>
+      <a class="nav-btn prev" href="../14-tic-tac-toe-referee/Tic-Tac-Toe%20referee%20in%203D%2C%20every%20line%20of%20code.html" title="Previous visualization: Tic-Tac-Toe Referee: Every Line of Code"><span class="nav-arrow" aria-hidden="true">‹</span><span class="nav-label">Prev</span></a>
+      <span class="nav-indicator" aria-label="Visualization 18 of 20" title="Visualization 18 of 20">18 / 20</span>
+      <a class="nav-btn next" href="../16-cache-that-forgets-wisely/The%20cache%20that%20forgets%20wisely%2C%20in%203D.html" title="Next visualization: The Cache That Forgets Wisely"><span class="nav-label">Next</span><span class="nav-arrow" aria-hidden="true">›</span></a>
+    </div>
+  </nav>
+  <h1>Coins, bottom-up, in 3D</h1>
+  <p class="goal" id="goal">Goal: count combinations or find fewest coins using bottom-up dynamic programming.</p>
+  <div class="wrap" id="wrap">
+    <div>
+      <div class="stagebox" id="stage">
+        <canvas id="cv" role="img" aria-label="3D dynamic programming table of coin amounts seen from above"></canvas>
+        <div class="tag" id="tag"></div>
+        <div class="hint">drag to rotate · double-click to reset</div>
+        <div class="err" id="err" hidden></div>
+      </div>
+      <p id="caption" role="status" aria-live="polite"></p>
+      <div class="controls" role="group" aria-label="Playback controls">
+        <button id="bTour" type="button" class="btn-tour" title="Start guided audio tour (Space)">
+          <span class="tour-icon" aria-hidden="true">▶</span>
+          <span class="tour-label">Audio Tour</span>
+        </button>
+        <button id="bBack" type="button" title="Previous step (Left Arrow)">Back</button>
+        <button id="bNext" type="button" title="Next step (Right Arrow)">Next</button>
+        <button id="bReset" type="button" title="Reset to beginning">Reset</button>
+        <button id="bMute" type="button" class="btn-mute" aria-pressed="false" title="Mute voiceover (Silent animation)">
+          <span class="mute-icon" aria-hidden="true">🔊</span>
+        </button>
+        <label class="sr" for="preset">Input</label>
+        <select id="preset"></select>
+        <label class="sr" for="speed">Speed</label>
+        <select id="speed">
+          <option value="1300">Slow</option>
+          <option value="850" selected>Normal</option>
+          <option value="450">Fast</option>
+          <option value="220">Very fast</option>
+        </select>
+      </div>
+      <div class="tour-status" id="tourStatus" role="status" aria-live="polite">
+        <span class="tour-badge" id="tourBadge">Milestone 1/3</span>
+        <span class="tour-msg" id="tourMsg">Ready to start guided audio tour.</span>
+      </div>
+      <details class="legend"><summary>How to read this</summary><p>Each flat tile represents one amount, numbered below it. The number on the tile is the computed dynamic programming table value. A gold tile with <b>NOW</b> is the cell currently being computed. A blue tile with <b>FROM</b> is the sub-problem it builds on, joined by a white arc. Green tiles are completed (reachable amounts). Grey tiles are still 0 or ∞ (not reached yet). Drag sideways to rotate the 3D perspective; double-click to reset view.</p></details>
+    </div>
+    <div class="code-pane" id="codePane">
+      <div class="code-header">
+        <span class="code-title">Python Source</span>
+        <button id="bHideCode" type="button" class="btn-toggle-code" title="Hide code panel (C)" aria-label="Hide code panel">
+          <span class="eye-icon" aria-hidden="true">✕</span>
+          <span class="btn-label">Hide</span>
+        </button>
+      </div>
+      <div id="code" role="region" aria-label="Python source code"></div>
+    </div>
+  </div>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+
+/* SOURCE:BEGIN */
+const CODE = [
+  'def count_ways_dp(amount, coins):',                                          // 0
+  '    ways = [0] * (amount + 1)',                                              // 1
+  '    ways[0] = 1',                                                            // 2
+  '    for c in coins:',                                                        // 3
+  '        if c > amount:',                                                     // 4
+  '            continue',                                                       // 5
+  '        for a in range(c, amount + 1):',                                     // 6
+  '            ways[a] += ways[a - c]',                                         // 7
+  '    return ways[amount]',                                                    // 8
+  'def min_coins(amount, coins):',                                              // 9
+  '    INF = amount + 1',                                                       // 10
+  '    best = [INF] * (amount + 1)',                                            // 11
+  '    best[0] = 0',                                                            // 12
+  '    for a in range(1, amount + 1):',                                         // 13
+  '        for c in coins:',                                                    // 14
+  '            if c <= a and best[a - c] + 1 < best[a]:',                       // 15
+  '                best[a] = best[a - c] + 1',                                  // 16
+  '    return best[amount] if best[amount] < INF else -1'                       // 17
+];
+/* SOURCE:END */
+
+/* PRESETS:BEGIN */
+const PRESETS = [
+  { name:'count 5 with [1, 2, 5] \u2192 4', f:'c', a:5, k:[1,2,5] },
+  { name:'min 11 with [1, 2, 5] \u2192 3',  f:'m', a:11, k:[1,2,5] },
+  { name:'min 3 with [2] \u2192 -1',        f:'m', a:3, k:[2] },
+  { name:'count 0 with [1, 2] \u2192 1',    f:'c', a:0, k:[1,2] },
+  { name:'min 0 with [1] \u2192 0',         f:'m', a:0, k:[1] },
+  { name:'Edge: count 5, no coins \u2192 0',f:'c', a:5, k:[] },
+  { name:'Edge: count 5 with [1, 2, 50]',   f:'c', a:5, k:[1,2,50] },
+  { name:'Edge: min 5, no coins \u2192 -1', f:'m', a:5, k:[] }
+];
+/* PRESETS:END */
+
+/* SIMULATE:BEGIN */
+function simulate(p){
+  const f = p.f, a = p.a, k = p.k, F = [], INF = a + 1;
+  const t = Array(a + 1).fill(f === 'c' ? 0 : INF);
+  function push(lines, msg, o){
+    o = o || {};
+    F.push(Object.assign({
+      lines: lines, msg: msg, t: t.slice(),
+      cur: (o.cur !== undefined) ? o.cur : -1,
+      src: (o.src !== undefined) ? o.src : -1,
+      hold: (o.hold !== undefined) ? o.hold : 1
+    }, o));
+  }
+  if (f === 'c'){
+    t[0] = 1;
+    push([1, 2], 'Make a table: ways[a] is how many coin combinations make amount a. ways[0] = 1 because "use no coins" makes 0.');
+    if (!k.length){
+      push([3], 'There are no coins, so the loop never runs and every amount above 0 stays at 0 ways.');
+    }
+    for (let ci = 0; ci < k.length; ci++){
+      const c = k[ci];
+      if (c > a){
+        push([3, 4, 5], 'Coin ' + c + ' is bigger than ' + a + ', so it can never be used. Skip it.');
+        continue;
+      }
+      push([3], 'Now allow coin ' + c + '. Adding coins one at a time is what stops 1+2 and 2+1 from counting twice.');
+      for (let x = c; x <= a; x++){
+        const o = t[x];
+        t[x] += t[x - c];
+        push([6, 7], 'Amount ' + x + ': ' + o + ' ways before + ' + t[x - c] + ' ways to make ' + (x - c) + ' (then add one ' + c + ') = ' + t[x] + '.', { cur: x, src: x - c });
+      }
+    }
+    push([8], 'Answer: ' + t[a] + ' combination' + (t[a] === 1 ? '' : 's') + ' make ' + a + '. Every cell was filled once, with no repeated work.');
+  } else {
+    t[0] = 0;
+    push([10, 11, 12], 'Make a table: best[a] is the fewest coins that make a. Every cell starts at \u221E (stored as ' + INF + ', meaning not reachable yet). best[0] = 0 coins.');
+    for (let x = 1; x <= a; x++){
+      if (!k.length){
+        push([13], 'Amount ' + x + ': there are no coins to try, so it stays \u221E.', { cur: x });
+        continue;
+      }
+      for (let ci = 0; ci < k.length; ci++){
+        const c = k[ci];
+        if (c > x){
+          push([13, 14, 15], 'Amount ' + x + ': coin ' + c + ' is too big, skip it.', { cur: x, hold: 0.6 });
+          continue;
+        }
+        const pv = t[x - c], cd = pv + 1;
+        if (pv < INF && cd < t[x]){
+          t[x] = cd;
+          push([13, 14, 15, 16], 'Amount ' + x + ': if the last coin is ' + c + ', best[' + (x - c) + '] + 1 = ' + cd + '. That is better, so best[' + x + '] = ' + cd + '.', { cur: x, src: x - c });
+        } else {
+          push([13, 14, 15], pv >= INF ? ('Amount ' + x + ': with last coin ' + c + ', amount ' + (x - c) + ' is \u221E (unreachable), so no help.') : ('Amount ' + x + ': last coin ' + c + ' gives ' + cd + ', not better than ' + t[x] + '.'), { cur: x, src: x - c, hold: 0.6 });
+        }
+      }
+    }
+    push([17], t[a] < INF ? ('Answer: ' + t[a] + ' coin' + (t[a] === 1 ? '' : 's') + ' make ' + a + '.') : ('Answer: -1. Cell ' + a + ' is still \u221E, so ' + a + ' cannot be made with these coins.'));
+  }
+  return { frames: F, result: t[a] };
+}
+/* SIMULATE:END */
+
+/* ---------- DOM ---------- */
+const $ = function(id){ return document.getElementById(id); };
+const $cv = $('cv'), $stage = $('stage'), $cap = $('caption'), $tag = $('tag'), $err = $('err'), $code = $('code');
+const $wrap = $('wrap'), $goal = $('goal');
+const $back = $('bBack'), $tour = $('bTour'), $next = $('bNext'), $reset = $('bReset'), $mute = $('bMute'), $preset = $('preset'), $speed = $('speed');
+const $tourStatus = $('tourStatus'), $tourBadge = $('tourBadge'), $tourMsg = $('tourMsg');
+const $tourIcon = $tour ? $tour.querySelector('.tour-icon') : null;
+const $tourLabel = $tour ? $tour.querySelector('.tour-label') : null;
+const $muteIcon = $mute ? $mute.querySelector('.mute-icon') : null;
+const $codePane = $('codePane'), $bHideCode = $('bHideCode'), $bShowCodeNav = $('bShowCodeNav');
+const RM = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches:false };
+
+function toggleCode(force){
+  const isHidden = typeof force === 'boolean' ? !force : !$wrap.classList.contains('code-hidden');
+  $wrap.classList.toggle('code-hidden', isHidden);
+  if ($bShowCodeNav) $bShowCodeNav.hidden = !isHidden;
+  fitCamera();
+}
+if ($bHideCode) $bHideCode.addEventListener('click', function(){ toggleCode(false); });
+if ($bShowCodeNav) $bShowCodeNav.addEventListener('click', function(){ toggleCode(true); });
+
+const rows = CODE.map(function(txt, i){
+  const r = document.createElement('div'); r.className = 'row';
+  const n = document.createElement('span'); n.className = 'ln'; n.textContent = String(i + 1);
+  const c = document.createElement('span'); c.textContent = txt;
+  r.appendChild(n); r.appendChild(c); $code.appendChild(r);
+  return r;
+});
+PRESETS.forEach(function(p, i){
+  const o = document.createElement('option'); o.value = String(i); o.textContent = p.name; $preset.appendChild(o);
+});
+
+/* ---------- Audio Walkthrough Assets ---------- */
+const audioAvailable = typeof Audio !== 'undefined';
+function makeAudio(src){
+  if (!audioAvailable) return null;
+  const a = new Audio();
+  a.preload = 'auto';
+  a.src = src;
+  return a;
+}
+
+const WALKTHROUGHS = {
+  count5: {
+    id: 'count5',
+    name: 'count 5 with [1, 2, 5] \u2192 4',
+    match: function(cfg){
+      return cfg && cfg.f === 'c' && cfg.a === 5 && cfg.k.length === 3;
+    },
+    clips: {
+      c1: makeAudio('../audio-walkthroughs/coins-bottom-up/01-table-setup-and-coin-one.mp3'),
+      c2: makeAudio('../audio-walkthroughs/coins-bottom-up/02-allowing-coin-two.mp3'),
+      c5: makeAudio('../audio-walkthroughs/coins-bottom-up/03-allowing-coin-five-and-result.mp3')
+    },
+    milestones: [
+      {
+        title: 'Table Setup & Coin 1 Sweep',
+        clip: 'c1',
+        startIdx: 0,
+        endIdx: 6,
+        cues: [
+          { time: 0.0, frameIdx: 0 },
+          { time: 25.0, frameIdx: 1 },
+          { time: 37.0, frameIdx: 2 },
+          { time: 42.0, frameIdx: 3 },
+          { time: 44.0, frameIdx: 4 },
+          { time: 46.0, frameIdx: 5 },
+          { time: 48.0, frameIdx: 6 }
+        ]
+      },
+      {
+        title: 'Allowing Coin 2 (Adding Previous Ways)',
+        clip: 'c2',
+        startIdx: 7,
+        endIdx: 11,
+        cues: [
+          { time: 0.0, frameIdx: 7 },
+          { time: 13.0, frameIdx: 8 },
+          { time: 19.0, frameIdx: 9 },
+          { time: 24.5, frameIdx: 10 },
+          { time: 30.5, frameIdx: 11 }
+        ]
+      },
+      {
+        title: 'Allowing Coin 5 & Total Combinations',
+        clip: 'c5',
+        startIdx: 12,
+        endIdx: 14,
+        cues: [
+          { time: 0.0, frameIdx: 12 },
+          { time: 3.0, frameIdx: 13 },
+          { time: 19.5, frameIdx: 14 }
+        ]
+      }
+    ]
+  },
+  min11: {
+    id: 'min11',
+    name: 'min 11 with [1, 2, 5] \u2192 3',
+    match: function(cfg){
+      return cfg && cfg.f === 'm' && cfg.a === 11;
+    },
+    clips: {
+      min: makeAudio('../audio-walkthroughs/coins-bottom-up/04-min-coins-overview.mp3')
+    },
+    milestones: [
+      {
+        title: 'Fewest Coins Dynamic Programming Overview',
+        clip: 'min',
+        startIdx: 0,
+        endIdx: 34,
+        cues: [
+          { time: 0.0, frameIdx: 0 },
+          { time: 18.0, frameIdx: 30 },
+          { time: 24.5, frameIdx: 34 }
+        ]
+      }
+    ]
+  }
+};
+
+function getActiveWalkthrough(cfg){
+  if (!cfg) return null;
+  const keys = Object.keys(WALKTHROUGHS);
+  for (let i = 0; i < keys.length; i++){
+    const wt = WALKTHROUGHS[keys[i]];
+    if (wt.match(cfg)) return wt;
+  }
+  return null;
+}
+
+function getMilestones(wt){
+  if (!wt) return [];
+  return wt.milestones || [];
+}
+
+function getMilestoneTitle(wt, mIdx){
+  const milestones = getMilestones(wt);
+  const m = milestones[mIdx];
+  if (!m) return '';
+  return m.title || ('Milestone ' + (mIdx + 1));
+}
+
+function getMilestoneClip(wt, m){
+  if (!m) return null;
+  if (typeof m.clip === 'string' && wt.clips){
+    return wt.clips[m.clip] || null;
+  }
+  return m.clip || null;
+}
+
+/* ---------- three.js scene ---------- */
+let R = null, S = null, Cam = null, G = null, T = [], Ln = null, NOW = null, FROM = null;
+let yaw = 0, n = 0;
+const FOV = 32;
+
+function spr(w, h, txt, col, sx, sy){
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const tx = new THREE.CanvasTexture(c);
+  tx.generateMipmaps = false; tx.minFilter = THREE.LinearFilter;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map:tx, transparent:true, depthTest:false }));
+  s.scale.set(sx, sy, 1);
+  s.userData = { c: c, tx: tx };
+  settxt(s, txt, col);
+  return s;
+}
+function settxt(s, txt, col){
+  const c = s.userData.c, x = c.getContext('2d');
+  x.clearRect(0, 0, c.width, c.height);
+  x.font = 'bold ' + Math.round(c.height * 0.7) + 'px system-ui,sans-serif';
+  x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.lineWidth = 7; x.strokeStyle = '#0b0f16';
+  x.strokeText(txt, c.width / 2, c.height / 2);
+  x.fillStyle = col;
+  x.fillText(txt, c.width / 2, c.height / 2);
+  s.userData.tx.needsUpdate = true;
+}
+
+try {
+  R = new THREE.WebGLRenderer({ canvas: $cv, antialias: true, alpha: true });
+  R.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  S = new THREE.Scene();
+  Cam = new THREE.PerspectiveCamera(FOV, 4/3, 0.1, 200);
+  S.add(new THREE.AmbientLight(0xffffff, 0.65));
+  const dl = new THREE.DirectionalLight(0xffffff, 0.85);
+  dl.position.set(3, 8, 6);
+  S.add(dl);
+} catch(e){
+  R = null;
+  $err.hidden = false;
+  $err.textContent = '3D view unavailable; check WebGL.';
+}
+
+function disp(v, f){
+  return (f === 'm' && v >= n) ? '\u221E' : String(v);
+}
+
+function buildScene(){
+  if (!R) return;
+  if (G){
+    S.remove(G);
+    G.traverse(function(o){
+      if (o.geometry) o.geometry.dispose();
+      if (o.material){
+        if (o.material.map) o.material.map.dispose();
+        o.material.dispose();
+      }
+    });
+  }
+  G = new THREE.Group();
+  S.add(G);
+  T = [];
+  const sp = 1.15;
+  for (let j = 0; j < n; j++){
+    const x = (j - (n - 1) / 2) * sp;
+    const m = new THREE.Mesh(new THREE.BoxGeometry(1, 0.25, 1), new THREE.MeshLambertMaterial({ color: 0x3b4a63 }));
+    m.position.set(x, 0, 0);
+    G.add(m);
+    const v = spr(128, 64, '0', '#ffffff', 1, 0.5);
+    v.position.set(x, 0.5, 0);
+    const ix = spr(96, 48, String(j), '#aab6c8', 0.6, 0.3);
+    ix.position.set(x, 0.05, 1.05);
+    G.add(v, ix);
+    T.push({ m: m, v: v });
+  }
+  NOW = spr(160, 64, 'NOW', '#ffd45e', 1.05, 0.42);
+  FROM = spr(160, 64, 'FROM', '#7db4ff', 1.05, 0.42);
+  G.add(NOW, FROM);
+
+  Ln = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()]),
+    new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 })
+  );
+  G.add(Ln);
+  fitCamera();
+}
+
+function fitCamera(){
+  if (!R) return;
+  const w = $stage.clientWidth || 600, h = $stage.clientHeight || 450;
+  R.setSize(w, h, false);
+  Cam.aspect = w / h;
+  const half = Math.max(n * 1.15 / 2 + 0.7, 3);
+  const d = half / (Math.tan(16 * Math.PI / 180) * Cam.aspect);
+  Cam.position.set(0, d * 0.6, d * 0.8);
+  Cam.lookAt(0, 0.3, 0);
+  Cam.updateProjectionMatrix();
+  renderScene();
+}
+
+function renderScene(){
+  if (!R || !G || !State.frames[State.idx]) return;
+  const f = State.frames[State.idx];
+  G.rotation.y = yaw;
+  const sp = 1.15, X = function(j){ return (j - (n - 1) / 2) * sp; };
+
+  T.forEach(function(t, j){
+    const v = f.t[j], ok = State.cfg.f === 'c' ? v > 0 : v < n;
+    let col = ok ? 0x2f7d5b : 0x3b4a63;
+    if (j === f.cur) col = 0xe0a526;
+    else if (j === f.src) col = 0x3a86e0;
+    t.m.material.color.setHex(col);
+    settxt(t.v, disp(v, State.cfg.f), '#ffffff');
+  });
+
+  NOW.visible = f.cur >= 0;
+  FROM.visible = f.src >= 0;
+  Ln.visible = f.src >= 0;
+
+  if (f.cur >= 0) NOW.position.set(X(f.cur), 1.5, 0);
+  if (f.src >= 0){
+    FROM.position.set(X(f.src), 1.5, 0);
+    const dx = Math.abs(f.cur - f.src), pk = Math.min(0.5 + 0.12 * dx, 1.1);
+    const a = Ln.geometry.attributes.position;
+    a.setXYZ(0, X(f.src), 0.15, 0);
+    a.setXYZ(1, (X(f.src) + X(f.cur)) / 2, pk, 0);
+    a.setXYZ(2, X(f.cur), 0.15, 0);
+    a.needsUpdate = true;
+  }
+  R.render(S, Cam);
+}
+
+/* Mouse / drag controls */
+if (R){
+  let dx0 = null, y0 = 0;
+  $stage.addEventListener('pointerdown', function(e){
+    dx0 = e.clientX; y0 = yaw;
+    try { $cv.setPointerCapture(e.pointerId); } catch(err){}
+  });
+  window.addEventListener('pointerup', function(){ dx0 = null; });
+  $stage.addEventListener('pointermove', function(e){
+    if (dx0 !== null){
+      yaw = Math.max(-0.55, Math.min(0.55, y0 + (e.clientX - dx0) / 200));
+      renderScene();
+    }
+  });
+  $stage.addEventListener('dblclick', function(){ yaw = 0; renderScene(); });
+}
+
+/* ---------- Playback state ---------- */
+const State = {
+  cfg: null, frames: [], idx: 0, state: 'paused', timer: 0, speed: 850,
+  audioMuted: false, currentClip: null, currentMilestoneIdx: -1, cueTimers: [], tourToken: 0
+};
+
+function renderCode(f){
+  let firstActive = -1;
+  rows.forEach(function(r, i){
+    const a = f.lines.indexOf(i) >= 0;
+    r.classList.toggle('active', a);
+    if (a && firstActive < 0) firstActive = i;
+  });
+  if (firstActive >= 0){
+    const r = rows[firstActive];
+    if (r.offsetTop < $code.scrollTop) $code.scrollTop = r.offsetTop;
+    else if (r.offsetTop + r.offsetHeight > $code.scrollTop + $code.clientHeight) $code.scrollTop = r.offsetTop + r.offsetHeight - $code.clientHeight;
+  }
+}
+
+function updateButtons(){
+  const last = State.frames.length - 1;
+  $back.disabled = State.idx <= 0;
+  $next.disabled = State.idx >= last;
+  if (State.state === 'playing'){
+    $tour.classList.add('playing');
+    if ($tourIcon) $tourIcon.textContent = '⏸';
+    if ($tourLabel) $tourLabel.textContent = 'Pause Tour';
+    $tour.title = 'Pause guided tour (Space)';
+  } else {
+    $tour.classList.remove('playing');
+    if (State.idx >= last){
+      if ($tourIcon) $tourIcon.textContent = '↺';
+      if ($tourLabel) $tourLabel.textContent = 'Replay Tour';
+      $tour.title = 'Replay guided tour from start (Space)';
+    } else if (State.idx > 0){
+      if ($tourIcon) $tourIcon.textContent = '▶';
+      if ($tourLabel) $tourLabel.textContent = 'Resume Tour';
+      $tour.title = 'Resume guided tour (Space)';
+    } else {
+      if ($tourIcon) $tourIcon.textContent = '▶';
+      if ($tourLabel) $tourLabel.textContent = 'Audio Tour';
+      $tour.title = 'Start guided audio tour (Space)';
+    }
+  }
+}
+
+function updateTourStatus(){
+  if (!$tourStatus) return;
+  const wt = getActiveWalkthrough(State.cfg);
+  if (wt){
+    const milestones = getMilestones(wt);
+    let mIdx = 0;
+    for (let i = 0; i < milestones.length; i++){
+      const m = milestones[i];
+      if (State.idx >= m.startIdx && State.idx <= m.endIdx){
+        mIdx = i;
+        break;
+      }
+    }
+    const totalM = milestones.length;
+    if (State.state === 'ended'){
+      $tourBadge.textContent = 'Complete';
+      $tourMsg.textContent = 'Tour complete! Optimal answer reached for ' + wt.name + '.';
+    } else if (State.state === 'playing'){
+      $tourBadge.textContent = 'Milestone ' + (mIdx + 1) + '/' + totalM;
+      $tourMsg.textContent = State.audioMuted ? 'Playing silently (voiceover muted).' : getMilestoneTitle(wt, mIdx);
+    } else {
+      $tourBadge.textContent = 'Milestone ' + (mIdx + 1) + '/' + totalM;
+      if (State.idx === 0){
+        $tourMsg.textContent = 'Ready to start guided audio tour for ' + wt.name + '.';
+      } else {
+        $tourMsg.textContent = 'Tour paused at step ' + (State.idx + 1) + ' of ' + State.frames.length + '.';
+      }
+    }
+  } else {
+    $tourBadge.textContent = 'Preset';
+    if (State.state === 'ended'){
+      $tourMsg.textContent = 'Run complete.';
+    } else if (State.state === 'playing'){
+      $tourMsg.textContent = 'Playing ' + (State.cfg ? State.cfg.name : 'simulation') + ' (silent mode).';
+    } else {
+      $tourMsg.textContent = 'Ready to run ' + (State.cfg ? State.cfg.name : 'preset') + '.';
+    }
+  }
+}
+
+function updateMuteButton(){
+  $mute.setAttribute('aria-pressed', String(State.audioMuted));
+  if ($muteIcon) $muteIcon.textContent = State.audioMuted ? '🔇' : '🔊';
+  $mute.title = State.audioMuted ? 'Unmute voiceover (Space or M)' : 'Mute voiceover (Silent animation)';
+}
+
+function clearCueTimers(){
+  if (Array.isArray(State.cueTimers)){
+    State.cueTimers.forEach(function(t){ clearTimeout(t); });
+  }
+  State.cueTimers = [];
+}
+
+function stopAudio(){
+  clearCueTimers();
+  State.tourToken = (State.tourToken || 0) + 1;
+  if (State.currentClip){
+    try {
+      State.currentClip.pause();
+      State.currentClip.currentTime = 0;
+      State.currentClip.onended = null;
+      State.currentClip.onerror = null;
+    } catch(e){}
+    State.currentClip = null;
+  }
+}
+
+function pauseAudio(){
+  clearCueTimers();
+  State.tourToken = (State.tourToken || 0) + 1;
+  if (State.currentClip){
+    try {
+      State.currentClip.pause();
+    } catch(e){}
+  }
+}
+
+function startMilestone(mIdx, fromTime){
+  const wt = getActiveWalkthrough(State.cfg);
+  const milestones = getMilestones(wt);
+  if (!wt || mIdx >= milestones.length){
+    State.state = 'ended';
+    State.currentClip = null;
+    updateButtons();
+    updateTourStatus();
+    return;
+  }
+
+  stopAudio();
+  const m = milestones[mIdx];
+  const clip = getMilestoneClip(wt, m);
+  if (!clip){
+    if (State.state === 'playing') schedule();
+    return;
+  }
+
+  State.currentMilestoneIdx = mIdx;
+  State.currentClip = clip;
+  const token = ++State.tourToken;
+  updateTourStatus();
+
+  clip.onended = function(){
+    if (token !== State.tourToken || State.state !== 'playing') return;
+    if (mIdx + 1 < milestones.length){
+      startMilestone(mIdx + 1, 0);
+    } else {
+      State.state = 'ended';
+      State.currentClip = null;
+      updateButtons();
+      updateTourStatus();
+    }
+  };
+
+  clip.onerror = function(){
+    if (token !== State.tourToken) return;
+    console.warn('Audio clip failed to play, switching to silent mode.');
+    $tourMsg.textContent = 'Audio clips unavailable; running in silent mode.';
+    State.audioMuted = true;
+    updateMuteButton();
+    if (State.state === 'playing') schedule();
+  };
+
+  try {
+    clip.currentTime = fromTime || 0;
+  } catch(e){}
+
+  if (Array.isArray(m.cues)){
+    m.cues.forEach(function(cue){
+      const cueTime = cue.time || 0;
+      const targetFrame = cue.frameIdx;
+      if (cueTime >= (fromTime || 0)){
+        const delayMs = Math.max(0, (cueTime - (fromTime || 0)) * 1000);
+        const timerId = setTimeout(function(){
+          if (token === State.tourToken && State.state === 'playing'){
+            show(targetFrame, true);
+          }
+        }, delayMs);
+        State.cueTimers.push(timerId);
+      }
+    });
+  }
+
+  const playPromise = clip.play();
+  if (playPromise !== undefined){
+    playPromise.catch(function(err){
+      if (token !== State.tourToken) return;
+      if (err && err.name === 'NotAllowedError'){
+        $tourMsg.textContent = 'Click Audio Tour to allow sound in your browser.';
+      } else {
+        $tourMsg.textContent = 'Audio clips unavailable; running in silent mode.';
+      }
+      if (State.state === 'playing') schedule();
+    });
+  }
+}
+
+function playMilestoneForFrame(frameIdx){
+  const wt = getActiveWalkthrough(State.cfg);
+  if (!wt || !audioAvailable || State.audioMuted) return;
+
+  const milestones = getMilestones(wt);
+  let mIdx = -1;
+  for (let i = 0; i < milestones.length; i++){
+    const m = milestones[i];
+    if (frameIdx >= m.startIdx && frameIdx <= m.endIdx){
+      mIdx = i;
+      break;
+    }
+  }
+  if (mIdx < 0) return;
+
+  const m = milestones[mIdx];
+  const clip = getMilestoneClip(wt, m);
+  let fromTime = 0;
+  if (Array.isArray(m.cues)){
+    for (let c = m.cues.length - 1; c >= 0; c--){
+      if (frameIdx >= m.cues[c].frameIdx){
+        fromTime = m.cues[c].time || 0;
+        break;
+      }
+    }
+  }
+
+  if (State.currentClip === clip && !clip.ended && clip.currentTime > fromTime){
+    fromTime = clip.currentTime;
+  }
+
+  startMilestone(mIdx, fromTime);
+}
+
+function show(i, animate){
+  const f = State.frames[i]; if (!f) return;
+  State.idx = i;
+  $cap.textContent = f.msg;
+  $tag.textContent = 'Step ' + (i + 1) + ' of ' + State.frames.length + (f.cur >= 0 ? ' \u00b7 amount ' + f.cur : '');
+  renderCode(f);
+  renderScene();
+  updateButtons();
+  updateTourStatus();
+}
+
+function clearTimer(){ if (State.timer){ clearTimeout(State.timer); State.timer = 0; } }
+function schedule(){
+  clearTimer();
+  if (State.state !== 'playing') return;
+  const wt = getActiveWalkthrough(State.cfg);
+  if (wt && audioAvailable && !State.audioMuted && State.currentClip && !State.currentClip.paused){
+    return;
+  }
+  const hold = (State.frames[State.idx] && State.frames[State.idx].hold) ? State.frames[State.idx].hold : 1;
+  State.timer = setTimeout(tick, State.speed * hold);
+}
+function tick(){
+  State.timer = 0;
+  if (State.state !== 'playing') return;
+  if (State.idx >= State.frames.length - 1){
+    State.state = 'ended';
+    updateButtons();
+    updateTourStatus();
+    return;
+  }
+  show(State.idx + 1, true);
+  if (State.idx >= State.frames.length - 1){
+    State.state = 'ended';
+    updateButtons();
+    updateTourStatus();
+    return;
+  }
+  schedule();
+}
+function pause(){
+  clearTimer();
+  pauseAudio();
+  if (State.state === 'playing' || State.state === 'ended') State.state = 'paused';
+  updateButtons();
+  updateTourStatus();
+}
+function play(){
+  if (State.state === 'playing'){
+    pause();
+    return;
+  }
+  if (State.idx >= State.frames.length - 1){
+    show(0, false);
+  }
+  State.state = 'playing';
+  updateButtons();
+
+  const wt = getActiveWalkthrough(State.cfg);
+  if (wt && audioAvailable && !State.audioMuted){
+    playMilestoneForFrame(State.idx);
+  } else {
+    updateTourStatus();
+    schedule();
+  }
+}
+function step(d){
+  stopAudio();
+  pause();
+  const j = State.idx + d;
+  if (j < 0 || j >= State.frames.length) return;
+  show(j, true);
+}
+function reset(){
+  stopAudio();
+  pause();
+  show(0, false);
+}
+function toggleMute(){
+  State.audioMuted = !State.audioMuted;
+  updateMuteButton();
+  if (State.audioMuted){
+    pauseAudio();
+    if (State.state === 'playing') schedule();
+  } else {
+    clearTimer();
+    if (State.state === 'playing') playMilestoneForFrame(State.idx);
+  }
+  updateTourStatus();
+}
+function loadPreset(i){
+  stopAudio();
+  pause();
+  $preset.value = String(i);
+  const p = PRESETS[i];
+  State.cfg = p;
+  State.frames = simulate(p).frames;
+  n = p.a + 1;
+  State.idx = 0;
+  const nm = p.f === 'c' ? 'count_ways_dp' : 'min_coins';
+  $goal.textContent = nm + '(' + p.a + ', [' + p.k.join(', ') + ']) \u2014 Goal: ' +
+    (p.f === 'c' ? ('count the different coin combinations that make ' + p.a + ' (order does not matter, coins can be reused).')
+                 : ('find the fewest coins that make ' + p.a + ', or -1 if it cannot be done.'));
+  buildScene();
+  show(0, false);
+  updateTourStatus();
+}
+
+$tour.addEventListener('click', play);
+$back.addEventListener('click', function(){ step(-1); });
+$next.addEventListener('click', function(){ step(1); });
+$reset.addEventListener('click', reset);
+$mute.addEventListener('click', toggleMute);
+$preset.addEventListener('change', function(){ loadPreset(Number($preset.value)); });
+$speed.addEventListener('change', function(){
+  State.speed = Number($speed.value);
+  if (State.state === 'playing') schedule();
+});
+document.addEventListener('keydown', function(e){
+  const t = e.target && e.target.tagName;
+  if (t === 'BUTTON' || t === 'SELECT' || t === 'INPUT' || t === 'TEXTAREA') return;
+  if (e.key === ' '){ e.preventDefault(); play(); }
+  else if (e.key === 'ArrowRight'){ step(1); }
+  else if (e.key === 'ArrowLeft'){ step(-1); }
+  else if (e.key === 'm' || e.key === 'M'){ toggleMute(); }
+  else if (e.key === 'c' || e.key === 'C'){ toggleCode(); }
+});
+document.addEventListener('visibilitychange', function(){ if (document.hidden && State.state === 'playing') pause(); });
+
+window.addEventListener('resize', fitCamera);
+
+loadPreset(0);
+})();
+</script>
+</body>
+</html>
