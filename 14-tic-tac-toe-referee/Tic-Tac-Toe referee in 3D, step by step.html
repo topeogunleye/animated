@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tic-Tac-Toe referee in 3D: step by step</title>
+<style>
+:root{
+  --bg:#f6f7f9; --panel:#ffffff; --ink:#18212b; --muted:#5b6876; --line:#d5dbe3;
+  --hl-bg:#fff3bf; --hl-bar:#d99a00; --stage:#eef1f5;
+  --plate:#c3ccd7; --accent:#e8a900;
+  --btn:#ffffff; --btnHover:#eef1f5;
+  color-scheme:light;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1318; --panel:#171c23; --ink:#e8edf3; --muted:#9aa7b6; --line:#2c3440;
+    --hl-bg:#4a3d0a; --hl-bar:#ffc400; --stage:#141a21;
+    --plate:#3a4452; --accent:#ffc400;
+    --btn:#1d2430; --btnHover:#27303b; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1318; --panel:#171c23; --ink:#e8edf3; --muted:#9aa7b6; --line:#2c3440;
+  --hl-bg:#4a3d0a; --hl-bar:#ffc400; --stage:#141a21;
+  --plate:#3a4452; --accent:#ffc400;
+  --btn:#1d2430; --btnHover:#27303b; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+main{max-width:1120px;margin:0 auto;padding:12px 14px 22px}
+h1{font-size:1.15rem;margin:4px 0 6px;font-weight:650}
+.goal{margin:0 0 12px;color:var(--muted)}
+.legend{margin-top:12px;font-size:.9rem;color:var(--muted)}
+.legend summary{cursor:pointer;color:var(--ink)}
+.wrap{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:start;transition:grid-template-columns 180ms ease}
+.wrap.code-hidden{grid-template-columns:minmax(0,1fr)}
+.wrap.code-hidden .code-pane{display:none}
+@media (max-width:760px){.wrap{grid-template-columns:minmax(0,1fr)}}
+.stagebox{position:relative;background:var(--stage);border:1px solid var(--line);border-radius:12px;overflow:hidden;aspect-ratio:4/3;min-height:260px;max-height:64vh;width:100%}
+#cv{display:block;width:100%;height:100%;touch-action:pan-y;cursor:grab}
+#cv:active{cursor:grabbing}
+.hint{position:absolute;right:10px;bottom:8px;font-size:11px;color:var(--muted);pointer-events:none}
+.tag{position:absolute;top:8px;left:10px;right:10px;width:max-content;max-width:calc(100% - 20px);font:600 12px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--panel);border:1px solid var(--line);padding:2px 9px;border-radius:999px}
+.err{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;color:var(--ink);background:var(--stage)}
+.err[hidden]{display:none}
+#caption{margin:12px 2px 10px;min-height:3em;font-size:1rem}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button,select{font:inherit;font-size:.9rem;color:var(--ink);background:var(--btn);border:1px solid var(--line);border-radius:8px;padding:6px 12px;min-height:36px}
+button{cursor:pointer;min-width:64px}
+button:hover:not(:disabled){background:var(--btnHover)}
+button:disabled{opacity:.45;cursor:default}
+button:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.btn-tour{background:var(--accent);color:#111;font-weight:700;border:1px solid rgba(0,0,0,0.18);display:inline-flex;align-items:center;gap:6px;padding:6px 14px}
+.btn-tour:hover:not(:disabled){filter:brightness(1.08)}
+.btn-tour.playing{background:var(--btn);color:var(--ink);border-color:var(--accent)}
+.tour-icon{font-size:0.95em}
+.btn-mute{min-width:40px;padding:6px 10px;font-size:1rem;display:inline-flex;align-items:center;justify-content:center}
+.tour-status{display:flex;align-items:center;gap:8px;font-size:0.85rem;color:var(--muted);min-height:1.6rem;margin:8px 2px 0;padding:4px 10px;background:var(--panel);border:1px solid var(--line);border-radius:999px;width:fit-content;max-width:100%}
+.tour-badge{display:inline-block;font-size:0.75rem;font-weight:700;letter-spacing:0.02em;text-transform:uppercase;color:var(--ink);background:var(--stage);padding:2px 8px;border-radius:999px;border:1px solid var(--line);white-space:nowrap}
+.tour-msg{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:600px){.tour-status{border-radius:8px;flex-wrap:wrap}.tour-msg{white-space:normal}}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+#code{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 0;overflow:auto;max-height:70vh;font:13px/1.7 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+@media (max-width:420px){#code{font-size:12px}}
+.row{display:flex;min-width:max-content;white-space:pre;padding-right:12px;border-left:4px solid transparent}
+.ln{flex:0 0 2.4em;text-align:right;padding-right:12px;color:var(--muted);user-select:none}
+.row.active{background:var(--hl-bg);border-left-color:var(--hl-bar)}
+
+/* ---------- top navigation bar ---------- */
+.top-nav{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 0 10px;margin-bottom:10px;border-bottom:1px solid var(--line);font-size:0.875rem}
+.top-nav a{color:var(--ink);text-decoration:none;display:inline-flex;align-items:center;gap:6px;font-weight:550;padding:4px 8px;border-radius:6px;transition:background 120ms ease,color 120ms ease}
+.top-nav a:hover{background:var(--btnHover);color:var(--accent)}
+.top-nav a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.nav-back{display:inline-flex;align-items:center;gap:6px;font-weight:600}
+.nav-back .nav-arrow{font-size:1.05em;transition:transform 120ms ease}
+.nav-back:hover .nav-arrow{transform:translateX(-2px)}
+.nav-sequence{display:inline-flex;align-items:center;gap:6px}
+.nav-btn{background:var(--btn);border:1px solid var(--line);padding:3px 9px;border-radius:6px;color:var(--ink);text-decoration:none;display:inline-flex;align-items:center;gap:4px;font-size:0.82rem;font-weight:550}
+.nav-btn:hover:not(.disabled){background:var(--btnHover);border-color:var(--accent);color:var(--accent)}
+.nav-btn.disabled{opacity:0.35;cursor:not-allowed;pointer-events:none}
+.nav-indicator{font-size:0.8rem;color:var(--muted);padding:0 6px;font-variant-numeric:tabular-nums;user-select:none;font-weight:600}
+.nav-arrow{font-size:1em;line-height:1}
+@media (max-width:540px){
+  .top-nav{flex-wrap:wrap;gap:8px}
+  .nav-back span:not(.nav-arrow){font-size:0.82rem}
+  .btn-show-code .nav-label{display:none}
+  .btn-show-code{padding:3px 8px}
+}
+
+/* ---------- collapsible code pane & full-width mode ---------- */
+.code-pane{display:flex;flex-direction:column;min-width:0}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:5px 12px;background:var(--panel);border:1px solid var(--line);border-bottom:none;border-radius:12px 12px 0 0;font-size:0.8rem;font-weight:600;color:var(--muted)}
+.code-header .code-title{text-transform:uppercase;letter-spacing:0.06em;font-size:0.75rem}
+.code-pane #code{border-top-left-radius:0;border-top-right-radius:0}
+.btn-toggle-code{background:transparent;border:1px solid transparent;color:var(--muted);padding:2px 8px;border-radius:6px;font:inherit;font-size:0.78rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:5px;min-height:unset;min-width:unset;transition:background 120ms ease,color 120ms ease,border-color 120ms ease}
+.btn-toggle-code:hover{background:var(--btnHover);color:var(--ink);border-color:var(--line)}
+.btn-toggle-code:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn-toggle-code .eye-icon{font-size:1em;line-height:1}
+.btn-show-code{display:inline-flex;align-items:center;gap:5px}
+.btn-show-code[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+  <nav class="top-nav" aria-label="Visualizations navigation">
+    <a class="nav-back" href="../index.html" title="Return to all algorithm visualizations">
+      <span class="nav-arrow" aria-hidden="true">←</span>
+      <span>All Visualizations</span>
+    </a>
+    <div class="nav-sequence">
+      <button id="bShowCodeNav" type="button" class="nav-btn btn-show-code" title="Show code panel (C)" aria-label="Show code panel" hidden><span class="eye-icon" aria-hidden="true">👁</span><span class="nav-label">Show Code</span></button>
+      <a class="nav-btn prev" href="../13-shop-inventory/Shop%20inventory%20in%203D%2C%20step%20by%20step.html" title="Previous visualization: Shop Inventory"><span class="nav-arrow" aria-hidden="true">‹</span><span class="nav-label">Prev</span></a>
+      <span class="nav-indicator" aria-label="Visualization 16 of 18" title="Visualization 16 of 18">16 / 18</span>
+      <a class="nav-btn next" href="Tic-Tac-Toe%20referee%20in%203D%2C%20every%20line%20of%20code.html" title="Next visualization: Tic-Tac-Toe Referee: Every Line of Code"><span class="nav-label">Next</span><span class="nav-arrow" aria-hidden="true">›</span></a>
+    </div>
+  </nav>
+  <h1>Tic-Tac-Toe referee in 3D, step by step</h1>
+  <p class="goal">Goal: act as the referee. Look at the board and say who has won, or whether it is a draw or still in progress.</p>
+  <div class="wrap" id="wrap">
+    <div>
+      <div class="stagebox" id="stage">
+        <canvas id="cv" role="img" aria-label="3D tic-tac-toe board seen from above with a scanner over the line being checked"></canvas>
+        <div class="tag" id="tag"></div>
+        <div class="hint">drag to rotate · double-click to reset</div>
+        <div class="err" id="err" hidden></div>
+      </div>
+      <p id="caption" role="status" aria-live="polite"></p>
+      <div class="controls" role="group" aria-label="Playback controls">
+        <button id="bTour" type="button" class="btn-tour" title="Start guided audio tour (Space)">
+          <span class="tour-icon" aria-hidden="true">▶</span>
+          <span class="tour-label">Audio Tour</span>
+        </button>
+        <button id="bBack" type="button" title="Previous step (Left Arrow)">Back</button>
+        <button id="bNext" type="button" title="Next step (Right Arrow)">Next</button>
+        <button id="bReset" type="button" title="Reset to beginning">Reset</button>
+        <button id="bMute" type="button" class="btn-mute" aria-pressed="false" title="Mute voiceover (Silent animation)">
+          <span class="mute-icon" aria-hidden="true">🔊</span>
+        </button>
+        <label class="sr" for="preset">Input</label>
+        <select id="preset"></select>
+        <label class="sr" for="speed">Speed</label>
+        <select id="speed">
+          <option value="1300">Slow</option>
+          <option value="850" selected>Normal</option>
+          <option value="450">Fast</option>
+          <option value="220">Very fast</option>
+        </select>
+      </div>
+      <div class="tour-status" id="tourStatus" role="status" aria-live="polite">
+        <span class="tour-badge" id="tourBadge">Milestone 1/3</span>
+        <span class="tour-msg" id="tourMsg">Ready to start guided audio tour.</span>
+      </div>
+      <details class="legend"><summary>How to read this</summary><p>X (blue) and O (orange) are the players. The three squares that are raised and glowing are the line being checked. A green line is a win. The strip at the front lists the 8 lines in the order the code checks them: R = row, C = column, D1 = diagonal from top left, D2 = diagonal from top right. ? means checking now, &#10007; means not a win, &#10003; means a win.</p></details>
+    </div>
+    <div class="code-pane" id="codePane">
+      <div class="code-header">
+        <span class="code-title">Python Source</span>
+        <button id="bHideCode" type="button" class="btn-toggle-code" title="Hide code panel (C)" aria-label="Hide code panel">
+          <span class="eye-icon" aria-hidden="true">✕</span>
+          <span class="btn-label">Hide</span>
+        </button>
+      </div>
+      <div id="code" role="region" aria-label="Python source code"></div>
+    </div>
+  </div>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+
+/* SOURCE:BEGIN */
+const SRC = [
+  'def game_status(board):',                                                    // 0
+  '    for i in range(3):',                                                     // 1
+  '        if board[i][0] != " " and board[i][0] == board[i][1] == board[i][2]:', // 2
+  '            return board[i][0] + " wins"',                                   // 3
+  '        if board[0][i] != " " and board[0][i] == board[1][i] == board[2][i]:', // 4
+  '            return board[0][i] + " wins"',                                   // 5
+  '    if board[1][1] != " ":',                                                 // 6
+  '        if board[0][0] == board[1][1] == board[2][2]:',                      // 7
+  '            return board[1][1] + " wins"',                                   // 8
+  '        if board[0][2] == board[1][1] == board[2][0]:',                      // 9
+  '            return board[1][1] + " wins"',                                   // 10
+  '    for row in board:',                                                      // 11
+  '        if " " in row:',                                                     // 12
+  '            return "In progress"',                                           // 13
+  '    return "Draw"'                                                           // 14
+];
+/* SOURCE:END */
+
+/* PRESETS:BEGIN */
+const PRESETS = [
+  { name:'X wins (top row)',      args:[[['X','X','X'],['O','O',' '],[' ',' ',' ']]] },
+  { name:'O wins (diagonal)',     args:[[['O','X','X'],['X','O',' '],[' ',' ','O']]] },
+  { name:'Draw',                  args:[[['X','O','X'],['O','X','O'],['O','X','O']]] },
+  { name:'In progress',           args:[[['X',' ',' '],[' ','O',' '],[' ',' ',' ']]] }
+];
+/* PRESETS:END */
+
+/* SIMULATE:BEGIN */
+function simulate(board){
+  const frames = [], ls = ['todo','todo','todo','todo','todo','todo','todo','todo'];
+  let scan = null, cells = [], win = null, res = null, tag = 'ready';
+  const nm = function(c){ return c === ' ' ? 'empty' : c; };
+  function snap(lines, msg, kind, hold){
+    frames.push({ lines: lines.slice(), msg: msg, kind: kind, hold: hold,
+      scan: scan ? { k: scan.k, i: scan.i } : null,
+      cells: cells.map(function(c){ return c.slice(); }),
+      win: win ? win.map(function(c){ return c.slice(); }) : null,
+      res: res, tag: tag, ls: ls.slice() });
+  }
+  function lineCells(k, i){
+    if (k === 'row') return [[i,0],[i,1],[i,2]];
+    if (k === 'col') return [[0,i],[1,i],[2,i]];
+    if (k === 'd1') return [[0,0],[1,1],[2,2]];
+    return [[0,2],[1,1],[2,0]];
+  }
+  function test(k, i, idx, name, lines, winLines){
+    scan = { k: k, i: i }; cells = lineCells(k, i); ls[idx] = 'now'; tag = 'checking ' + name;
+    const v = cells.map(function(c){ return board[c[0]][c[1]]; });
+    const words = v.map(nm).join(', ');
+    if (v[0] !== ' ' && v[0] === v[1] && v[1] === v[2]){
+      ls[idx] = 'win'; win = cells; res = v[0] + ' wins'; tag = 'result: ' + res;
+      snap(winLines, 'The ' + name + ' is ' + words + ': three the same and not empty, so ' + res + '.', 'end', 1.7);
+      return true;
+    }
+    snap(lines, 'The ' + name + ' is ' + words + ': ' + (v[0] === ' ' ? 'it starts with an empty square, so it cannot win' : 'not three the same') + '.', 'step', 1);
+    ls[idx] = 'no';
+    return false;
+  }
+  snap([], 'Key idea: only 8 lines can win: 3 rows, 3 columns and 2 diagonals. A loop checks a row and a column together on each pass.', 'start', 1.5);
+  for (let i = 0; i < 3; i++){
+    if (test('row', i, 2 * i, 'row ' + i, [1, 2], [1, 2, 3])) return { frames: frames, result: res };
+    if (test('col', i, 2 * i + 1, 'column ' + i, [4], [4, 5])) return { frames: frames, result: res };
+  }
+  scan = null; cells = [];
+  if (board[1][1] === ' '){
+    ls[6] = 'no'; ls[7] = 'no'; tag = 'diagonals';
+    snap([6], 'The centre square is empty, so neither diagonal can be a winning line.', 'step', 1.2);
+  } else {
+    if (test('d1', 0, 6, 'diagonal from top left', [6, 7], [6, 7, 8])) return { frames: frames, result: res };
+    if (test('d2', 0, 7, 'diagonal from top right', [9], [9, 10])) return { frames: frames, result: res };
+  }
+  scan = null; cells = []; tag = 'looking for an empty square';
+  snap([11], 'Nobody has a line. Is the game over? Look for an empty square, row by row.', 'step', 1.2);
+  for (let r = 0; r < 3; r++){
+    scan = { k: 'full', i: r }; cells = lineCells('row', r);
+    if (board[r].indexOf(' ') >= 0){
+      res = 'In progress'; tag = 'result: ' + res;
+      snap([11, 12, 13], 'Row ' + r + ' has an empty square, so the game is not finished: In progress.', 'end', 1.7);
+      return { frames: frames, result: res };
+    }
+    snap([11, 12], 'Row ' + r + ' is full (' + board[r].join(', ') + '). No empty square here.', 'step', 1);
+  }
+  scan = null; cells = []; res = 'Draw'; tag = 'result: Draw';
+  snap([14], 'Every square is filled and nobody has a line, so it is a Draw.', 'end', 1.7);
+  return { frames: frames, result: res };
+}
+/* SIMULATE:END */
+
+/* ---------- DOM ---------- */
+const $ = function(id){ return document.getElementById(id); };
+const $cv = $('cv'), $stage = $('stage'), $cap = $('caption'), $tag = $('tag'), $err = $('err'), $code = $('code');
+const $wrap = $('wrap');
+const $back = $('bBack'), $tour = $('bTour'), $next = $('bNext'), $reset = $('bReset'), $mute = $('bMute'), $preset = $('preset'), $speed = $('speed');
+const $tourStatus = $('tourStatus'), $tourBadge = $('tourBadge'), $tourMsg = $('tourMsg');
+const $tourIcon = $tour ? $tour.querySelector('.tour-icon') : null;
+const $tourLabel = $tour ? $tour.querySelector('.tour-label') : null;
+const $muteIcon = $mute ? $mute.querySelector('.mute-icon') : null;
+const $codePane = $('codePane'), $bHideCode = $('bHideCode'), $bShowCodeNav = $('bShowCodeNav');
+const RM = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches:false };
+
+function toggleCode(force){
+  const isHidden = typeof force === 'boolean' ? !force : !$wrap.classList.contains('code-hidden');
+  $wrap.classList.toggle('code-hidden', isHidden);
+  if ($bShowCodeNav) $bShowCodeNav.hidden = !isHidden;
+  fitCamera();
+}
+if ($bHideCode) $bHideCode.addEventListener('click', function(){ toggleCode(false); });
+if ($bShowCodeNav) $bShowCodeNav.addEventListener('click', function(){ toggleCode(true); });
+
+const rows = SRC.map(function(txt, i){
+  const r = document.createElement('div'); r.className = 'row';
+  const n = document.createElement('span'); n.className = 'ln'; n.textContent = String(i + 1);
+  const c = document.createElement('span'); c.textContent = txt;
+  r.appendChild(n); r.appendChild(c); $code.appendChild(r);
+  return r;
+});
+PRESETS.forEach(function(p, i){
+  const o = document.createElement('option'); o.value = String(i); o.textContent = p.name; $preset.appendChild(o);
+});
+
+/* ---------- Audio Walkthrough Assets ---------- */
+const audioAvailable = typeof Audio !== 'undefined';
+function makeAudio(src){
+  if (!audioAvailable) return null;
+  const a = new Audio();
+  a.preload = 'auto';
+  a.src = src;
+  return a;
+}
+
+const WALKTHROUGHS = {
+  xWinsTopRow: {
+    id: 'xWinsTopRow',
+    name: 'X wins (top row)',
+    match: function(cfg){
+      return cfg && cfg.name === 'X wins (top row)';
+    },
+    clips: {
+      intro: makeAudio('../audio-walkthroughs/tic-tac-toe-referee/01-x-wins-top-row.mp3')
+    },
+    milestones: [
+      {
+        title: 'Top Row Immediate Win',
+        clip: 'intro',
+        startIdx: 0,
+        endIdx: 1,
+        cues: [
+          { time: 0.0, frameIdx: 0 },
+          { time: 17.5, frameIdx: 1 }
+        ]
+      }
+    ]
+  },
+  oWinsDiagonal: {
+    id: 'oWinsDiagonal',
+    name: 'O wins (diagonal)',
+    match: function(cfg){
+      return cfg && cfg.name === 'O wins (diagonal)';
+    },
+    clips: {
+      pass0: makeAudio('../audio-walkthroughs/tic-tac-toe-referee/02-o-wins-setup-and-pass-zero.mp3'),
+      passes12: makeAudio('../audio-walkthroughs/tic-tac-toe-referee/03-o-wins-passes-one-and-two.mp3'),
+      diagonal: makeAudio('../audio-walkthroughs/tic-tac-toe-referee/04-o-wins-diagonal-victory.mp3')
+    },
+    milestones: [
+      {
+        title: 'Setup & Pass Zero (Row 0 & Col 0)',
+        clip: 'pass0',
+        startIdx: 0,
+        endIdx: 2,
+        cues: [
+          { time: 0.0, frameIdx: 0 },
+          { time: 9.5, frameIdx: 1 },
+          { time: 16.5, frameIdx: 2 }
+        ]
+      },
+      {
+        title: 'Passes One & Two (Remaining Rows & Cols)',
+        clip: 'passes12',
+        startIdx: 3,
+        endIdx: 6,
+        cues: [
+          { time: 0.0, frameIdx: 3 },
+          { time: 6.5, frameIdx: 4 },
+          { time: 12.5, frameIdx: 5 },
+          { time: 18.0, frameIdx: 6 }
+        ]
+      },
+      {
+        title: 'Diagonal Victory for Player O',
+        clip: 'diagonal',
+        startIdx: 7,
+        endIdx: 7,
+        cues: [
+          { time: 0.0, frameIdx: 7 }
+        ]
+      }
+    ]
+  }
+};
+
+function getActiveWalkthrough(cfg){
+  if (!cfg) return null;
+  const keys = Object.keys(WALKTHROUGHS);
+  for (let i = 0; i < keys.length; i++){
+    const wt = WALKTHROUGHS[keys[i]];
+    if (wt.match(cfg)) return wt;
+  }
+  return null;
+}
+
+function getMilestones(wt){
+  if (!wt) return [];
+  return wt.milestones || [];
+}
+
+function getMilestoneTitle(wt, mIdx){
+  const milestones = getMilestones(wt);
+  const m = milestones[mIdx];
+  if (!m) return '';
+  return m.title || ('Milestone ' + (mIdx + 1));
+}
+
+function getMilestoneClip(wt, m){
+  if (!m) return null;
+  if (typeof m.clip === 'string' && wt.clips){
+    return wt.clips[m.clip] || null;
+  }
+  return m.clip || null;
+}
+
+/* ---------- three.js scene (perspective 3D) ---------- */
+const SP = 1.0, BAR_W = 0.78, BAR_COL = '#3b82c4', RES_COL = '#2e9e5b', RES_DARK = '#16683a';
+const LOW_COL = '#2563a8', HIGH_COL = '#c46a14', MID_COL = '#e8a900';
+let FLOOR_Z0 = -2.9, FLOOR_Z1 = 3.3, FOCUS_Z = 0.2;
+const YAW0 = -0.1, PITCH0 = 1.15, YAW_MAX = 0.5, FOV = 32;
+let gl = false, renderer = null, scene = null, camera = null;
+let world = null, bars = [], vals = [], ptr = {}, slab = null, resLabel = null, emptyLabel = null;
+let dims = { halfW:7, halfY:3, ty:2, maxTop:3, scale:1 };
+const view = { yaw:YAW0, pitch:PITCH0, dist:20 };
+const C = {};
+const texCache = new Map();
+const tweens = [];
+let raf = 0, drag = null;
+
+function hexToRgb(h){
+  const n = parseInt(h.replace('#',''), 16);
+  return { r:(n>>16)&255, g:(n>>8)&255, b:n&255 };
+}
+function readTheme(){
+  const s = getComputedStyle(document.body);
+  C.bg = s.getPropertyValue('--stage').trim() || '#eef1f5';
+  C.panel = s.getPropertyValue('--panel').trim() || '#ffffff';
+  C.ink = s.getPropertyValue('--ink').trim() || '#18212b';
+  C.muted = s.getPropertyValue('--muted').trim() || '#5b6876';
+  C.line = s.getPropertyValue('--line').trim() || '#d5dbe3';
+  C.plate = s.getPropertyValue('--plate').trim() || '#c3ccd7';
+  C.accent = s.getPropertyValue('--accent').trim() || '#e8a900';
+}
+readTheme();
+
+function clearTexCache(){
+  texCache.forEach(function(t){ t.dispose(); });
+  texCache.clear();
+}
+const MONO = 'ui-monospace,SFMono-Regular,Menlo,Consolas,monospace';
+const SANS = 'system-ui,-apple-system,"Segoe UI",Roboto,sans-serif';
+function makeTextTexture(txt, opt){
+  opt = opt || {};
+  const font = opt.font || MONO, color = opt.color || C.ink, h = opt.h || 48, fw = opt.bold ? '700' : '600';
+  const pad = opt.pad !== undefined ? opt.pad : 8;
+  const key = txt + '|' + font + '|' + color + '|' + h + '|' + fw + '|' + pad;
+  if (texCache.has(key)) return texCache.get(key);
+  const cv = document.createElement('canvas');
+  const ctx = cv.getContext('2d');
+  ctx.font = fw + ' ' + h + 'px ' + font;
+  const tw = ctx.measureText(txt).width;
+  cv.width = Math.max(8, Math.ceil(tw + pad * 2));
+  cv.height = Math.ceil(h * 1.3 + pad * 2);
+  ctx.font = fw + ' ' + h + 'px ' + font;
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = color;
+  ctx.fillText(txt, cv.width / 2, cv.height / 2);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.generateMipmaps = false;
+  tex.minFilter = THREE.LinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.userData = { aspect: cv.width / cv.height, h: cv.height, w: cv.width };
+  texCache.set(key, tex);
+  return tex;
+}
+function setText(m, txt, opt, scaleY, cx){
+  scaleY = scaleY || 0.45;
+  const tex = makeTextTexture(txt, opt);
+  m.material.map = tex;
+  m.material.needsUpdate = true;
+  m.scale.set(scaleY * tex.userData.aspect, scaleY, 1);
+  if (cx !== undefined) m.position.x = cx;
+}
+
+try {
+  renderer = new THREE.WebGLRenderer({ canvas:$cv, antialias:true, alpha:false });
+  renderer.setClearColor(new THREE.Color(C.bg));
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 100);
+  scene.add(camera);
+  const amb = new THREE.AmbientLight(0xffffff, 0.78);
+  scene.add(amb);
+  const dir = new THREE.DirectionalLight(0xffffff, 0.45);
+  dir.position.set(5, 14, 8);
+  scene.add(dir);
+  gl = true;
+} catch (e){
+  gl = false;
+  $err.hidden = false;
+  $err.textContent = '3D view unavailable; check WebGL.';
+}
+
+const CELL_SZ = 1.3, CELL_GAP = 0.16, CELL_H = 0.22;
+const GRID_STEP = CELL_SZ + CELL_GAP;
+const BOARD_W = 3 * CELL_SZ + 2 * CELL_GAP + 0.6;
+const BOARD_D = BOARD_W;
+
+function gridPos(r, c){
+  const x0 = -GRID_STEP;
+  const z0 = -GRID_STEP + 0.15;
+  return { x: x0 + c * GRID_STEP, z: z0 + r * GRID_STEP };
+}
+
+function build(cfg, keepView){
+  if (!gl) return;
+  if (world){ scene.remove(world); }
+  world = new THREE.Group();
+  scene.add(world);
+  bars = []; ptr = {}; tweens.length = 0;
+
+  const floorG = new THREE.BoxGeometry(BOARD_W, 0.3, BOARD_D);
+  const floorM = new THREE.MeshLambertMaterial({ color:C.plate });
+  const floor = new THREE.Mesh(floorG, floorM);
+  floor.position.set(0, -0.15, 0.15);
+  world.add(floor);
+
+  const linesG = new THREE.Group();
+  const lineMat = new THREE.MeshLambertMaterial({ color:C.line });
+  [-GRID_STEP/2, GRID_STEP/2].forEach(function(x){
+    const v = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.05, 3 * GRID_STEP - 0.2), lineMat);
+    v.position.set(x, 0.02, 0.15); linesG.add(v);
+  });
+  [-GRID_STEP/2 + 0.15, GRID_STEP/2 + 0.15].forEach(function(z){
+    const h = new THREE.Mesh(new THREE.BoxGeometry(3 * GRID_STEP - 0.2, 0.05, 0.06), lineMat);
+    h.position.set(0, 0.02, z); linesG.add(h);
+  });
+  world.add(linesG);
+
+  const cellBoxG = new THREE.BoxGeometry(CELL_SZ, CELL_H, CELL_SZ);
+  const cellEdgeG = new THREE.EdgesGeometry(cellBoxG);
+  ptr.cells = [];
+  for (let r = 0; r < 3; r++){
+    ptr.cells[r] = [];
+    for (let c = 0; c < 3; c++){
+      const pos = gridPos(r, c);
+      const g = new THREE.Group();
+      g.position.set(pos.x, CELL_H / 2, pos.z);
+      const baseM = new THREE.MeshLambertMaterial({ color:C.panel });
+      const base = new THREE.Mesh(cellBoxG, baseM);
+      g.add(base);
+      const lineM = new THREE.LineBasicMaterial({ color:C.line, linewidth:1 });
+      const outline = new THREE.LineSegments(cellEdgeG, lineM);
+      g.add(outline);
+      const sm = new THREE.SpriteMaterial({ depthTest:false });
+      const label = new THREE.Sprite(sm);
+      label.position.set(0, CELL_H / 2 + 0.35, 0);
+      label.renderOrder = 3;
+      g.add(label);
+      world.add(g);
+      ptr.cells[r][c] = { g: g, base: base, outline: outline, label: label, baseM: baseM, pos: pos };
+    }
+  }
+
+  const stripG = new THREE.Group();
+  stripG.position.set(0, 0.05, BOARD_D / 2 + 0.5);
+  const sLabels = ['R0','C0','R1','C1','R2','C2','D1','D2'];
+  const sStep = 0.55;
+  const sX0 = -((sLabels.length - 1) * sStep) / 2;
+  ptr.strip = [];
+  sLabels.forEach(function(lbl, i){
+    const sm = new THREE.SpriteMaterial({ depthTest:false });
+    const sp = new THREE.Sprite(sm);
+    sp.position.set(sX0 + i * sStep, 0.2, 0);
+    sp.renderOrder = 4;
+    stripG.add(sp);
+    ptr.strip.push({ sp: sp, name: lbl });
+  });
+  world.add(stripG);
+
+  const rMat = new THREE.SpriteMaterial({ depthTest:false });
+  resLabel = new THREE.Sprite(rMat);
+  resLabel.position.set(0, 1.8, -BOARD_D / 2 - 0.2);
+  resLabel.renderOrder = 5;
+  world.add(resLabel);
+
+  dims.halfW = BOARD_W / 2 + 1;
+  dims.halfY = 2.4;
+  dims.ty = 0.5;
+  FLOOR_Z0 = -BOARD_D / 2 - 0.6;
+  FLOOR_Z1 = BOARD_D / 2 + 1.2;
+  FOCUS_Z = 0.2;
+  fitCamera();
+}
+
+function updateCamera(){
+  if (!gl) return;
+  const cy = Math.cos(view.yaw), sy = Math.sin(view.yaw);
+  const cp = Math.cos(view.pitch), sp = Math.sin(view.pitch);
+  camera.position.set(view.dist * sy * cp, dims.ty + view.dist * sp, FOCUS_Z + view.dist * cy * cp);
+  camera.lookAt(0, dims.ty, FOCUS_Z);
+  requestRender();
+}
+function fitCamera(){
+  if (!gl) return;
+  const w = $stage.clientWidth, h = $stage.clientHeight;
+  if (!w || !h) return;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(w, h, false);
+  const aspect = w / h, t = Math.tan(FOV * Math.PI / 360), halfZ = (FLOOR_Z1 - FLOOR_Z0) / 2;
+  camera.aspect = aspect; camera.updateProjectionMatrix();
+  const vExt = dims.halfY * Math.cos(PITCH0) + halfZ * Math.sin(PITCH0);
+  const hExt = dims.halfW * Math.cos(YAW_MAX) + halfZ * Math.sin(YAW_MAX);
+  view.dist = Math.max(vExt / t, hExt / (t * aspect)) * 1.2;
+  updateCamera();
+}
+
+function settle(){ tweens.splice(0).forEach(function(tw){ tw.upd(1); }); }
+function requestRender(){ if (gl && !raf) raf = requestAnimationFrame(loop); }
+function loop(){
+  raf = 0;
+  const now = performance.now();
+  for (let i = tweens.length - 1; i >= 0; i--){
+    const tw = tweens[i];
+    const u = Math.max(0, Math.min(1, (now - tw.t0) / tw.dur));
+    tw.upd(u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2);
+    if (u >= 1) tweens.splice(i, 1);
+  }
+  renderer.render(scene, camera);
+  if (tweens.length) requestRender();
+}
+
+if (gl){
+  $cv.addEventListener('pointerdown', function(e){
+    drag = { x:e.clientX, yaw:view.yaw };
+    try { $cv.setPointerCapture(e.pointerId); } catch (err) {}
+  });
+  $cv.addEventListener('pointermove', function(e){
+    if (!drag) return;
+    view.yaw = Math.max(-YAW_MAX, Math.min(YAW_MAX, drag.yaw + (e.clientX - drag.x) * 0.008));
+    updateCamera();
+  });
+  ['pointerup', 'pointercancel'].forEach(function(t){ $cv.addEventListener(t, function(){ drag = null; }); });
+  $cv.addEventListener('dblclick', function(){ view.yaw = YAW0; view.pitch = PITCH0; updateCamera(); });
+}
+
+/* ---------- playback state ---------- */
+const S = {
+  cfg: null, frames: [], idx: 0, state: 'paused', timer: 0, speed: 850, shown: -1,
+  audioMuted: false, currentClip: null, currentMilestoneIdx: -1, cueTimers: [], tourToken: 0
+};
+
+function tweenDur(f){ return S.state === 'playing' ? Math.max(120, Math.min(600, S.speed * f.hold * 0.5)) : 450; }
+function easeProp(get, set, to, animate, f){
+  const from = get();
+  if (animate && !RM.matches && Math.abs(from - to) > 1e-6){
+    tweens.push({ t0:performance.now(), dur:tweenDur(f), upd:function(e){ set(from + (to - from) * e); } });
+  } else {
+    set(to);
+  }
+}
+
+function applyScene(f, animate){
+  if (!gl || !world) return;
+  const inCells = function(r, c){
+    return f.cells.some(function(rc){ return rc[0] === r && rc[1] === c; });
+  };
+  const inWin = function(r, c){
+    return f.win && f.win.some(function(rc){ return rc[0] === r && rc[1] === c; });
+  };
+  for (let r = 0; r < 3; r++){
+    for (let c = 0; c < 3; c++){
+      const cell = ptr.cells[r][c];
+      const val = S.cfg.b[r][c];
+      const isWin = inWin(r, c), isScan = inCells(r, c);
+      const targetY = isWin ? 0.35 : (isScan ? 0.22 : 0);
+      easeProp(function(){ return cell.g.position.y; }, function(v){ cell.g.position.y = v; }, CELL_H / 2 + targetY, animate, f);
+      let col = C.panel;
+      if (isWin) col = '#2e9e5b';
+      else if (isScan) col = C.hlBar || '#d99a00';
+      cell.baseM.color.set(col);
+      cell.baseM.emissive.set(isWin ? '#0d5020' : (isScan ? '#5a4300' : '#000000'));
+      if (val === ' '){
+        cell.label.visible = false;
+      } else {
+        cell.label.visible = true;
+        const fontCol = isWin ? '#ffffff' : (val === 'X' ? '#2563a8' : '#c46a14');
+        setText(cell.label, val, { font:MONO, color:fontCol, bold:true }, 0.65);
+      }
+    }
+  }
+
+  const marks = { todo:'·', now:'?', no:'\u2717', win:'\u2713' };
+  ptr.strip.forEach(function(s, i){
+    const st = f.ls[i];
+    const glyph = marks[st] || '·';
+    let col = C.muted;
+    if (st === 'now') col = C.accent;
+    else if (st === 'win') col = RES_COL;
+    else if (st === 'no') col = '#9aa7b6';
+    setText(s.sp, s.name + ' ' + glyph, { font:MONO, color:col, bold:(st==='now'||st==='win') }, 0.3);
+  });
+
+  if (f.res){
+    resLabel.visible = true;
+    const winCol = f.res.indexOf('wins') >= 0 ? RES_COL : (f.res === 'Draw' ? C.ink : C.muted);
+    setText(resLabel, f.res.toUpperCase(), { font:SANS, color:winCol, bold:true }, 0.55);
+  } else {
+    resLabel.visible = false;
+  }
+  requestRender();
+}
+
+function renderCode(f){
+  let firstActive = -1;
+  rows.forEach(function(r, i){
+    const a = f.lines.indexOf(i) >= 0;
+    r.classList.toggle('active', a);
+    if (a && firstActive < 0) firstActive = i;
+  });
+  if (firstActive >= 0){
+    const r = rows[firstActive];
+    if (r.offsetTop < $code.scrollTop) $code.scrollTop = r.offsetTop;
+    else if (r.offsetTop + r.offsetHeight > $code.scrollTop + $code.clientHeight) $code.scrollTop = r.offsetTop + r.offsetHeight - $code.clientHeight;
+  }
+}
+function describe(f){
+  const rows = S.cfg.b.map(function(r, i){ return 'Row ' + i + ': ' + r.map(function(c){ return c === ' ' ? 'empty' : c; }).join(', '); });
+  return 'Tic-tac-toe board seen from above. ' + rows.join('. ') + '. ' + f.tag + '.';
+}
+
+function updateButtons(){
+  const last = S.frames.length - 1;
+  $back.disabled = S.idx <= 0;
+  $next.disabled = S.idx >= last;
+  if (S.state === 'playing'){
+    $tour.classList.add('playing');
+    if ($tourIcon) $tourIcon.textContent = '⏸';
+    if ($tourLabel) $tourLabel.textContent = 'Pause Tour';
+    $tour.title = 'Pause guided tour (Space)';
+  } else {
+    $tour.classList.remove('playing');
+    if (S.idx >= last){
+      if ($tourIcon) $tourIcon.textContent = '↺';
+      if ($tourLabel) $tourLabel.textContent = 'Replay Tour';
+      $tour.title = 'Replay guided tour from start (Space)';
+    } else if (S.idx > 0){
+      if ($tourIcon) $tourIcon.textContent = '▶';
+      if ($tourLabel) $tourLabel.textContent = 'Resume Tour';
+      $tour.title = 'Resume guided tour (Space)';
+    } else {
+      if ($tourIcon) $tourIcon.textContent = '▶';
+      if ($tourLabel) $tourLabel.textContent = 'Audio Tour';
+      $tour.title = 'Start guided audio tour (Space)';
+    }
+  }
+}
+
+function updateTourStatus(){
+  if (!$tourStatus) return;
+  const wt = getActiveWalkthrough(S.cfg);
+  if (wt){
+    const milestones = getMilestones(wt);
+    let mIdx = 0;
+    for (let i = 0; i < milestones.length; i++){
+      const m = milestones[i];
+      if (S.idx >= m.startIdx && S.idx <= m.endIdx){
+        mIdx = i;
+        break;
+      }
+    }
+    const totalM = milestones.length;
+    if (S.state === 'ended'){
+      $tourBadge.textContent = 'Complete';
+      $tourMsg.textContent = 'Tour complete! Referee decision reached: ' + (S.cfg && S.cfg.b ? (S.frames[S.frames.length - 1].res || 'Verdict found') : '');
+    } else if (S.state === 'playing'){
+      $tourBadge.textContent = 'Milestone ' + (mIdx + 1) + '/' + totalM;
+      $tourMsg.textContent = S.audioMuted ? 'Playing silently (voiceover muted).' : getMilestoneTitle(wt, mIdx);
+    } else {
+      $tourBadge.textContent = 'Milestone ' + (mIdx + 1) + '/' + totalM;
+      if (S.idx === 0){
+        $tourMsg.textContent = 'Ready to start guided audio tour for ' + wt.name + '.';
+      } else {
+        $tourMsg.textContent = 'Tour paused at step ' + (S.idx + 1) + ' of ' + S.frames.length + '.';
+      }
+    }
+  } else {
+    $tourBadge.textContent = 'Preset';
+    if (S.state === 'ended'){
+      $tourMsg.textContent = 'Run complete.';
+    } else if (S.state === 'playing'){
+      $tourMsg.textContent = 'Playing ' + (S.cfg ? S.cfg.name : 'simulation') + ' (silent mode).';
+    } else {
+      $tourMsg.textContent = 'Ready to run ' + (S.cfg ? S.cfg.name : 'preset') + '.';
+    }
+  }
+}
+
+function updateMuteButton(){
+  $mute.setAttribute('aria-pressed', String(S.audioMuted));
+  if ($muteIcon) $muteIcon.textContent = S.audioMuted ? '🔇' : '🔊';
+  $mute.title = S.audioMuted ? 'Unmute voiceover (Space or M)' : 'Mute voiceover (Silent animation)';
+}
+
+function clearCueTimers(){
+  if (Array.isArray(S.cueTimers)){
+    S.cueTimers.forEach(function(t){ clearTimeout(t); });
+  }
+  S.cueTimers = [];
+}
+
+function stopAudio(){
+  clearCueTimers();
+  S.tourToken = (S.tourToken || 0) + 1;
+  if (S.currentClip){
+    try {
+      S.currentClip.pause();
+      S.currentClip.currentTime = 0;
+      S.currentClip.onended = null;
+      S.currentClip.onerror = null;
+    } catch(e){}
+    S.currentClip = null;
+  }
+}
+
+function pauseAudio(){
+  clearCueTimers();
+  S.tourToken = (S.tourToken || 0) + 1;
+  if (S.currentClip){
+    try {
+      S.currentClip.pause();
+    } catch(e){}
+  }
+}
+
+function startMilestone(mIdx, fromTime){
+  const wt = getActiveWalkthrough(S.cfg);
+  const milestones = getMilestones(wt);
+  if (!wt || mIdx >= milestones.length){
+    S.state = 'ended';
+    S.currentClip = null;
+    updateButtons();
+    updateTourStatus();
+    return;
+  }
+
+  stopAudio();
+  const m = milestones[mIdx];
+  const clip = getMilestoneClip(wt, m);
+  if (!clip){
+    if (S.state === 'playing') schedule();
+    return;
+  }
+
+  S.currentMilestoneIdx = mIdx;
+  S.currentClip = clip;
+  const token = ++S.tourToken;
+  updateTourStatus();
+
+  clip.onended = function(){
+    if (token !== S.tourToken || S.state !== 'playing') return;
+    if (mIdx + 1 < milestones.length){
+      startMilestone(mIdx + 1, 0);
+    } else {
+      S.state = 'ended';
+      S.currentClip = null;
+      updateButtons();
+      updateTourStatus();
+    }
+  };
+
+  clip.onerror = function(){
+    if (token !== S.tourToken) return;
+    console.warn('Audio clip failed to play, switching to silent mode.');
+    $tourMsg.textContent = 'Audio clips unavailable; running in silent mode.';
+    S.audioMuted = true;
+    updateMuteButton();
+    if (S.state === 'playing') schedule();
+  };
+
+  try {
+    clip.currentTime = fromTime || 0;
+  } catch(e){}
+
+  if (Array.isArray(m.cues)){
+    m.cues.forEach(function(cue){
+      const cueTime = cue.time || 0;
+      const targetFrame = cue.frameIdx;
+      if (cueTime >= (fromTime || 0)){
+        const delayMs = Math.max(0, (cueTime - (fromTime || 0)) * 1000);
+        const timerId = setTimeout(function(){
+          if (token === S.tourToken && S.state === 'playing'){
+            show(targetFrame, true);
+          }
+        }, delayMs);
+        S.cueTimers.push(timerId);
+      }
+    });
+  }
+
+  const playPromise = clip.play();
+  if (playPromise !== undefined){
+    playPromise.catch(function(err){
+      if (token !== S.tourToken) return;
+      if (err && err.name === 'NotAllowedError'){
+        $tourMsg.textContent = 'Click Audio Tour to allow sound in your browser.';
+      } else {
+        $tourMsg.textContent = 'Audio clips unavailable; running in silent mode.';
+      }
+      if (S.state === 'playing') schedule();
+    });
+  }
+}
+
+function playMilestoneForFrame(frameIdx){
+  const wt = getActiveWalkthrough(S.cfg);
+  if (!wt || !audioAvailable || S.audioMuted) return;
+
+  const milestones = getMilestones(wt);
+  let mIdx = -1;
+  for (let i = 0; i < milestones.length; i++){
+    const m = milestones[i];
+    if (frameIdx >= m.startIdx && frameIdx <= m.endIdx){
+      mIdx = i;
+      break;
+    }
+  }
+  if (mIdx < 0) return;
+
+  const m = milestones[mIdx];
+  const clip = getMilestoneClip(wt, m);
+  let fromTime = 0;
+  if (Array.isArray(m.cues)){
+    for (let c = m.cues.length - 1; c >= 0; c--){
+      if (frameIdx >= m.cues[c].frameIdx){
+        fromTime = m.cues[c].time || 0;
+        break;
+      }
+    }
+  }
+
+  if (S.currentClip === clip && !clip.ended && clip.currentTime > fromTime){
+    fromTime = clip.currentTime;
+  }
+
+  startMilestone(mIdx, fromTime);
+}
+
+function show(i, animate){
+  const f = S.frames[i]; if (!f) return;
+  settle();
+  S.idx = i;
+  $cap.textContent = f.msg;
+  $tag.textContent = 'Step ' + (i + 1) + ' of ' + S.frames.length + ' \u00b7 ' + f.tag;
+  $cv.setAttribute('aria-label', describe(f));
+  renderCode(f);
+  applyScene(f, animate && Math.abs(i - S.shown) === 1);
+  S.shown = i;
+  updateButtons();
+  updateTourStatus();
+}
+
+function clearTimer(){ if (S.timer){ clearTimeout(S.timer); S.timer = 0; } }
+function schedule(){
+  clearTimer();
+  if (S.state !== 'playing') return;
+  const wt = getActiveWalkthrough(S.cfg);
+  if (wt && audioAvailable && !S.audioMuted && S.currentClip && !S.currentClip.paused){
+    return;
+  }
+  const hold = (S.frames[S.idx] && S.frames[S.idx].hold) ? S.frames[S.idx].hold : 1;
+  S.timer = setTimeout(tick, S.speed * hold);
+}
+function tick(){
+  S.timer = 0;
+  if (S.state !== 'playing') return;
+  if (S.idx >= S.frames.length - 1){
+    S.state = 'ended';
+    updateButtons();
+    updateTourStatus();
+    return;
+  }
+  show(S.idx + 1, true);
+  if (S.idx >= S.frames.length - 1){
+    S.state = 'ended';
+    updateButtons();
+    updateTourStatus();
+    return;
+  }
+  schedule();
+}
+function pause(){
+  clearTimer();
+  pauseAudio();
+  settle();
+  if (S.state === 'playing' || S.state === 'ended') S.state = 'paused';
+  updateButtons();
+  updateTourStatus();
+}
+function play(){
+  if (S.state === 'playing'){
+    pause();
+    return;
+  }
+  if (S.idx >= S.frames.length - 1){
+    show(0, false);
+  }
+  S.state = 'playing';
+  updateButtons();
+
+  const wt = getActiveWalkthrough(S.cfg);
+  if (wt && audioAvailable && !S.audioMuted){
+    playMilestoneForFrame(S.idx);
+  } else {
+    updateTourStatus();
+    schedule();
+  }
+}
+function step(d){
+  stopAudio();
+  pause();
+  const j = S.idx + d;
+  if (j < 0 || j >= S.frames.length) return;
+  show(j, true);
+}
+function reset(){
+  stopAudio();
+  pause();
+  show(0, false);
+}
+function toggleMute(){
+  S.audioMuted = !S.audioMuted;
+  updateMuteButton();
+  if (S.audioMuted){
+    pauseAudio();
+    if (S.state === 'playing') schedule();
+  } else {
+    clearTimer();
+    if (S.state === 'playing') playMilestoneForFrame(S.idx);
+  }
+  updateTourStatus();
+}
+function loadPreset(i){
+  stopAudio();
+  pause();
+  $preset.value = String(i);
+  const p = PRESETS[i];
+  S.cfg = { name:p.name, b:p.args[0] };
+  S.frames = simulate.apply(null, p.args).frames; S.shown = -1; S.idx = 0;
+  build(S.cfg);
+  show(0, false);
+  updateTourStatus();
+}
+
+$tour.addEventListener('click', play);
+$back.addEventListener('click', function(){ step(-1); });
+$next.addEventListener('click', function(){ step(1); });
+$reset.addEventListener('click', reset);
+$mute.addEventListener('click', toggleMute);
+$preset.addEventListener('change', function(){ loadPreset(Number($preset.value)); });
+$speed.addEventListener('change', function(){
+  S.speed = Number($speed.value);
+  if (S.state === 'playing') schedule();
+});
+document.addEventListener('keydown', function(e){
+  const t = e.target && e.target.tagName;
+  if (t === 'BUTTON' || t === 'SELECT' || t === 'INPUT' || t === 'TEXTAREA') return;
+  if (e.key === ' '){ e.preventDefault(); play(); }
+  else if (e.key === 'ArrowRight'){ step(1); }
+  else if (e.key === 'ArrowLeft'){ step(-1); }
+  else if (e.key === 'm' || e.key === 'M'){ toggleMute(); }
+  else if (e.key === 'c' || e.key === 'C'){ toggleCode(); }
+});
+document.addEventListener('visibilitychange', function(){ if (document.hidden && S.state === 'playing') pause(); });
+
+if (typeof ResizeObserver !== 'undefined') new ResizeObserver(fitCamera).observe($stage);
+else window.addEventListener('resize', fitCamera);
+
+function retheme(){
+  if (!gl) return;
+  clearTexCache(); readTheme(); build(S.cfg, true); S.shown = -1; show(S.idx, false);
+}
+try {
+  if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', retheme);
+} catch (e) { /* older browsers: theme refresh on reload */ }
+new MutationObserver(retheme).observe(document.documentElement, { attributes:true, attributeFilter:['data-theme'] });
+
+loadPreset(0);
+})();
+</script>
+</body>
+</html>
