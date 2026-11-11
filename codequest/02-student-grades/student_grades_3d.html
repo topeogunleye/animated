@@ -1,0 +1,1484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CodeQuest Q2 — Student Grades in 3D</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --panel: #0f172a;
+      --panel-border: #1e293b;
+      --ink: #f8fafc;
+      --muted: #94a3b8;
+      --accent-cyan: #38bdf8;
+      --accent-amber: #fbbf24;
+      --accent-green: #22c55e;
+      --accent-red: #ef4444;
+      --code-bg: #0b1120;
+      --code-hl: rgba(56, 189, 248, 0.22);
+      --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      --font-code: "JetBrains Mono", Consolas, "Courier New", monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font-ui);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+    }
+
+    /* Header */
+    header {
+      background: var(--panel);
+      border-bottom: 1px solid var(--panel-border);
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 10;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .badge {
+      background: linear-gradient(135deg, #0284c7, #38bdf8);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: var(--muted);
+      margin-left: 8px;
+      font-weight: 400;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    button.btn-ghost {
+      background: transparent;
+      border: 1px solid var(--panel-border);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    button.btn-ghost:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--ink);
+      border-color: #334155;
+    }
+
+    /* Main Workspace */
+    #workspace {
+      flex: 1;
+      display: flex;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #stage-container {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    canvas#stage {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: grab;
+    }
+
+    canvas#stage:active {
+      cursor: grabbing;
+    }
+
+    /* Floating Legend */
+    #legend-card {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: rgba(15, 23, 42, 0.90);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 12px;
+      z-index: 5;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      max-width: 290px;
+      transition: all 0.2s ease;
+    }
+
+    #legend-card.collapsed .legend-body {
+      display: none;
+    }
+
+    .legend-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-weight: 700;
+      color: var(--ink);
+      cursor: pointer;
+    }
+
+    .legend-body {
+      margin-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 11.5px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* Right Code Panel */
+    #code-panel {
+      width: 440px;
+      background: var(--code-bg);
+      border-left: 1px solid var(--panel-border);
+      display: flex;
+      flex-direction: column;
+      transition: width 0.2s ease, transform 0.2s ease;
+      z-index: 6;
+    }
+
+    #code-panel.hidden {
+      display: none;
+    }
+
+    .code-header {
+      padding: 10px 16px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--panel-border);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    pre#code-display {
+      flex: 1;
+      padding: 14px 0;
+      overflow-y: auto;
+      font-family: var(--font-code);
+      font-size: 12px;
+      line-height: 1.65;
+    }
+
+    .code-line {
+      display: flex;
+      padding: 0 16px;
+      transition: background 0.15s ease;
+    }
+
+    .code-line.active {
+      background: var(--code-hl);
+      border-left: 3px solid var(--accent-cyan);
+      padding-left: 13px;
+    }
+
+    .ln {
+      width: 24px;
+      color: #475569;
+      text-align: right;
+      margin-right: 14px;
+      flex-shrink: 0;
+    }
+
+    .code-text {
+      color: #cbd5e1;
+      white-space: pre;
+    }
+
+    .kw { color: #f472b6; font-weight: 600; }
+    .fn { color: #60a5fa; font-weight: 600; }
+    .op { color: #38bdf8; }
+    .str { color: #a7f3d0; }
+
+    /* Footer Controls */
+    footer {
+      background: var(--panel);
+      border-top: 1px solid var(--panel-border);
+      padding: 12px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 10;
+    }
+
+    .caption-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .caption-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .step-badge {
+      background: #1e293b;
+      color: var(--accent-cyan);
+      font-family: var(--font-code);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid #334155;
+      white-space: nowrap;
+    }
+
+    .caption-text {
+      font-size: 13.5px;
+      color: var(--ink);
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .controls-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .left-controls, .center-controls, .right-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Buttons */
+    .btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .btn:hover {
+      background: #334155;
+      border-color: #475569;
+    }
+
+    .btn-primary {
+      background: #0284c7;
+      border-color: #0369a1;
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: #0369a1;
+    }
+
+    select, input[type="text"] {
+      background: #0b1120;
+      border: 1px solid #334155;
+      color: var(--ink);
+      font-size: 12.5px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      outline: none;
+    }
+
+    select:focus, input[type="text"]:focus {
+      border-color: var(--accent-cyan);
+    }
+
+    /* Status Overlay */
+    #status-overlay {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid var(--panel-border);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-family: var(--font-code);
+      font-weight: 700;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 5;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #64748b;
+    }
+
+    .status-dot.active { background: var(--accent-cyan); box-shadow: 0 0 8px var(--accent-cyan); }
+    .status-dot.success { background: var(--accent-green); box-shadow: 0 0 8px var(--accent-green); }
+
+    /* Results Bar below stage */
+    #results-bar {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      right: 16px;
+      background: rgba(15, 23, 42, 0.90);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12.5px;
+      font-family: var(--font-code);
+      z-index: 5;
+    }
+
+    .passed-badge {
+      background: rgba(34, 197, 94, 0.15);
+      border: 1px solid var(--accent-green);
+      color: var(--accent-green);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <span class="badge">CodeQuest Q2</span>
+      <h1>Student Grades & Averages</h1>
+      <span class="subtitle">Threshold pillars, manual averaging, and min/max tracker</span>
+    </div>
+    <div class="header-actions">
+      <button class="btn-ghost" id="btn-toggle-code">
+        <span id="code-toggle-label">Hide Code</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Workspace -->
+  <div id="workspace">
+
+    <!-- 3D Stage -->
+    <div id="stage-container">
+      <canvas id="stage"></canvas>
+
+      <!-- Floating Legend -->
+      <div id="legend-card">
+        <div class="legend-header" id="legend-toggle">
+          <span>Legend & Thresholds</span>
+          <span style="font-size: 10px; color: var(--muted)">▾</span>
+        </div>
+        <div class="legend-body">
+          <div class="legend-row">
+            <span class="dot" style="background: #38bdf8;"></span>
+            <span><strong>Grade A Plane</strong> (&ge; 70.0 pts)</span>
+          </div>
+          <div class="legend-row">
+            <span class="dot" style="background: #22c55e;"></span>
+            <span><strong>Pass Threshold Plane</strong> (&ge; 50.0 pts, A–C)</span>
+          </div>
+          <div class="legend-row">
+            <span class="dot" style="background: #ef4444;"></span>
+            <span><strong>Fail Plane</strong> (&lt; 40.0 pts, Grade F)</span>
+          </div>
+          <div class="legend-row">
+            <span class="dot" style="background: #fbbf24;"></span>
+            <span><strong>Gold Crown</strong> = Highest Average</span>
+          </div>
+          <div class="legend-row">
+            <span class="dot" style="background: #f97316;"></span>
+            <span><strong>Red Marker</strong> = Lowest Average</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- State Pill -->
+      <div id="status-overlay">
+        <span class="status-dot active" id="status-dot"></span>
+        <span id="status-text">CALCULATING AVERAGES</span>
+      </div>
+
+      <!-- Live Results Summary Bar -->
+      <div id="results-bar">
+        <div><strong>Passed (A–C):</strong> <span id="passed-names">None yet</span></div>
+        <div><strong>Top:</strong> <span id="top-name">—</span> | <strong>Lowest:</strong> <span id="low-name">—</span></div>
+      </div>
+    </div>
+
+    <!-- Code Panel -->
+    <div id="code-panel">
+      <div class="code-header">
+        <span>PYTHON IMPLEMENTATION</span>
+        <span style="font-size: 11px; color: #64748b;">map() & filter() · No sum()/max()</span>
+      </div>
+      <pre id="code-display"></pre>
+    </div>
+
+  </div>
+
+  <!-- Footer Controls -->
+  <footer>
+    <div class="caption-row">
+      <div class="caption-box">
+        <span class="step-badge" id="step-badge">STEP 0 / 0</span>
+        <span class="caption-text" id="caption-text">Initializing roster...</span>
+      </div>
+      <div class="tour-status" id="tour-status" style="display:none; align-items: center; gap: 8px; margin-left: 12px; background: rgba(30, 41, 59, 0.85); border: 1px solid var(--panel-border); border-radius: 999px; padding: 3px 10px; font-size: 11px;">
+        <span class="tour-badge" id="tour-badge" style="background: var(--accent); color: #020617; font-weight: 700; border-radius: 999px; padding: 1px 7px; font-size: 10px;">Milestone 1/5</span>
+        <span class="tour-msg" id="tour-msg" style="color: var(--muted); max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Ready for Tour</span>
+      </div>
+    </div>
+
+    <div class="controls-row">
+      <!-- Preset Selection -->
+      <div class="left-controls">
+        <label for="preset-select" style="font-size: 12px; color: var(--muted); font-weight: 600;">Cohort:</label>
+        <select id="preset-select">
+          <option value="0">Diverse Cohort (Sam, David, Elena, Alex)</option>
+          <option value="1">Original Prompt (Sam [80, 90] & David [55, 60])</option>
+          <option value="2">Boundary Traps (Chloe 70.0, Ben 49.5, Maya 39.5)</option>
+          <option value="3">Empty-Scores Guard (Jordan [], Taylor [88, 92])</option>
+        </select>
+      </div>
+
+      <!-- Transport Controls -->
+      <div class="center-controls">
+        <button class="btn" id="btn-reset" title="Reset (R)">↺ Reset</button>
+        <button class="btn" id="btn-prev" title="Step Back (Left Arrow)">⏮ Prev</button>
+        <button class="btn btn-tour" id="btn-tour" title="Guided Audio Tour (Space)" style="background: #38bdf8; color: #0f172a; font-weight: 700; border-color: #38bdf8;">🎙️ Audio Tour</button>
+        <button class="btn btn-primary" id="btn-play" title="Silent Step Play">▶ Step Play</button>
+        <button class="btn" id="btn-next" title="Step Forward (Right Arrow)">Next ⏭</button>
+        <button class="btn btn-ghost" id="btn-mute" title="Toggle Voiceover (M)" style="font-size: 14px; padding: 5px 9px;">🔊</button>
+      </div>
+
+      <!-- Speed Control -->
+      <div class="right-controls">
+        <label for="speed-select" style="font-size: 12px; color: var(--muted); font-weight: 600;">Speed:</label>
+        <select id="speed-select">
+          <option value="1400">Slow (1.4s)</option>
+          <option value="850" selected>Normal (0.85s)</option>
+          <option value="400">Fast (0.4s)</option>
+        </select>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Three.js from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <script>
+  (function(){
+    'use strict';
+
+    /* ---------- PYTHON CODE SOURCE ---------- */
+    const CODE_LINES = [
+      'def average(scores):',
+      '    if not scores: return 0.0',
+      '    total, count = 0, 0',
+      '    for score in scores:',
+      '        total += score; count += 1',
+      '    return total / count',
+      'def grade_for(avg):',
+      '    if avg >= 70: return "A"',
+      '    if avg >= 60: return "B"',
+      '    if avg >= 50: return "C"',
+      '    if avg >= 45: return "D"',
+      '    if avg >= 40: return "E"',
+      '    return "F"',
+      'def make_result(student):',
+      '    avg = average(student["scores"])',
+      '    return (student["name"], avg, grade_for(avg))',
+      'graded = list(map(make_result, students))',
+      'passed = list(filter(lambda s: grade_for(average(s["scores"])) in ("A","B","C"), students))',
+      'highest = graded[0]; lowest = graded[0]',
+      'for row in graded[1:]:',
+      '    if row[1] > highest[1]: highest = row',
+      '    if row[1] < lowest[1]: lowest = row'
+    ];
+
+    /* ---------- SAFE TOKEN-BASED SYNTAX HIGHLIGHTER ---------- */
+    function escapeHtml(s) {
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function highlightPython(text) {
+      const pattern = /(".*?"|'.*?'|\b(?:def|return|while|if|not|elif|else|True|False|or|and|for|in|lambda|list|map|filter)\b|\b(?:average|grade_for|make_result|sum|count|scores|total|avg|student|graded|passed|highest|lowest)\b|<=|>=|!=|==|\+=|-=|\+|-|<|>|=)/g;
+      let result = '';
+      let lastIndex = 0;
+      let match;
+
+      while ((match = pattern.exec(text)) !== null) {
+        result += escapeHtml(text.slice(lastIndex, match.index));
+        const token = match[0];
+        const escapedToken = escapeHtml(token);
+
+        if (token.startsWith('"') || token.startsWith("'")) {
+          result += '<span class="str">' + escapedToken + '</span>';
+        } else if (/^(def|return|while|if|not|elif|else|True|False|or|and|for|in|lambda|list|map|filter)$/.test(token)) {
+          result += '<span class="kw">' + escapedToken + '</span>';
+        } else if (/^(average|grade_for|make_result)$/.test(token)) {
+          result += '<span class="fn">' + escapedToken + '</span>';
+        } else if (/^(<=|>=|!=|==|\+=|-=|\+|-|<|>|=)$/.test(token)) {
+          result += '<span class="op">' + escapedToken + '</span>';
+        } else {
+          result += escapedToken;
+        }
+        lastIndex = pattern.lastIndex;
+      }
+      result += escapeHtml(text.slice(lastIndex));
+      return result;
+    }
+
+    /* ---------- INITIALIZE CODE PANEL ---------- */
+    const $codeDisplay = document.getElementById('code-display');
+    function initCodePanel() {
+      $codeDisplay.innerHTML = '';
+      CODE_LINES.forEach((line, idx) => {
+        const div = document.createElement('div');
+        div.className = 'code-line';
+        div.id = 'line-' + idx;
+
+        const ln = document.createElement('span');
+        ln.className = 'ln';
+        ln.textContent = String(idx);
+
+        const codeSpan = document.createElement('span');
+        codeSpan.className = 'code-text';
+        codeSpan.innerHTML = highlightPython(line);
+
+        div.appendChild(ln);
+        div.appendChild(codeSpan);
+        $codeDisplay.appendChild(div);
+      });
+    }
+    initCodePanel();
+
+    function highlightLines(lines) {
+      document.querySelectorAll('.code-line').forEach(el => el.classList.remove('active'));
+      if (!lines) return;
+      lines.forEach(l => {
+        const el = document.getElementById('line-' + l);
+        if (el) el.classList.add('active');
+      });
+    }
+
+    /* ---------- PRESETS DATA ---------- */
+    const PRESETS = [
+      [
+        { name: 'Sam', scores: [80, 90] },
+        { name: 'David', scores: [55, 60] },
+        { name: 'Elena', scores: [95, 92] },
+        { name: 'Alex', scores: [38, 42] }
+      ],
+      [
+        { name: 'Sam', scores: [80, 90] },
+        { name: 'David', scores: [55, 60] }
+      ],
+      [
+        { name: 'Chloe', scores: [70, 70] },
+        { name: 'Ben', scores: [49, 50] },
+        { name: 'Maya', scores: [39, 40] }
+      ],
+      [
+        { name: 'Jordan', scores: [] },
+        { name: 'Taylor', scores: [88, 92] }
+      ]
+    ];
+
+    /* ---------- GRADING FUNCTIONS ---------- */
+    function grade_for(avg) {
+      if (avg >= 70) return 'A';
+      if (avg >= 60) return 'B';
+      if (avg >= 50) return 'C';
+      if (avg >= 45) return 'D';
+      if (avg >= 40) return 'E';
+      return 'F';
+    }
+
+    /* ---------- SIMULATION GENERATOR ---------- */
+    function simulate(students) {
+      const frames = [];
+
+      function snap(lines, msg, activeIdx, phase, gradedList, passedList, highest, lowest) {
+        frames.push({
+          lines: lines.slice(),
+          msg,
+          activeIdx,
+          phase,
+          gradedList: gradedList.map(g => ({ ...g })),
+          passedList: passedList.slice(),
+          highest: highest ? { ...highest } : null,
+          lowest: lowest ? { ...lowest } : null
+        });
+      }
+
+      if (!students || students.length === 0) {
+        snap([16], "Empty roster. No student records to process.", null, 'init', [], [], null, null);
+        return frames;
+      }
+
+      const gradedList = [];
+      const passedList = [];
+
+      snap([13, 16], `Loaded roster with ${students.length} student records. Starting automated calculation of averages and grades.`, null, 'init', gradedList, passedList, null, null);
+
+      // Phase 1 & 2: Averages and Grade Assignment
+      for (let i = 0; i < students.length; i++) {
+        const s = students[i];
+        const scores = s.scores || [];
+
+        if (scores.length === 0) {
+          snap([0, 1], `${s.name} has no scores recorded. Division-by-zero guard triggers, safely returning 0.00.`, i, 'avg', gradedList, passedList, null, null);
+          const avg = 0.0;
+          const grade = grade_for(avg);
+          gradedList.push({ name: s.name, avg, grade, scores, idx: i });
+          snap([6, 12, 15], `${s.name}'s average is 0.00 (< 40). Assign grade 'F'.`, i, 'grade', gradedList, passedList, null, null);
+        } else {
+          let total = 0;
+          scores.forEach(sc => total += sc);
+          const avg = total / scores.length;
+
+          snap([0, 2, 3, 4, 5], `${s.name}'s scores: [${scores.join(', ')}]. Sum = ${total}, count = ${scores.length} → Average = ${avg.toFixed(2)}.`, i, 'avg', gradedList, passedList, null, null);
+
+          const grade = grade_for(avg);
+          let gradeLine = 7;
+          if (avg >= 70) gradeLine = 7;
+          else if (avg >= 60) gradeLine = 8;
+          else if (avg >= 50) gradeLine = 9;
+          else if (avg >= 45) gradeLine = 10;
+          else if (avg >= 40) gradeLine = 11;
+          else gradeLine = 12;
+
+          gradedList.push({ name: s.name, avg, grade, scores, idx: i });
+          snap([6, gradeLine, 15], `Grade evaluation for ${s.name}: ${avg.toFixed(2)} pts qualifies for Grade '${grade}'.`, i, 'grade', gradedList, passedList, null, null);
+        }
+      }
+
+      // Phase 3: Passing Filter
+      for (let i = 0; i < gradedList.length; i++) {
+        const g = gradedList[i];
+        const isPassed = ['A', 'B', 'C'].includes(g.grade);
+        if (isPassed) {
+          passedList.push(g.name);
+          snap([17], `Filter predicate: ${g.name} has grade '${g.grade}' (&ge; 50.0). Passes! Added to passed records.`, i, 'filter', gradedList, passedList, null, null);
+        } else {
+          snap([17], `Filter predicate: ${g.name} has grade '${g.grade}' (&lt; 50.0). Fails passing mark.`, i, 'filter', gradedList, passedList, null, null);
+        }
+      }
+
+      // Phase 4: Find Highest and Lowest without max()/min()
+      let highest = gradedList[0];
+      let lowest = gradedList[0];
+
+      snap([18], `Initialize manual trackers: highest = ${highest.name} (${highest.avg.toFixed(2)}), lowest = ${lowest.name} (${lowest.avg.toFixed(2)}).`, 0, 'compare', gradedList, passedList, highest, lowest);
+
+      for (let i = 1; i < gradedList.length; i++) {
+        const row = gradedList[i];
+        let changed = false;
+
+        if (row.avg > highest.avg) {
+          highest = row;
+          changed = true;
+          snap([19, 20], `${row.name}'s average (${row.avg.toFixed(2)}) > previous highest (${highest.name}). Updated top performer crown!`, i, 'compare', gradedList, passedList, highest, lowest);
+        }
+        if (row.avg < lowest.avg) {
+          lowest = row;
+          changed = true;
+          snap([19, 21], `${row.name}'s average (${row.avg.toFixed(2)}) < previous lowest (${lowest.name}). Updated lowest performer marker!`, i, 'compare', gradedList, passedList, highest, lowest);
+        }
+        if (!changed) {
+          snap([19], `Comparing ${row.name} (${row.avg.toFixed(2)}): falls between current highest and lowest. Trackers unchanged.`, i, 'compare', gradedList, passedList, highest, lowest);
+        }
+      }
+
+      // Final Done Frame
+      snap([16, 17], `Grading pipeline complete! ${passedList.length} of ${students.length} students passed. Top performer: ${highest.name} (${highest.avg.toFixed(2)} / Grade ${highest.grade}).`, null, 'done', gradedList, passedList, highest, lowest);
+
+      return frames;
+    }
+
+    /* ---------- THREE.JS SCENE SETUP ---------- */
+    const $canvas = document.getElementById('stage');
+    const renderer = new THREE.WebGLRenderer({ canvas: $canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize($canvas.clientWidth, $canvas.clientHeight);
+    renderer.shadowMap.enabled = true;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(35, $canvas.clientWidth / $canvas.clientHeight, 0.1, 100);
+
+    // Initial Camera
+    camera.position.set(0, 5.2, 11.5);
+    camera.lookAt(0, 1.8, 0);
+
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.70);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
+    dirLight.position.set(6, 14, 10);
+    dirLight.castShadow = true;
+    scene.add(dirLight);
+
+    const focusLight = new THREE.PointLight(0x38bdf8, 1.5, 12);
+    scene.add(focusLight);
+
+    // Floor Plate
+    const floorPlateGeo = new THREE.BoxGeometry(22, 0.2, 8);
+    const floorPlateMat = new THREE.MeshStandardMaterial({
+      color: 0x0f172a,
+      roughness: 0.8,
+      metalness: 0.2
+    });
+    const floorPlate = new THREE.Mesh(floorPlateGeo, floorPlateMat);
+    floorPlate.position.y = -0.1;
+    floorPlate.receiveShadow = true;
+    scene.add(floorPlate);
+
+    // Helper: 2D Canvas Text Sprite
+    function makeTextSprite(message, options) {
+      const opt = options || {};
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 256;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = opt.bg || 'transparent';
+      ctx.fillRect(0, 0, 256, 256);
+
+      ctx.font = opt.font || 'bold 110px sans-serif';
+      ctx.fillStyle = opt.color || '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(message, 128, 128);
+
+      const texture = new THREE.CanvasTexture(canvas);
+      const spriteMat = new THREE.SpriteMaterial({ map: texture, depthTest: false });
+      const sprite = new THREE.Sprite(spriteMat);
+      sprite.scale.set(opt.scale || 0.8, opt.scale || 0.8, 1);
+      return sprite;
+    }
+
+    // Threshold Planes Creator
+    const planeGroup = new THREE.Group();
+    scene.add(planeGroup);
+
+    function createThresholdPlane(yLevel, colorHex, label) {
+      const geo = new THREE.BoxGeometry(16, 0.02, 3.5);
+      const mat = new THREE.MeshBasicMaterial({
+        color: colorHex,
+        transparent: true,
+        opacity: 0.16
+      });
+      const plane = new THREE.Mesh(geo, mat);
+      plane.position.set(0, yLevel, 0);
+
+      const lbl = makeTextSprite(label, { color: '#' + colorHex.toString(16), font: 'bold 64px monospace', scale: 1.2 });
+      lbl.position.set(8.8, yLevel, 0);
+      planeGroup.add(plane);
+      planeGroup.add(lbl);
+    }
+
+    // Heights scaled: 100 pts -> 4.5 units height
+    // 70 pts -> 70 * 0.045 = 3.15
+    // 50 pts -> 50 * 0.045 = 2.25
+    // 40 pts -> 40 * 0.045 = 1.80
+    createThresholdPlane(3.15, 0x38bdf8, 'Grade A (70+)');
+    createThresholdPlane(2.25, 0x22c55e, 'Pass Threshold (50+)');
+    createThresholdPlane(1.80, 0xef4444, 'Failing (< 40)');
+
+    // Student Pillars Group
+    const studentGroup = new THREE.Group();
+    scene.add(studentGroup);
+
+    let studentMeshes = [];
+    let currentCohort = PRESETS[0];
+    let simFrames = [];
+    let curFrameIdx = 0;
+    let isPlaying = false;
+    let playTimer = null;
+    let stepSpeed = 850;
+
+    const pillarSpacing = 2.8;
+
+    function buildSceneForCohort(cohort) {
+      while (studentGroup.children.length > 0) {
+        studentGroup.remove(studentGroup.children[0]);
+      }
+      studentMeshes = [];
+
+      const N = cohort.length;
+      const startX = -((N - 1) * pillarSpacing) / 2;
+
+      cohort.forEach((s, i) => {
+        const posX = startX + i * pillarSpacing;
+
+        // Base Pedestal
+        const pedGeo = new THREE.CylinderGeometry(0.85, 0.95, 0.28, 24);
+        const pedMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.6 });
+        const pedMesh = new THREE.Mesh(pedGeo, pedMat);
+        pedMesh.position.set(posX, 0.14, 0);
+        studentGroup.add(pedMesh);
+
+        // Name Label
+        const nameSprite = makeTextSprite(s.name, { color: '#f8fafc', font: 'bold 90px sans-serif', scale: 0.9 });
+        nameSprite.position.set(posX, -0.15, 1.2);
+        studentGroup.add(nameSprite);
+
+        // Average Pillar (cylinder starting with small height)
+        const pillarGeo = new THREE.CylinderGeometry(0.55, 0.55, 1, 24);
+        pillarGeo.translate(0, 0.5, 0); // Origin at bottom
+        const pillarMat = new THREE.MeshStandardMaterial({
+          color: 0x334155,
+          roughness: 0.4,
+          metalness: 0.2
+        });
+        const pillarMesh = new THREE.Mesh(pillarGeo, pillarMat);
+        pillarMesh.position.set(posX, 0.28, 0);
+        pillarMesh.scale.set(1, 0.05, 1);
+        studentGroup.add(pillarMesh);
+
+        // Floating Grade Badge
+        const gradeSprite = makeTextSprite('?', { color: '#94a3b8', font: 'bold 120px monospace', scale: 0.9 });
+        gradeSprite.position.set(posX, 0.9, 0);
+        studentGroup.add(gradeSprite);
+
+        // Average Number Tag
+        const avgTagSprite = makeTextSprite('avg: 0.0', { color: '#38bdf8', font: 'bold 65px monospace', scale: 0.75 });
+        avgTagSprite.position.set(posX, 0.5, 0.7);
+        studentGroup.add(avgTagSprite);
+
+        // Crown / Award Marker (Gold for highest, Orange for lowest)
+        const crownSprite = makeTextSprite('👑 TOP', { color: '#fbbf24', font: 'bold 70px sans-serif', scale: 0.8 });
+        crownSprite.position.set(posX, 1.6, 0);
+        crownSprite.visible = false;
+        studentGroup.add(crownSprite);
+
+        studentMeshes.push({
+          name: s.name,
+          scores: s.scores,
+          posX,
+          pedMesh,
+          pillarMesh,
+          pillarMat,
+          gradeSprite,
+          avgTagSprite,
+          crownSprite
+        });
+      });
+
+      simFrames = simulate(cohort);
+      curFrameIdx = 0;
+      applyFrame(0, false);
+    }
+
+    /* ---------- FRAME APPLICATION ---------- */
+    const $stepBadge = document.getElementById('step-badge');
+    const $captionText = document.getElementById('caption-text');
+    const $statusDot = document.getElementById('status-dot');
+    const $statusText = document.getElementById('status-text');
+    const $passedNames = document.getElementById('passed-names');
+    const $topName = document.getElementById('top-name');
+    const $lowName = document.getElementById('low-name');
+
+    function applyFrame(idx, animate) {
+      if (!simFrames || simFrames.length === 0) return;
+      curFrameIdx = Math.max(0, Math.min(idx, simFrames.length - 1));
+      const frame = simFrames[curFrameIdx];
+
+      $stepBadge.textContent = `STEP ${curFrameIdx + 1} / ${simFrames.length}`;
+      $captionText.textContent = frame.msg;
+
+      // Status overlay text
+      $statusText.textContent = frame.phase.toUpperCase();
+      highlightLines(frame.lines);
+
+      // Results Bar updates
+      $passedNames.innerHTML = frame.passedList.length > 0 
+        ? frame.passedList.map(n => `<span class="passed-badge">${n}</span>`).join(' ') 
+        : 'None yet';
+      
+      $topName.textContent = frame.highest ? `${frame.highest.name} (${frame.highest.avg.toFixed(1)})` : '—';
+      $lowName.textContent = frame.lowest ? `${frame.lowest.name} (${frame.lowest.avg.toFixed(1)})` : '—';
+
+      // Update student pillars in 3D
+      studentMeshes.forEach((sm, i) => {
+        const gradedInfo = frame.gradedList.find(g => g.name === sm.name);
+
+        if (gradedInfo) {
+          // Height: avg * 0.045
+          const targetH = Math.max(0.1, gradedInfo.avg * 0.045);
+          sm.pillarMesh.scale.y = targetH;
+
+          // Color by Grade
+          let col = 0x38bdf8; // Default Cyan
+          if (gradedInfo.grade === 'A') col = 0x38bdf8;
+          else if (gradedInfo.grade === 'B') col = 0x60a5fa;
+          else if (gradedInfo.grade === 'C') col = 0x22c55e;
+          else if (gradedInfo.grade === 'D') col = 0xf59e0b;
+          else if (gradedInfo.grade === 'E') col = 0xf97316;
+          else col = 0xef4444; // F
+
+          sm.pillarMat.color.setHex(col);
+
+          // Update Grade Badge
+          sm.gradeSprite.material.map = makeTextSprite(gradedInfo.grade, {
+            color: (gradedInfo.grade === 'F' ? '#ef4444' : (['A','B','C'].includes(gradedInfo.grade) ? '#22c55e' : '#f59e0b')),
+            font: 'bold 130px monospace'
+          }).material.map;
+          sm.gradeSprite.position.y = targetH + 0.95;
+
+          // Update Avg Tag
+          sm.avgTagSprite.material.map = makeTextSprite(`${gradedInfo.avg.toFixed(1)}`, {
+            color: '#f8fafc',
+            font: 'bold 70px monospace'
+          }).material.map;
+          sm.avgTagSprite.position.y = targetH + 0.35;
+        } else {
+          sm.pillarMesh.scale.y = 0.05;
+          sm.gradeSprite.position.y = 0.9;
+          sm.avgTagSprite.position.y = 0.5;
+        }
+
+        // Active Focus Glow
+        if (frame.activeIdx === i) {
+          sm.pedMesh.material.color.setHex(0xf59e0b); // Gold active base
+          focusLight.position.set(sm.posX, 4.0, 1.5);
+        } else {
+          sm.pedMesh.material.color.setHex(0x1e293b);
+        }
+
+        // Crown / Lowest markers
+        if (frame.highest && frame.highest.name === sm.name) {
+          sm.crownSprite.visible = true;
+          sm.crownSprite.material.map = makeTextSprite('👑 HIGHEST', { color: '#fbbf24', font: 'bold 75px sans-serif' }).material.map;
+          sm.crownSprite.position.y = sm.pillarMesh.scale.y + 1.55;
+        } else if (frame.lowest && frame.lowest.name === sm.name && frame.phase === 'compare') {
+          sm.crownSprite.visible = true;
+          sm.crownSprite.material.map = makeTextSprite('🔻 LOWEST', { color: '#f97316', font: 'bold 75px sans-serif' }).material.map;
+          sm.crownSprite.position.y = sm.pillarMesh.scale.y + 1.55;
+        } else {
+          sm.crownSprite.visible = false;
+        }
+      });
+
+      renderer.render(scene, camera);
+    }
+
+    /* ---------- PLAYBACK CONTROLS ---------- */
+    const $btnPlay = document.getElementById('btn-play');
+    const $btnPrev = document.getElementById('btn-prev');
+    const $btnNext = document.getElementById('btn-next');
+    const $btnReset = document.getElementById('btn-reset');
+    const $speedSelect = document.getElementById('speed-select');
+    const $presetSelect = document.getElementById('preset-select');
+
+    function stopPlay() {
+      isPlaying = false;
+      if (playTimer) clearTimeout(playTimer);
+      $btnPlay.textContent = '▶ Step Play';
+      $btnPlay.classList.remove('btn-primary');
+    }
+
+    function tick() {
+      if (!isPlaying) return;
+      if (curFrameIdx < simFrames.length - 1) {
+        applyFrame(curFrameIdx + 1, true);
+        playTimer = setTimeout(tick, stepSpeed);
+      } else {
+        stopPlay();
+      }
+    }
+
+    function startPlay() {
+      stopTour();
+      if (curFrameIdx >= simFrames.length - 1) {
+        applyFrame(0, false);
+      }
+      isPlaying = true;
+      $btnPlay.textContent = '⏸ Pause';
+      $btnPlay.classList.add('btn-primary');
+      playTimer = setTimeout(tick, stepSpeed);
+    }
+
+    $btnPlay.addEventListener('click', () => {
+      if (isPlaying) stopPlay();
+      else startPlay();
+    });
+
+    $btnNext.addEventListener('click', () => {
+      stopTour();
+      stopPlay();
+      if (curFrameIdx < simFrames.length - 1) applyFrame(curFrameIdx + 1, true);
+    });
+
+    $btnPrev.addEventListener('click', () => {
+      stopTour();
+      stopPlay();
+      if (curFrameIdx > 0) applyFrame(curFrameIdx - 1, true);
+    });
+
+    $btnReset.addEventListener('click', () => {
+      stopTour();
+      stopPlay();
+      applyFrame(0, false);
+      updateTourStatusUI(0, false);
+    });
+
+    $speedSelect.addEventListener('change', () => {
+      stepSpeed = parseInt($speedSelect.value, 10) || 850;
+    });
+
+    $presetSelect.addEventListener('change', () => {
+      stopTour();
+      stopPlay();
+      const idx = parseInt($presetSelect.value, 10);
+      currentCohort = PRESETS[idx];
+      buildSceneForCohort(currentCohort);
+      updateTourStatusUI(0, false);
+    });
+
+    /* ---------- GUIDED AUDIO TOUR CONTROLLER ---------- */
+    const $btnTour = document.getElementById('btn-tour');
+    const $btnMute = document.getElementById('btn-mute');
+    const $tourStatus = document.getElementById('tour-status');
+    const $tourBadge = document.getElementById('tour-badge');
+    const $tourMsg = document.getElementById('tour-msg');
+
+    let isTourActive = false;
+    let isMuted = false;
+    let currentAudio = null;
+    let tourCueTimers = [];
+    let tourToken = 0;
+    let currentMilestoneIdx = 0;
+
+    const WALKTHROUGHS = {
+      preset0: {
+        name: 'Diverse Cohort',
+        match: function(input) {
+          return Array.isArray(input) && input.length === 4 && input[0].name === 'Sam';
+        },
+        milestones: [
+          {
+            id: 'clip_01_setup',
+            file: 'audio/clip_01_setup.mp3',
+            title: 'Setup & Roster Inspection',
+            startIdx: 0,
+            endIdx: 0,
+            cues: [
+              { time: 0.0, frameIdx: 0 }
+            ]
+          },
+          {
+            id: 'clip_02_computing_averages',
+            file: 'audio/clip_02_computing_averages.mp3',
+            title: 'Computing Student Averages & Grades',
+            startIdx: 1,
+            endIdx: 8,
+            cues: [
+              { time: 0.0, frameIdx: 1 },
+              { time: 3.5, frameIdx: 3 },
+              { time: 7.0, frameIdx: 5 },
+              { time: 10.5, frameIdx: 7 }
+            ]
+          },
+          {
+            id: 'clip_03_filter_passing',
+            file: 'audio/clip_03_filter_passing.mp3',
+            title: 'Filtering Passing Candidates',
+            startIdx: 9,
+            endIdx: 12,
+            cues: [
+              { time: 0.0, frameIdx: 9 },
+              { time: 4.5, frameIdx: 10 },
+              { time: 9.0, frameIdx: 11 },
+              { time: 13.5, frameIdx: 12 }
+            ]
+          },
+          {
+            id: 'clip_04_track_extremes',
+            file: 'audio/clip_04_track_extremes.mp3',
+            title: 'Discovering Top & Lowest Performers',
+            startIdx: 13,
+            endIdx: 16,
+            cues: [
+              { time: 0.0, frameIdx: 13 },
+              { time: 3.5, frameIdx: 14 },
+              { time: 7.0, frameIdx: 15 },
+              { time: 11.0, frameIdx: 16 }
+            ]
+          },
+          {
+            id: 'clip_05_summary',
+            file: 'audio/clip_05_summary.mp3',
+            title: 'Grading Pipeline Complete',
+            startIdx: 17,
+            endIdx: 17,
+            cues: [
+              { time: 0.0, frameIdx: 17 }
+            ]
+          }
+        ]
+      }
+    };
+
+    function clearTourTimers() {
+      tourCueTimers.forEach(t => clearTimeout(t));
+      tourCueTimers = [];
+    }
+
+    function stopTourAudio() {
+      clearTourTimers();
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.onended = null;
+        currentAudio.ontimeupdate = null;
+        currentAudio.onerror = null;
+        currentAudio = null;
+      }
+    }
+
+    function stopTour() {
+      isTourActive = false;
+      stopTourAudio();
+      tourToken++;
+      if ($btnTour) {
+        $btnTour.textContent = '🎙️ Audio Tour';
+        $btnTour.classList.remove('active');
+        $btnTour.style.background = '#38bdf8';
+        $btnTour.style.color = '#0f172a';
+      }
+    }
+
+    function getActiveWalkthrough() {
+      for (const k in WALKTHROUGHS) {
+        if (WALKTHROUGHS[k].match(currentCohort)) return WALKTHROUGHS[k];
+      }
+      return null;
+    }
+
+    function updateTourStatusUI(mIdx, isFinished) {
+      const wt = getActiveWalkthrough();
+      if (!wt) {
+        if ($tourStatus) $tourStatus.style.display = 'none';
+        return;
+      }
+      if ($tourStatus) $tourStatus.style.display = 'inline-flex';
+      const totalM = wt.milestones.length;
+      if (isFinished || curFrameIdx >= simFrames.length - 1) {
+        if ($tourBadge) $tourBadge.textContent = 'Complete';
+        if ($tourMsg) $tourMsg.textContent = 'Guided tour complete!';
+      } else if (mIdx !== undefined && wt.milestones[mIdx]) {
+        if ($tourBadge) $tourBadge.textContent = 'Milestone ' + (mIdx + 1) + '/' + totalM;
+        if ($tourMsg) $tourMsg.textContent = isMuted ? (wt.milestones[mIdx].title + ' (Muted)') : wt.milestones[mIdx].title;
+      }
+    }
+
+    function startMilestone(mIdx) {
+      const wt = getActiveWalkthrough();
+      if (!wt || mIdx >= wt.milestones.length) {
+        stopTour();
+        updateTourStatusUI(undefined, true);
+        return;
+      }
+      currentMilestoneIdx = mIdx;
+      const m = wt.milestones[mIdx];
+      updateTourStatusUI(mIdx, false);
+
+      const thisToken = ++tourToken;
+      stopTourAudio();
+
+      if (isMuted) {
+        runSilentMilestone(m, thisToken, mIdx);
+        return;
+      }
+
+      try {
+        const audio = new Audio(m.file);
+        currentAudio = audio;
+
+        let appliedCueIndex = -1;
+        audio.ontimeupdate = () => {
+          if (thisToken !== tourToken || !isTourActive) return;
+          const ct = audio.currentTime;
+          for (let i = m.cues.length - 1; i >= 0; i--) {
+            if (ct >= m.cues[i].time) {
+              if (appliedCueIndex !== i) {
+                appliedCueIndex = i;
+                applyFrame(m.cues[i].frameIdx, true);
+              }
+              break;
+            }
+          }
+        };
+
+        audio.onended = () => {
+          if (thisToken !== tourToken || !isTourActive) return;
+          if (mIdx + 1 < wt.milestones.length) {
+            startMilestone(mIdx + 1);
+          } else {
+            stopTour();
+            updateTourStatusUI(undefined, true);
+          }
+        };
+
+        audio.onerror = () => {
+          console.warn('Audio playback error, falling back to silent step for milestone:', m.id);
+          runSilentMilestone(m, thisToken, mIdx);
+        };
+
+        applyFrame(m.cues[0].frameIdx, true);
+
+        const playPromise = audio.play();
+        if (playPromise) {
+          playPromise.catch(err => {
+            console.warn('Audio play restricted or failed, falling back to silent milestone:', err);
+            runSilentMilestone(m, thisToken, mIdx);
+          });
+        }
+      } catch (e) {
+        console.warn('Audio construction failed:', e);
+        runSilentMilestone(m, thisToken, mIdx);
+      }
+    }
+
+    function runSilentMilestone(m, token, mIdx) {
+      const wt = getActiveWalkthrough();
+      clearTourTimers();
+      m.cues.forEach((cue, i) => {
+        const delay = (i === 0) ? 0 : (cue.time * 1000);
+        const t = setTimeout(() => {
+          if (token !== tourToken || !isTourActive) return;
+          applyFrame(cue.frameIdx, true);
+          if (i === m.cues.length - 1) {
+            const nextDelay = 1500;
+            const tNext = setTimeout(() => {
+              if (token !== tourToken || !isTourActive) return;
+              if (wt && mIdx + 1 < wt.milestones.length) {
+                startMilestone(mIdx + 1);
+              } else {
+                stopTour();
+                updateTourStatusUI(undefined, true);
+              }
+            }, nextDelay);
+            tourCueTimers.push(tNext);
+          }
+        }, delay);
+        tourCueTimers.push(t);
+      });
+    }
+
+    function startTour() {
+      stopPlay();
+      const wt = getActiveWalkthrough();
+      if (!wt) {
+        alert('Guided Audio Tour is available for Preset 1 (default preset).');
+        return;
+      }
+      isTourActive = true;
+      if ($btnTour) {
+        $btnTour.textContent = '⏸ Pause Tour';
+        $btnTour.classList.add('active');
+        $btnTour.style.background = '#e2e8f0';
+        $btnTour.style.color = '#0f172a';
+      }
+      if (curFrameIdx >= simFrames.length - 1) {
+        applyFrame(0, false);
+      }
+      let startM = 0;
+      for (let i = 0; i < wt.milestones.length; i++) {
+        if (curFrameIdx >= wt.milestones[i].startIdx && curFrameIdx <= wt.milestones[i].endIdx) {
+          startM = i;
+          break;
+        }
+      }
+      startMilestone(startM);
+    }
+
+    $btnTour.addEventListener('click', () => {
+      if (isTourActive) stopTour();
+      else startTour();
+    });
+
+    $btnMute.addEventListener('click', () => {
+      isMuted = !isMuted;
+      $btnMute.textContent = isMuted ? '🔇' : '🔊';
+      $btnMute.title = isMuted ? 'Voiceover Muted (Silent Mode)' : 'Voiceover Enabled';
+      if (isTourActive) {
+        startMilestone(currentMilestoneIdx);
+      }
+    });
+
+    /* Keyboard Shortcuts */
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        if (getActiveWalkthrough()) {
+          $btnTour.click();
+        } else {
+          $btnPlay.click();
+        }
+      } else if (e.code === 'KeyM') {
+        e.preventDefault();
+        $btnMute.click();
+      } else if (e.code === 'ArrowRight') {
+        e.preventDefault();
+        $btnNext.click();
+      } else if (e.code === 'ArrowLeft') {
+        e.preventDefault();
+        $btnPrev.click();
+      } else if (e.code === 'KeyR') {
+        e.preventDefault();
+        $btnReset.click();
+      }
+    });
+
+    /* Code Panel Toggle */
+    const $btnToggleCode = document.getElementById('btn-toggle-code');
+    const $codeToggleLabel = document.getElementById('code-toggle-label');
+    const $codePanel = document.getElementById('code-panel');
+    let isCodeVisible = true;
+
+    $btnToggleCode.addEventListener('click', () => {
+      isCodeVisible = !isCodeVisible;
+      if (isCodeVisible) {
+        $codePanel.classList.remove('hidden');
+        $codeToggleLabel.textContent = 'Hide Code';
+      } else {
+        $codePanel.classList.add('hidden');
+        $codeToggleLabel.textContent = 'Show Code';
+      }
+      onWindowResize();
+    });
+
+    /* Collapsible Legend */
+    const $legendCard = document.getElementById('legend-card');
+    document.getElementById('legend-toggle').addEventListener('click', () => {
+      $legendCard.classList.toggle('collapsed');
+    });
+
+    /* Mouse Orbit Drag Controls (Yaw only) */
+    let isDragging = false;
+    let prevMouseX = 0;
+    let currentYaw = 0;
+
+    $canvas.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      prevMouseX = e.clientX;
+    });
+
+    window.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const deltaX = e.clientX - prevMouseX;
+      prevMouseX = e.clientX;
+
+      currentYaw -= deltaX * 0.005;
+      currentYaw = Math.max(-0.45, Math.min(0.45, currentYaw));
+
+      const dist = 11.5;
+      camera.position.x = Math.sin(currentYaw) * dist;
+      camera.position.z = Math.cos(currentYaw) * dist;
+      camera.lookAt(0, 1.8, 0);
+      renderer.render(scene, camera);
+    });
+
+    /* Resize Listener */
+    function onWindowResize() {
+      const container = document.getElementById('stage-container');
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+      renderer.render(scene, camera);
+    }
+    window.addEventListener('resize', onWindowResize);
+
+    /* Animation Loop */
+    function animateLoop() {
+      requestAnimationFrame(animateLoop);
+      renderer.render(scene, camera);
+    }
+    animateLoop();
+
+    // Initial Build
+    buildSceneForCohort(currentCohort);
+
+  })();
+  </script>
+</body>
+</html>

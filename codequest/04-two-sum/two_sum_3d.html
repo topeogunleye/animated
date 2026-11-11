@@ -1,0 +1,1317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CodeQuest Q4 — Two Sum in 3D</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --panel: #0f172a;
+      --panel-border: #1e293b;
+      --ink: #f8fafc;
+      --muted: #94a3b8;
+      --accent-cyan: #38bdf8;
+      --accent-amber: #fbbf24;
+      --accent-green: #22c55e;
+      --accent-red: #ef4444;
+      --code-bg: #0b1120;
+      --code-hl: rgba(56, 189, 248, 0.22);
+      --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      --font-code: "JetBrains Mono", Consolas, "Courier New", monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font-ui);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+    }
+
+    header {
+      background: var(--panel);
+      border-bottom: 1px solid var(--panel-border);
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 10;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .badge {
+      background: linear-gradient(135deg, #0284c7, #38bdf8);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: var(--muted);
+      margin-left: 8px;
+      font-weight: 400;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    button.btn-ghost {
+      background: transparent;
+      border: 1px solid var(--panel-border);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    button.btn-ghost:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--ink);
+      border-color: #334155;
+    }
+
+    #workspace {
+      flex: 1;
+      display: flex;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #stage-container {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    canvas#stage {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: grab;
+    }
+
+    canvas#stage:active {
+      cursor: grabbing;
+    }
+
+    #legend-card {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: rgba(15, 23, 42, 0.90);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 12px;
+      z-index: 5;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      max-width: 280px;
+      transition: all 0.2s ease;
+    }
+
+    #legend-card.collapsed .legend-body {
+      display: none;
+    }
+
+    .legend-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-weight: 700;
+      color: var(--ink);
+      cursor: pointer;
+    }
+
+    .legend-body {
+      margin-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 11.5px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    #code-panel {
+      width: 440px;
+      background: var(--code-bg);
+      border-left: 1px solid var(--panel-border);
+      display: flex;
+      flex-direction: column;
+      transition: width 0.2s ease, transform 0.2s ease;
+      z-index: 6;
+    }
+
+    #code-panel.hidden {
+      display: none;
+    }
+
+    .code-header {
+      padding: 10px 16px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--panel-border);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    pre#code-display {
+      flex: 1;
+      padding: 14px 0;
+      overflow-y: auto;
+      font-family: var(--font-code);
+      font-size: 12.5px;
+      line-height: 1.65;
+    }
+
+    .code-line {
+      display: flex;
+      padding: 0 16px;
+      transition: background 0.15s ease;
+    }
+
+    .code-line.active {
+      background: var(--code-hl);
+      border-left: 3px solid var(--accent-cyan);
+      padding-left: 13px;
+    }
+
+    .ln {
+      width: 24px;
+      color: #475569;
+      text-align: right;
+      margin-right: 14px;
+      flex-shrink: 0;
+    }
+
+    .code-text {
+      color: #cbd5e1;
+      white-space: pre;
+    }
+
+    .kw { color: #f472b6; font-weight: 600; }
+    .fn { color: #60a5fa; font-weight: 600; }
+    .op { color: #38bdf8; }
+    .str { color: #a7f3d0; }
+
+    footer {
+      background: var(--panel);
+      border-top: 1px solid var(--panel-border);
+      padding: 12px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 10;
+    }
+
+    .caption-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .caption-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .step-badge {
+      background: #1e293b;
+      color: var(--accent-cyan);
+      font-family: var(--font-code);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid #334155;
+      white-space: nowrap;
+    }
+
+    .caption-text {
+      font-size: 13.5px;
+      color: var(--ink);
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .controls-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .left-controls, .center-controls, .right-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .btn:hover {
+      background: #334155;
+      border-color: #475569;
+    }
+
+    .btn-primary {
+      background: #0284c7;
+      border-color: #0369a1;
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: #0369a1;
+    }
+
+    select, input[type="text"] {
+      background: #0b1120;
+      border: 1px solid #334155;
+      color: var(--ink);
+      font-size: 12.5px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      outline: none;
+    }
+
+    select:focus, input[type="text"]:focus {
+      border-color: var(--accent-cyan);
+    }
+
+    /* Target Pill in Stage */
+    #target-badge {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid var(--panel-border);
+      border-radius: 6px;
+      padding: 6px 14px;
+      font-size: 12.5px;
+      font-family: var(--font-code);
+      font-weight: 700;
+      color: var(--accent-amber);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 5;
+    }
+
+    /* Results Bar below stage */
+    #results-bar {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      right: 16px;
+      background: rgba(15, 23, 42, 0.90);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12.5px;
+      font-family: var(--font-code);
+      z-index: 5;
+    }
+
+    .result-pair-badge {
+      background: rgba(34, 197, 94, 0.15);
+      border: 1px solid var(--accent-green);
+      color: var(--accent-green);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <span class="badge">CodeQuest Q4</span>
+      <h1>Two Sum in 3D</h1>
+      <span class="subtitle">Single-pass hash table with complement probe</span>
+    </div>
+    <div class="header-actions">
+      <button class="btn-ghost" id="btn-toggle-code">
+        <span id="code-toggle-label">Hide Code</span>
+      </button>
+    </div>
+  </header>
+
+  <div id="workspace">
+
+    <div id="stage-container">
+      <canvas id="stage"></canvas>
+
+      <div id="legend-card">
+        <div class="legend-header" id="legend-toggle">
+          <span>Legend & Pointers</span>
+          <span style="font-size: 10px; color: var(--muted)">▾</span>
+        </div>
+        <div class="legend-body">
+          <div class="legend-row">
+            <span class="dot" style="background: #38bdf8;"></span>
+            <span><strong>Probed Pillar</strong> (current index)</span>
+          </div>
+          <div class="legend-row">
+            <span class="dot" style="background: #a855f7;"></span>
+            <span><strong>Memory Shelf</strong> (seen numbers)</span>
+          </div>
+          <div class="legend-row">
+            <span class="dot" style="background: #fbbf24;"></span>
+            <span><strong>Complement Query</strong> (target &minus; num)</span>
+          </div>
+          <div class="legend-row">
+            <span class="dot" style="background: #22c55e;"></span>
+            <span><strong>Match Pair</strong> (sums to target)</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="target-badge">
+        <span>TARGET:</span>
+        <span id="target-val" style="color: #fff; font-size: 14px;">9</span>
+      </div>
+
+      <div id="results-bar">
+        <div><strong>Seen Hash Map:</strong> <span id="seen-status">{}</span></div>
+        <div><strong>Result Indices:</strong> <span id="result-indices">—</span></div>
+      </div>
+    </div>
+
+    <div id="code-panel">
+      <div class="code-header">
+        <span>PYTHON SOLUTION</span>
+        <span style="font-size: 11px; color: #64748b;">Hash Map · O(N) Time · O(N) Space</span>
+      </div>
+      <pre id="code-display"></pre>
+    </div>
+
+  </div>
+
+  <footer>
+    <div class="caption-row">
+      <div class="caption-box">
+        <span class="step-badge" id="step-badge">STEP 0 / 0</span>
+        <span class="caption-text" id="caption-text">Initializing two sum simulation...</span>
+      </div>
+      <div class="tour-status" id="tour-status" style="display:none; align-items: center; gap: 8px; margin-left: 12px; background: rgba(30, 41, 59, 0.85); border: 1px solid var(--panel-border); border-radius: 999px; padding: 3px 10px; font-size: 11px;">
+        <span class="tour-badge" id="tour-badge" style="background: var(--accent); color: #020617; font-weight: 700; border-radius: 999px; padding: 1px 7px; font-size: 10px;">Milestone 1/5</span>
+        <span class="tour-msg" id="tour-msg" style="color: var(--muted); max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Ready for Tour</span>
+      </div>
+    </div>
+
+    <div class="controls-row">
+      <div class="left-controls">
+        <label for="preset-select" style="font-size: 12px; color: var(--muted); font-weight: 600;">Preset:</label>
+        <select id="preset-select">
+          <option value="0">[2, 7, 11, 15] (Target: 9) -> [0, 1]</option>
+          <option value="1">[3, 2, 4] (Target: 6) -> [1, 2]</option>
+          <option value="2">[3, 3] (Target: 6) -> [0, 1]</option>
+          <option value="3">[1, 5, 8, 12] (Target: 20) -> [2, 3]</option>
+          <option value="4">[1, 2, 3] (Target: 10) -> [] (No Pair)</option>
+        </select>
+      </div>
+
+      <div class="center-controls">
+        <button class="btn" id="btn-reset" title="Reset (R)">↺ Reset</button>
+        <button class="btn" id="btn-prev" title="Step Back (Left Arrow)">⏮ Prev</button>
+        <button class="btn btn-tour" id="btn-tour" title="Guided Audio Tour (Space)" style="background: #38bdf8; color: #0f172a; font-weight: 700; border-color: #38bdf8;">🎙️ Audio Tour</button>
+        <button class="btn btn-primary" id="btn-play" title="Silent Step Play">▶ Step Play</button>
+        <button class="btn" id="btn-next" title="Step Forward (Right Arrow)">Next ⏭</button>
+        <button class="btn btn-ghost" id="btn-mute" title="Toggle Voiceover (M)" style="font-size: 14px; padding: 5px 9px;">🔊</button>
+      </div>
+
+      <div class="right-controls">
+        <label for="speed-select" style="font-size: 12px; color: var(--muted); font-weight: 600;">Speed:</label>
+        <select id="speed-select">
+          <option value="1400">Slow (1.4s)</option>
+          <option value="850" selected>Normal (0.85s)</option>
+          <option value="400">Fast (0.4s)</option>
+        </select>
+      </div>
+    </div>
+  </footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <script>
+  (function(){
+    'use strict';
+
+    /* ---------- PYTHON SOURCE LINES ---------- */
+    const CODE_LINES = [
+      'def two_sum(nums, target):',
+      '    seen = {}',
+      '    for index, number in enumerate(nums):',
+      '        complement = target - number',
+      '        if complement in seen:',
+      '            return [seen[complement], index]',
+      '        if number not in seen:',
+      '            seen[number] = index',
+      '    return []'
+    ];
+
+    /* ---------- SAFE TOKEN-BASED SYNTAX HIGHLIGHTER ---------- */
+    function escapeHtml(s) {
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function highlightPython(text) {
+      const pattern = /(".*?"|'.*?'|\b(?:def|return|while|if|not|elif|else|True|False|or|and|for|in|enumerate)\b|\b(?:two_sum|nums|target|seen|index|number|complement)\b|<=|>=|!=|==|\+=|-=|\+|-|<|>|=)/g;
+      let result = '';
+      let lastIndex = 0;
+      let match;
+
+      while ((match = pattern.exec(text)) !== null) {
+        result += escapeHtml(text.slice(lastIndex, match.index));
+        const token = match[0];
+        const escapedToken = escapeHtml(token);
+
+        if (token.startsWith('"') || token.startsWith("'")) {
+          result += '<span class="str">' + escapedToken + '</span>';
+        } else if (/^(def|return|while|if|not|elif|else|True|False|or|and|for|in|enumerate)$/.test(token)) {
+          result += '<span class="kw">' + escapedToken + '</span>';
+        } else if (/^(two_sum)$/.test(token)) {
+          result += '<span class="fn">' + escapedToken + '</span>';
+        } else if (/^(<=|>=|!=|==|\+=|-=|\+|-|<|>|=)$/.test(token)) {
+          result += '<span class="op">' + escapedToken + '</span>';
+        } else {
+          result += escapedToken;
+        }
+        lastIndex = pattern.lastIndex;
+      }
+      result += escapeHtml(text.slice(lastIndex));
+      return result;
+    }
+
+    const $codeDisplay = document.getElementById('code-display');
+    function initCodePanel() {
+      $codeDisplay.innerHTML = '';
+      CODE_LINES.forEach((line, idx) => {
+        const div = document.createElement('div');
+        div.className = 'code-line';
+        div.id = 'line-' + idx;
+
+        const ln = document.createElement('span');
+        ln.className = 'ln';
+        ln.textContent = String(idx);
+
+        const codeSpan = document.createElement('span');
+        codeSpan.className = 'code-text';
+        codeSpan.innerHTML = highlightPython(line);
+
+        div.appendChild(ln);
+        div.appendChild(codeSpan);
+        $codeDisplay.appendChild(div);
+      });
+    }
+    initCodePanel();
+
+    function highlightLines(lines) {
+      document.querySelectorAll('.code-line').forEach(el => el.classList.remove('active'));
+      if (!lines) return;
+      lines.forEach(l => {
+        const el = document.getElementById('line-' + l);
+        if (el) el.classList.add('active');
+      });
+    }
+
+    /* ---------- PRESETS DATA ---------- */
+    const PRESETS = [
+      { nums: [2, 7, 11, 15], target: 9 },
+      { nums: [3, 2, 4], target: 6 },
+      { nums: [3, 3], target: 6 },
+      { nums: [1, 5, 8, 12], target: 20 },
+      { nums: [1, 2, 3], target: 10 }
+    ];
+
+    /* ---------- SIMULATION GENERATOR ---------- */
+    function simulate(nums, target) {
+      const frames = [];
+      const seen = {};
+
+      function snap(lines, msg, phase, curIdx, complement, seenMap, resultIndices, status) {
+        frames.push({
+          lines: lines.slice(),
+          msg,
+          phase,
+          curIdx,
+          complement,
+          seenMap: { ...seenMap },
+          resultIndices: resultIndices ? [...resultIndices] : null,
+          status: status || 'running'
+        });
+      }
+
+      if (!nums || nums.length === 0) {
+        snap([0, 1], "Empty array. Zero numbers to compare.", 'done', -1, null, seen, [], 'done');
+        return frames;
+      }
+
+      snap([0, 1], `Initialize empty hash map 'seen = {}'. Looking for two numbers that sum to target ${target}.`, 'init', -1, null, seen, null);
+
+      for (let idx = 0; idx < nums.length; idx++) {
+        const number = nums[idx];
+        const complement = target - number;
+
+        snap([2, 3], `Index ${idx}: number = ${number}. Needed complement: ${target} &minus; ${number} = ${complement}. Check if ${complement} is in seen.`, 'check', idx, complement, seen, null);
+
+        if (complement in seen) {
+          const matchIdx = seen[complement];
+          const result = [matchIdx, idx];
+          snap([4, 5], `Match found! Complement ${complement} was stored at index ${matchIdx}. Solution pair: [${matchIdx}, ${idx}].`, 'match', idx, complement, seen, result, 'success');
+          return frames;
+        }
+
+        if (!(number in seen)) {
+          seen[number] = idx;
+          snap([6, 7], `Complement ${complement} not in seen. Store current number: seen[${number}] = ${idx}.`, 'store', idx, complement, seen, null);
+        }
+      }
+
+      snap([8], `End of list reached without finding a matching pair. Returning empty list [].`, 'done', -1, null, seen, [], 'error');
+      return frames;
+    }
+
+    /* ---------- THREE.JS SCENE SETUP ---------- */
+    const $canvas = document.getElementById('stage');
+    const renderer = new THREE.WebGLRenderer({ canvas: $canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize($canvas.clientWidth, $canvas.clientHeight);
+    renderer.shadowMap.enabled = true;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(34, $canvas.clientWidth / $canvas.clientHeight, 0.1, 100);
+
+    camera.position.set(0, 5.0, 11.5);
+    camera.lookAt(0, 1.2, 0);
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
+    dirLight.position.set(6, 14, 10);
+    dirLight.castShadow = true;
+    scene.add(dirLight);
+
+    const probeLight = new THREE.PointLight(0x38bdf8, 1.5, 10);
+    scene.add(probeLight);
+
+    // Floor Plate
+    const floorPlateGeo = new THREE.BoxGeometry(20, 0.2, 8);
+    const floorPlateMat = new THREE.MeshStandardMaterial({
+      color: 0x0f172a,
+      roughness: 0.8,
+      metalness: 0.2
+    });
+    const floorPlate = new THREE.Mesh(floorPlateGeo, floorPlateMat);
+    floorPlate.position.y = -0.1;
+    floorPlate.receiveShadow = true;
+    scene.add(floorPlate);
+
+    // Helper: 2D Canvas Text Sprite
+    function makeTextSprite(message, options) {
+      const opt = options || {};
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 256;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = opt.bg || 'transparent';
+      ctx.fillRect(0, 0, 256, 256);
+
+      ctx.font = opt.font || 'bold 110px sans-serif';
+      ctx.fillStyle = opt.color || '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(message, 128, 128);
+
+      const texture = new THREE.CanvasTexture(canvas);
+      const spriteMat = new THREE.SpriteMaterial({ map: texture, depthTest: false });
+      const sprite = new THREE.Sprite(spriteMat);
+      sprite.scale.set(opt.scale || 0.8, opt.scale || 0.8, 1);
+      return sprite;
+    }
+
+    // Memory Shelf Geometry (Hash map in back)
+    const shelfGeo = new THREE.BoxGeometry(16, 0.15, 1.8);
+    const shelfMat = new THREE.MeshStandardMaterial({ color: 0x1e1b4b, roughness: 0.6 });
+    const shelfMesh = new THREE.Mesh(shelfGeo, shelfMat);
+    shelfMesh.position.set(0, 3.2, -2.2);
+    scene.add(shelfMesh);
+
+    const shelfTitle = makeTextSprite('HASH MAP MEMORY SHELF { number : index }', { color: '#c084fc', font: 'bold 60px monospace', scale: 1.4 });
+    shelfTitle.position.set(0, 3.8, -2.2);
+    scene.add(shelfTitle);
+
+    // Memory Shelf Slots Group
+    const shelfSlotsGroup = new THREE.Group();
+    scene.add(shelfSlotsGroup);
+
+    // Number Pillars Group (Front)
+    const pillarsGroup = new THREE.Group();
+    scene.add(pillarsGroup);
+
+    // Energy Arch connecting matching pair
+    const archGroup = new THREE.Group();
+    scene.add(archGroup);
+
+    let currentPreset = PRESETS[0];
+    let simFrames = [];
+    let curFrameIdx = 0;
+    let isPlaying = false;
+    let playTimer = null;
+    let stepSpeed = 850;
+
+    let pillarMeshes = [];
+    const pillarSpacing = 2.4;
+
+    function buildScene(preset) {
+      while (pillarsGroup.children.length > 0) pillarsGroup.remove(pillarsGroup.children[0]);
+      while (shelfSlotsGroup.children.length > 0) shelfSlotsGroup.remove(shelfSlotsGroup.children[0]);
+      while (archGroup.children.length > 0) archGroup.remove(archGroup.children[0]);
+      pillarMeshes = [];
+
+      const nums = preset.nums;
+      const N = nums.length;
+      const startX = -((N - 1) * pillarSpacing) / 2;
+
+      document.getElementById('target-val').textContent = String(preset.target);
+
+      // Max value for height scale
+      const maxVal = Math.max(...nums, 1);
+
+      nums.forEach((val, i) => {
+        const posX = startX + i * pillarSpacing;
+        const h = Math.max(0.6, (val / maxVal) * 2.8);
+
+        // Cylinder Pillar
+        const geo = new THREE.CylinderGeometry(0.55, 0.55, h, 24);
+        geo.translate(0, h / 2, 0); // Origin at floor
+        const mat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4 });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(posX, 0, 0.6);
+        pillarsGroup.add(mesh);
+
+        // Value text floating on top
+        const valSprite = makeTextSprite(String(val), { color: '#f8fafc', font: 'bold 110px monospace', scale: 0.85 });
+        valSprite.position.set(posX, h + 0.45, 0.6);
+        pillarsGroup.add(valSprite);
+
+        // Index label underneath
+        const idxSprite = makeTextSprite(`[${i}]`, { color: '#94a3b8', font: 'bold 75px monospace', scale: 0.6 });
+        idxSprite.position.set(posX, -0.15, 1.4);
+        pillarsGroup.add(idxSprite);
+
+        pillarMeshes.push({
+          mesh,
+          valSprite,
+          mat,
+          val,
+          idx: i,
+          posX,
+          h
+        });
+      });
+
+      simFrames = simulate(preset.nums, preset.target);
+      curFrameIdx = 0;
+      applyFrame(0, false);
+    }
+
+    /* ---------- FRAME APPLICATION ---------- */
+    const $stepBadge = document.getElementById('step-badge');
+    const $captionText = document.getElementById('caption-text');
+    const $seenStatus = document.getElementById('seen-status');
+    const $resultIndices = document.getElementById('result-indices');
+
+    function applyFrame(idx, animate) {
+      if (!simFrames || simFrames.length === 0) return;
+      curFrameIdx = Math.max(0, Math.min(idx, simFrames.length - 1));
+      const frame = simFrames[curFrameIdx];
+
+      $stepBadge.textContent = `STEP ${curFrameIdx + 1} / ${simFrames.length}`;
+      $captionText.textContent = frame.msg;
+
+      highlightLines(frame.lines);
+
+      // Update seen status
+      const seenEntries = Object.entries(frame.seenMap);
+      $seenStatus.textContent = seenEntries.length > 0 
+        ? `{ ${seenEntries.map(([k, v]) => `${k}: ${v}`).join(', ')} }`
+        : '{}';
+
+      $resultIndices.innerHTML = frame.resultIndices && frame.resultIndices.length > 0
+        ? `<span class="result-pair-badge">[${frame.resultIndices.join(', ')}] (SUMS TO TARGET)</span>`
+        : (frame.status === 'error' ? '<span style="color: #ef4444;">[] (NO PAIR FOUND)</span>' : '—');
+
+      // Update Pillars
+      pillarMeshes.forEach((pm, i) => {
+        if (frame.resultIndices && frame.resultIndices.includes(i)) {
+          pm.mat.color.setHex(0x22c55e); // Green Match!
+          pm.valSprite.material.color.setHex(0x22c55e);
+        } else if (frame.curIdx === i) {
+          pm.mat.color.setHex(0x38bdf8); // Cyan Current probe
+          pm.valSprite.material.color.setHex(0x38bdf8);
+          probeLight.position.set(pm.posX, pm.h + 1.5, 1.2);
+        } else {
+          pm.mat.color.setHex(0x1e293b);
+          pm.valSprite.material.color.setHex(0xf8fafc);
+        }
+      });
+
+      // Update Shelf Slots in 3D
+      while (shelfSlotsGroup.children.length > 0) shelfSlotsGroup.remove(shelfSlotsGroup.children[0]);
+
+      const slotSpacing = 2.4;
+      const shelfStartX = -((seenEntries.length - 1) * slotSpacing) / 2;
+
+      seenEntries.forEach(([numStr, indexVal], i) => {
+        const slotX = shelfStartX + i * slotSpacing;
+
+        const boxGeo = new THREE.BoxGeometry(1.5, 0.45, 1.0);
+        const boxMat = new THREE.MeshStandardMaterial({
+          color: (frame.complement === parseInt(numStr, 10)) ? 0x22c55e : 0x7e22ce,
+          roughness: 0.3
+        });
+        const box = new THREE.Mesh(boxGeo, boxMat);
+        box.position.set(slotX, 3.4, -2.2);
+        shelfSlotsGroup.add(box);
+
+        const slotText = makeTextSprite(`${numStr} → [${indexVal}]`, {
+          color: '#ffffff',
+          font: 'bold 80px monospace',
+          scale: 0.75
+        });
+        slotText.position.set(slotX, 3.9, -2.1);
+        shelfSlotsGroup.add(slotText);
+      });
+
+      // Update Energy Arch if matched
+      while (archGroup.children.length > 0) archGroup.remove(archGroup.children[0]);
+
+      if (frame.resultIndices && frame.resultIndices.length === 2) {
+        const i1 = frame.resultIndices[0];
+        const i2 = frame.resultIndices[1];
+        const p1 = pillarMeshes[i1];
+        const p2 = pillarMeshes[i2];
+
+        if (p1 && p2) {
+          const curve = new THREE.QuadraticBezierCurve3(
+            new THREE.Vector3(p1.posX, p1.h + 0.3, 0.6),
+            new THREE.Vector3((p1.posX + p2.posX) / 2, Math.max(p1.h, p2.h) + 2.0, 0.6),
+            new THREE.Vector3(p2.posX, p2.h + 0.3, 0.6)
+          );
+          const points = curve.getPoints(30);
+          const tubeGeo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), 24, 0.08, 8, false);
+          const tubeMat = new THREE.MeshBasicMaterial({ color: 0x22c55e });
+          const tubeMesh = new THREE.Mesh(tubeGeo, tubeMat);
+          archGroup.add(tubeMesh);
+        }
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    /* ---------- PLAYBACK CONTROLS ---------- */
+    const $btnPlay = document.getElementById('btn-play');
+    const $btnPrev = document.getElementById('btn-prev');
+    const $btnNext = document.getElementById('btn-next');
+    const $btnReset = document.getElementById('btn-reset');
+    const $speedSelect = document.getElementById('speed-select');
+    const $presetSelect = document.getElementById('preset-select');
+
+    function stopPlay() {
+      isPlaying = false;
+      if (playTimer) clearTimeout(playTimer);
+      $btnPlay.textContent = '▶ Step Play';
+      $btnPlay.classList.remove('btn-primary');
+    }
+
+    function tick() {
+      if (!isPlaying) return;
+      if (curFrameIdx < simFrames.length - 1) {
+        applyFrame(curFrameIdx + 1, true);
+        playTimer = setTimeout(tick, stepSpeed);
+      } else {
+        stopPlay();
+      }
+    }
+
+    function startPlay() {
+      stopTour();
+      if (curFrameIdx >= simFrames.length - 1) {
+        applyFrame(0, false);
+      }
+      isPlaying = true;
+      $btnPlay.textContent = '⏸ Pause';
+      $btnPlay.classList.add('btn-primary');
+      playTimer = setTimeout(tick, stepSpeed);
+    }
+
+    $btnPlay.addEventListener('click', () => {
+      if (isPlaying) stopPlay();
+      else startPlay();
+    });
+
+    $btnNext.addEventListener('click', () => {
+      stopTour();
+      stopPlay();
+      if (curFrameIdx < simFrames.length - 1) applyFrame(curFrameIdx + 1, true);
+    });
+
+    $btnPrev.addEventListener('click', () => {
+      stopTour();
+      stopPlay();
+      if (curFrameIdx > 0) applyFrame(curFrameIdx - 1, true);
+    });
+
+    $btnReset.addEventListener('click', () => {
+      stopTour();
+      stopPlay();
+      applyFrame(0, false);
+      updateTourStatusUI(0, false);
+    });
+
+    $speedSelect.addEventListener('change', () => {
+      stepSpeed = parseInt($speedSelect.value, 10) || 850;
+    });
+
+    $presetSelect.addEventListener('change', () => {
+      stopTour();
+      stopPlay();
+      const idx = parseInt($presetSelect.value, 10);
+      currentPreset = PRESETS[idx];
+      buildScene(currentPreset);
+      updateTourStatusUI(0, false);
+    });
+
+    /* ---------- GUIDED AUDIO TOUR CONTROLLER ---------- */
+    const $btnTour = document.getElementById('btn-tour');
+    const $btnMute = document.getElementById('btn-mute');
+    const $tourStatus = document.getElementById('tour-status');
+    const $tourBadge = document.getElementById('tour-badge');
+    const $tourMsg = document.getElementById('tour-msg');
+
+    let isTourActive = false;
+    let isMuted = false;
+    let currentAudio = null;
+    let tourCueTimers = [];
+    let tourToken = 0;
+    let currentMilestoneIdx = 0;
+
+    const WALKTHROUGHS = {
+      preset0: {
+        name: 'Target 9 with [2, 7, 11, 15]',
+        match: function(input) {
+          return input && input.target === 9 && Array.isArray(input.nums) && input.nums[0] === 2;
+        },
+        milestones: [
+          {
+            id: 'clip_01_setup',
+            file: 'audio/clip_01_setup.mp3',
+            title: 'Setup & Hash Map Seen Initialization',
+            startIdx: 0,
+            endIdx: 0,
+            cues: [
+              { time: 0.0, frameIdx: 0 }
+            ]
+          },
+          {
+            id: 'clip_02_first_element',
+            file: 'audio/clip_02_first_element.mp3',
+            title: 'Inspecting First Element & Complement',
+            startIdx: 1,
+            endIdx: 1,
+            cues: [
+              { time: 0.0, frameIdx: 1 }
+            ]
+          },
+          {
+            id: 'clip_03_store_element',
+            file: 'audio/clip_03_store_element.mp3',
+            title: 'Storing Element in Hash Map',
+            startIdx: 2,
+            endIdx: 2,
+            cues: [
+              { time: 0.0, frameIdx: 2 }
+            ]
+          },
+          {
+            id: 'clip_04_find_partner',
+            file: 'audio/clip_04_find_partner.mp3',
+            title: 'Discovering Matching Complement',
+            startIdx: 3,
+            endIdx: 3,
+            cues: [
+              { time: 0.0, frameIdx: 3 }
+            ]
+          },
+          {
+            id: 'clip_05_return_solution',
+            file: 'audio/clip_05_return_solution.mp3',
+            title: 'Solution Pair Retrieved in Linear Time',
+            startIdx: 4,
+            endIdx: 4,
+            cues: [
+              { time: 0.0, frameIdx: 4 }
+            ]
+          }
+        ]
+      }
+    };
+
+    function clearTourTimers() {
+      tourCueTimers.forEach(t => clearTimeout(t));
+      tourCueTimers = [];
+    }
+
+    function stopTourAudio() {
+      clearTourTimers();
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.onended = null;
+        currentAudio.ontimeupdate = null;
+        currentAudio.onerror = null;
+        currentAudio = null;
+      }
+    }
+
+    function stopTour() {
+      isTourActive = false;
+      stopTourAudio();
+      tourToken++;
+      if ($btnTour) {
+        $btnTour.textContent = '🎙️ Audio Tour';
+        $btnTour.classList.remove('active');
+        $btnTour.style.background = '#38bdf8';
+        $btnTour.style.color = '#0f172a';
+      }
+    }
+
+    function getActiveWalkthrough() {
+      for (const k in WALKTHROUGHS) {
+        if (WALKTHROUGHS[k].match(currentPreset)) return WALKTHROUGHS[k];
+      }
+      return null;
+    }
+
+    function updateTourStatusUI(mIdx, isFinished) {
+      const wt = getActiveWalkthrough();
+      if (!wt) {
+        if ($tourStatus) $tourStatus.style.display = 'none';
+        return;
+      }
+      if ($tourStatus) $tourStatus.style.display = 'inline-flex';
+      const totalM = wt.milestones.length;
+      if (isFinished || curFrameIdx >= simFrames.length - 1) {
+        if ($tourBadge) $tourBadge.textContent = 'Complete';
+        if ($tourMsg) $tourMsg.textContent = 'Guided tour complete!';
+      } else if (mIdx !== undefined && wt.milestones[mIdx]) {
+        if ($tourBadge) $tourBadge.textContent = 'Milestone ' + (mIdx + 1) + '/' + totalM;
+        if ($tourMsg) $tourMsg.textContent = isMuted ? (wt.milestones[mIdx].title + ' (Muted)') : wt.milestones[mIdx].title;
+      }
+    }
+
+    function startMilestone(mIdx) {
+      const wt = getActiveWalkthrough();
+      if (!wt || mIdx >= wt.milestones.length) {
+        stopTour();
+        updateTourStatusUI(undefined, true);
+        return;
+      }
+      currentMilestoneIdx = mIdx;
+      const m = wt.milestones[mIdx];
+      updateTourStatusUI(mIdx, false);
+
+      const thisToken = ++tourToken;
+      stopTourAudio();
+
+      if (isMuted) {
+        runSilentMilestone(m, thisToken, mIdx);
+        return;
+      }
+
+      try {
+        const audio = new Audio(m.file);
+        currentAudio = audio;
+
+        let appliedCueIndex = -1;
+        audio.ontimeupdate = () => {
+          if (thisToken !== tourToken || !isTourActive) return;
+          const ct = audio.currentTime;
+          for (let i = m.cues.length - 1; i >= 0; i--) {
+            if (ct >= m.cues[i].time) {
+              if (appliedCueIndex !== i) {
+                appliedCueIndex = i;
+                applyFrame(m.cues[i].frameIdx, true);
+              }
+              break;
+            }
+          }
+        };
+
+        audio.onended = () => {
+          if (thisToken !== tourToken || !isTourActive) return;
+          if (mIdx + 1 < wt.milestones.length) {
+            startMilestone(mIdx + 1);
+          } else {
+            stopTour();
+            updateTourStatusUI(undefined, true);
+          }
+        };
+
+        audio.onerror = () => {
+          console.warn('Audio playback error, falling back to silent step for milestone:', m.id);
+          runSilentMilestone(m, thisToken, mIdx);
+        };
+
+        applyFrame(m.cues[0].frameIdx, true);
+
+        const playPromise = audio.play();
+        if (playPromise) {
+          playPromise.catch(err => {
+            console.warn('Audio play restricted or failed, falling back to silent milestone:', err);
+            runSilentMilestone(m, thisToken, mIdx);
+          });
+        }
+      } catch (e) {
+        console.warn('Audio construction failed:', e);
+        runSilentMilestone(m, thisToken, mIdx);
+      }
+    }
+
+    function runSilentMilestone(m, token, mIdx) {
+      const wt = getActiveWalkthrough();
+      clearTourTimers();
+      m.cues.forEach((cue, i) => {
+        const delay = (i === 0) ? 0 : (cue.time * 1000);
+        const t = setTimeout(() => {
+          if (token !== tourToken || !isTourActive) return;
+          applyFrame(cue.frameIdx, true);
+          if (i === m.cues.length - 1) {
+            const nextDelay = 1500;
+            const tNext = setTimeout(() => {
+              if (token !== tourToken || !isTourActive) return;
+              if (wt && mIdx + 1 < wt.milestones.length) {
+                startMilestone(mIdx + 1);
+              } else {
+                stopTour();
+                updateTourStatusUI(undefined, true);
+              }
+            }, nextDelay);
+            tourCueTimers.push(tNext);
+          }
+        }, delay);
+        tourCueTimers.push(t);
+      });
+    }
+
+    function startTour() {
+      stopPlay();
+      const wt = getActiveWalkthrough();
+      if (!wt) {
+        alert('Guided Audio Tour is available for Preset 1 (default preset).');
+        return;
+      }
+      isTourActive = true;
+      if ($btnTour) {
+        $btnTour.textContent = '⏸ Pause Tour';
+        $btnTour.classList.add('active');
+        $btnTour.style.background = '#e2e8f0';
+        $btnTour.style.color = '#0f172a';
+      }
+      if (curFrameIdx >= simFrames.length - 1) {
+        applyFrame(0, false);
+      }
+      let startM = 0;
+      for (let i = 0; i < wt.milestones.length; i++) {
+        if (curFrameIdx >= wt.milestones[i].startIdx && curFrameIdx <= wt.milestones[i].endIdx) {
+          startM = i;
+          break;
+        }
+      }
+      startMilestone(startM);
+    }
+
+    $btnTour.addEventListener('click', () => {
+      if (isTourActive) stopTour();
+      else startTour();
+    });
+
+    $btnMute.addEventListener('click', () => {
+      isMuted = !isMuted;
+      $btnMute.textContent = isMuted ? '🔇' : '🔊';
+      $btnMute.title = isMuted ? 'Voiceover Muted (Silent Mode)' : 'Voiceover Enabled';
+      if (isTourActive) {
+        startMilestone(currentMilestoneIdx);
+      }
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        if (getActiveWalkthrough()) {
+          $btnTour.click();
+        } else {
+          $btnPlay.click();
+        }
+      } else if (e.code === 'KeyM') {
+        e.preventDefault();
+        $btnMute.click();
+      } else if (e.code === 'ArrowRight') {
+        e.preventDefault();
+        $btnNext.click();
+      } else if (e.code === 'ArrowLeft') {
+        e.preventDefault();
+        $btnPrev.click();
+      } else if (e.code === 'KeyR') {
+        e.preventDefault();
+        $btnReset.click();
+      }
+    });
+
+    const $btnToggleCode = document.getElementById('btn-toggle-code');
+    const $codeToggleLabel = document.getElementById('code-toggle-label');
+    const $codePanel = document.getElementById('code-panel');
+    let isCodeVisible = true;
+
+    $btnToggleCode.addEventListener('click', () => {
+      isCodeVisible = !isCodeVisible;
+      if (isCodeVisible) {
+        $codePanel.classList.remove('hidden');
+        $codeToggleLabel.textContent = 'Hide Code';
+      } else {
+        $codePanel.classList.add('hidden');
+        $codeToggleLabel.textContent = 'Show Code';
+      }
+      onWindowResize();
+    });
+
+    const $legendCard = document.getElementById('legend-card');
+    document.getElementById('legend-toggle').addEventListener('click', () => {
+      $legendCard.classList.toggle('collapsed');
+    });
+
+    let isDragging = false;
+    let prevMouseX = 0;
+    let currentYaw = 0;
+
+    $canvas.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      prevMouseX = e.clientX;
+    });
+
+    window.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const deltaX = e.clientX - prevMouseX;
+      prevMouseX = e.clientX;
+
+      currentYaw -= deltaX * 0.005;
+      currentYaw = Math.max(-0.45, Math.min(0.45, currentYaw));
+
+      const dist = 11.5;
+      camera.position.x = Math.sin(currentYaw) * dist;
+      camera.position.z = Math.cos(currentYaw) * dist;
+      camera.lookAt(0, 1.2, 0);
+      renderer.render(scene, camera);
+    });
+
+    function onWindowResize() {
+      const container = document.getElementById('stage-container');
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+      renderer.render(scene, camera);
+    }
+    window.addEventListener('resize', onWindowResize);
+
+    function animateLoop() {
+      requestAnimationFrame(animateLoop);
+      renderer.render(scene, camera);
+    }
+    animateLoop();
+
+    buildScene(currentPreset);
+
+  })();
+  </script>
+</body>
+</html>

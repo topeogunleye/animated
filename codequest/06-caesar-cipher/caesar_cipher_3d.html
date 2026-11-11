@@ -1,0 +1,1312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CodeQuest Q6 — Caesar Cipher in 3D</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --panel: #0f172a;
+      --panel-border: #1e293b;
+      --ink: #f8fafc;
+      --muted: #94a3b8;
+      --accent-cyan: #38bdf8;
+      --accent-amber: #fbbf24;
+      --accent-green: #22c55e;
+      --accent-red: #ef4444;
+      --code-bg: #0b1120;
+      --code-hl: rgba(56, 189, 248, 0.22);
+      --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      --font-code: "JetBrains Mono", Consolas, "Courier New", monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font-ui);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+    }
+
+    header {
+      background: var(--panel);
+      border-bottom: 1px solid var(--panel-border);
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 10;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .badge {
+      background: linear-gradient(135deg, #0284c7, #38bdf8);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: var(--muted);
+      margin-left: 8px;
+      font-weight: 400;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    button.btn-ghost {
+      background: transparent;
+      border: 1px solid var(--panel-border);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    button.btn-ghost:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--ink);
+      border-color: #334155;
+    }
+
+    #workspace {
+      flex: 1;
+      display: flex;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #stage-container {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    canvas#stage {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: grab;
+    }
+
+    canvas#stage:active {
+      cursor: grabbing;
+    }
+
+    #legend-card {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: rgba(15, 23, 42, 0.90);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 12px;
+      z-index: 5;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      max-width: 280px;
+      transition: all 0.2s ease;
+    }
+
+    #legend-card.collapsed .legend-body {
+      display: none;
+    }
+
+    .legend-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-weight: 700;
+      color: var(--ink);
+      cursor: pointer;
+    }
+
+    .legend-body {
+      margin-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 11.5px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    #code-panel {
+      width: 440px;
+      background: var(--code-bg);
+      border-left: 1px solid var(--panel-border);
+      display: flex;
+      flex-direction: column;
+      transition: width 0.2s ease, transform 0.2s ease;
+      z-index: 6;
+    }
+
+    #code-panel.hidden {
+      display: none;
+    }
+
+    .code-header {
+      padding: 10px 16px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--panel-border);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    pre#code-display {
+      flex: 1;
+      padding: 14px 0;
+      overflow-y: auto;
+      font-family: var(--font-code);
+      font-size: 12px;
+      line-height: 1.65;
+    }
+
+    .code-line {
+      display: flex;
+      padding: 0 16px;
+      transition: background 0.15s ease;
+    }
+
+    .code-line.active {
+      background: var(--code-hl);
+      border-left: 3px solid var(--accent-cyan);
+      padding-left: 13px;
+    }
+
+    .ln {
+      width: 24px;
+      color: #475569;
+      text-align: right;
+      margin-right: 14px;
+      flex-shrink: 0;
+    }
+
+    .code-text {
+      color: #cbd5e1;
+      white-space: pre;
+    }
+
+    .kw { color: #f472b6; font-weight: 600; }
+    .fn { color: #60a5fa; font-weight: 600; }
+    .op { color: #38bdf8; }
+    .str { color: #a7f3d0; }
+
+    footer {
+      background: var(--panel);
+      border-top: 1px solid var(--panel-border);
+      padding: 12px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 10;
+    }
+
+    .caption-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .caption-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .step-badge {
+      background: #1e293b;
+      color: var(--accent-cyan);
+      font-family: var(--font-code);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid #334155;
+      white-space: nowrap;
+    }
+
+    .caption-text {
+      font-size: 13.5px;
+      color: var(--ink);
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .controls-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .left-controls, .center-controls, .right-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .btn:hover {
+      background: #334155;
+      border-color: #475569;
+    }
+
+    .btn-primary {
+      background: #0284c7;
+      border-color: #0369a1;
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: #0369a1;
+    }
+
+    select, input[type="text"], input[type="number"] {
+      background: #0b1120;
+      border: 1px solid #334155;
+      color: var(--ink);
+      font-size: 12.5px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      outline: none;
+    }
+
+    select:focus, input[type="text"]:focus, input[type="number"]:focus {
+      border-color: var(--accent-cyan);
+    }
+
+    input[type="text"] {
+      width: 200px;
+    }
+
+    input[type="number"] {
+      width: 65px;
+    }
+
+    #cipher-pill {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid var(--panel-border);
+      border-radius: 6px;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-family: var(--font-code);
+      font-weight: 700;
+      color: var(--accent-cyan);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 5;
+    }
+
+    #results-bar {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      right: 16px;
+      background: rgba(15, 23, 42, 0.90);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12.5px;
+      font-family: var(--font-code);
+      z-index: 5;
+    }
+
+    .cipher-text-badge {
+      background: rgba(34, 197, 94, 0.15);
+      border: 1px solid var(--accent-green);
+      color: var(--accent-green);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <span class="badge">CodeQuest Q6</span>
+      <h1>Caesar Cipher in 3D</h1>
+      <span class="subtitle">Higher-order make_shifter closure with circular 26-letter modulo ring</span>
+    </div>
+    <div class="header-actions">
+      <button class="btn-ghost" id="btn-toggle-code">
+        <span id="code-toggle-label">Hide Code</span>
+      </button>
+    </div>
+  </header>
+
+  <div id="workspace">
+
+    <div id="stage-container">
+      <canvas id="stage"></canvas>
+
+      <div id="legend-card">
+        <div class="legend-header" id="legend-toggle">
+          <span>Legend & Wheel</span>
+          <span style="font-size: 10px; color: var(--muted)">▾</span>
+        </div>
+        <div class="legend-body">
+          <div class="legend-row">
+            <span class="dot" style="background: #38bdf8;"></span>
+            <span><strong>Source Character</strong> (entering dial)</span>
+          </div>
+          <div class="legend-row">
+            <span class="dot" style="background: #fbbf24;"></span>
+            <span><strong>Alphabet Ring Dial</strong> (26 letters modulo)</span>
+          </div>
+          <div class="legend-row">
+            <span class="dot" style="background: #22c55e;"></span>
+            <span><strong>Shifted Output</strong> (encrypted/decrypted)</span>
+          </div>
+          <div class="legend-row">
+            <span class="dot" style="background: #64748b;"></span>
+            <span><strong>Punctuation / Space</strong> (bypass shift)</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="cipher-pill">
+        <span id="mode-label">ENCRYPT</span>
+        <span style="color: var(--muted)">|</span>
+        <span id="shift-label">SHIFT: +3</span>
+      </div>
+
+      <div id="results-bar">
+        <div><strong>Original Stream:</strong> <span id="input-stream">—</span></div>
+        <div><strong>Cipher Output:</strong> <span id="output-stream">—</span></div>
+      </div>
+    </div>
+
+    <div id="code-panel">
+      <div class="code-header">
+        <span>PYTHON SOLUTION</span>
+        <span style="font-size: 11px; color: #64748b;">Closure / map() · Modulo 26</span>
+      </div>
+      <pre id="code-display"></pre>
+    </div>
+
+  </div>
+
+  <footer>
+    <div class="caption-row">
+      <div class="caption-box">
+        <span class="step-badge" id="step-badge">STEP 0 / 0</span>
+        <span class="caption-text" id="caption-text">Initializing Caesar cipher...</span>
+      </div>
+      <div class="tour-status" id="tour-status" style="display:none; align-items: center; gap: 8px; margin-left: 12px; background: rgba(30, 41, 59, 0.85); border: 1px solid var(--panel-border); border-radius: 999px; padding: 3px 10px; font-size: 11px;">
+        <span class="tour-badge" id="tour-badge" style="background: var(--accent); color: #020617; font-weight: 700; border-radius: 999px; padding: 1px 7px; font-size: 10px;">Milestone 1/5</span>
+        <span class="tour-msg" id="tour-msg" style="color: var(--muted); max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Ready for Tour</span>
+      </div>
+    </div>
+
+    <div class="controls-row">
+      <div class="left-controls">
+        <label for="preset-select" style="font-size: 12px; color: var(--muted); font-weight: 600;">Preset:</label>
+        <select id="preset-select">
+          <option value="0">"hello, world!" (+3 Encrypt) -> "khoor, zruog!"</option>
+          <option value="1">"xyz" (+2 Encrypt, Wrap-around) -> "zab"</option>
+          <option value="2">"khoor, zruog!" (-3 Decrypt) -> "hello, world!"</option>
+          <option value="3">"Python 3.12!" (+5 Encrypt) -> "Udymts 3.12!"</option>
+        </select>
+
+        <input type="text" id="custom-input" placeholder="Type custom message...">
+        <label for="shift-input" style="font-size: 12px; color: var(--muted); font-weight: 600;">Shift:</label>
+        <input type="number" id="shift-input" value="3" min="1" max="25">
+        <button class="btn" id="btn-toggle-mode">Mode: Encrypt</button>
+        <button class="btn" id="btn-apply-custom">Apply</button>
+      </div>
+
+      <div class="center-controls">
+        <button class="btn" id="btn-reset" title="Reset (R)">↺ Reset</button>
+        <button class="btn" id="btn-prev" title="Step Back (Left Arrow)">⏮ Prev</button>
+        <button class="btn btn-tour" id="btn-tour" title="Guided Audio Tour (Space)" style="background: #38bdf8; color: #0f172a; font-weight: 700; border-color: #38bdf8;">🎙️ Audio Tour</button>
+        <button class="btn btn-primary" id="btn-play" title="Silent Step Play">▶ Step Play</button>
+        <button class="btn" id="btn-next" title="Step Forward (Right Arrow)">Next ⏭</button>
+        <button class="btn btn-ghost" id="btn-mute" title="Toggle Voiceover (M)" style="font-size: 14px; padding: 5px 9px;">🔊</button>
+      </div>
+
+      <div class="right-controls">
+        <label for="speed-select" style="font-size: 12px; color: var(--muted); font-weight: 600;">Speed:</label>
+        <select id="speed-select">
+          <option value="1400">Slow (1.4s)</option>
+          <option value="850" selected>Normal (0.85s)</option>
+          <option value="400">Fast (0.4s)</option>
+        </select>
+      </div>
+    </div>
+  </footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <script>
+  (function(){
+    'use strict';
+
+    /* ---------- PYTHON SOURCE LINES ---------- */
+    const CODE_LINES = [
+      'def make_shifter(shift):',
+      '    def shift_char(ch):',
+      '        if "a" <= ch <= "z":',
+      '            return chr((ord(ch) - ord("a") + shift) % 26 + ord("a"))',
+      '        if "A" <= ch <= "Z":',
+      '            return chr((ord(ch) - ord("A") + shift) % 26 + ord("A"))',
+      '        return ch',
+      '    return shift_char',
+      'shifter = make_shifter(shift if mode == "encrypt" else -shift)',
+      'result = "".join(map(shifter, text))'
+    ];
+
+    /* ---------- SAFE TOKEN-BASED SYNTAX HIGHLIGHTER ---------- */
+    function escapeHtml(s) {
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function highlightPython(text) {
+      const pattern = /(".*?"|'.*?'|\b(?:def|return|while|if|not|elif|else|True|False|or|and|for|in|map)\b|\b(?:make_shifter|shift_char|ord|chr|shift|ch|shifter|mode|result|text)\b|<=|>=|!=|==|\+=|-=|\+|-|%|<|>|=)/g;
+      let result = '';
+      let lastIndex = 0;
+      let match;
+
+      while ((match = pattern.exec(text)) !== null) {
+        result += escapeHtml(text.slice(lastIndex, match.index));
+        const token = match[0];
+        const escapedToken = escapeHtml(token);
+
+        if (token.startsWith('"') || token.startsWith("'")) {
+          result += '<span class="str">' + escapedToken + '</span>';
+        } else if (/^(def|return|while|if|not|elif|else|True|False|or|and|for|in|map)$/.test(token)) {
+          result += '<span class="kw">' + escapedToken + '</span>';
+        } else if (/^(make_shifter|shift_char|ord|chr)$/.test(token)) {
+          result += '<span class="fn">' + escapedToken + '</span>';
+        } else if (/^(<=|>=|!=|==|\+=|-=|\+|-|%|<|>|=)$/.test(token)) {
+          result += '<span class="op">' + escapedToken + '</span>';
+        } else {
+          result += escapedToken;
+        }
+        lastIndex = pattern.lastIndex;
+      }
+      result += escapeHtml(text.slice(lastIndex));
+      return result;
+    }
+
+    const $codeDisplay = document.getElementById('code-display');
+    function initCodePanel() {
+      $codeDisplay.innerHTML = '';
+      CODE_LINES.forEach((line, idx) => {
+        const div = document.createElement('div');
+        div.className = 'code-line';
+        div.id = 'line-' + idx;
+
+        const ln = document.createElement('span');
+        ln.className = 'ln';
+        ln.textContent = String(idx);
+
+        const codeSpan = document.createElement('span');
+        codeSpan.className = 'code-text';
+        codeSpan.innerHTML = highlightPython(line);
+
+        div.appendChild(ln);
+        div.appendChild(codeSpan);
+        $codeDisplay.appendChild(div);
+      });
+    }
+    initCodePanel();
+
+    function highlightLines(lines) {
+      document.querySelectorAll('.code-line').forEach(el => el.classList.remove('active'));
+      if (!lines) return;
+      lines.forEach(l => {
+        const el = document.getElementById('line-' + l);
+        if (el) el.classList.add('active');
+      });
+    }
+
+    /* ---------- PRESETS DATA ---------- */
+    const PRESETS = [
+      { text: "hello, world!", shift: 3, mode: "encrypt" },
+      { text: "xyz", shift: 2, mode: "encrypt" },
+      { text: "khoor, zruog!", shift: 3, mode: "decrypt" },
+      { text: "Python 3.12!", shift: 5, mode: "encrypt" }
+    ];
+
+    /* ---------- SIMULATION GENERATOR ---------- */
+    function simulate(text, shift, mode) {
+      const frames = [];
+      const effectiveShift = mode === 'decrypt' ? -shift : shift;
+      let output = '';
+
+      function snap(lines, msg, charIdx, origChar, shiftedChar, ringIndex, mode, effectiveShift) {
+        frames.push({
+          lines: lines.slice(),
+          msg,
+          charIdx,
+          origChar,
+          shiftedChar,
+          ringIndex,
+          outputSoFar: output,
+          mode,
+          effectiveShift
+        });
+      }
+
+      snap([0, 7, 8], `Initialize Caesar shifter closure with ${mode.toUpperCase()} mode (shift = ${effectiveShift > 0 ? '+' : ''}${effectiveShift}).`, -1, null, null, -1, mode, effectiveShift);
+
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        let shifted = ch;
+        const isLower = ch >= 'a' && ch <= 'z';
+        const isUpper = ch >= 'A' && ch <= 'Z';
+
+        if (isLower) {
+          const code = ch.charCodeAt(0) - 97;
+          const wrapped = ((code + effectiveShift) % 26 + 26) % 26;
+          shifted = String.fromCharCode(wrapped + 97);
+          output += shifted;
+          snap([1, 2, 3], `Char '${ch}' (index ${code}): shift by ${effectiveShift} with % 26 wrap → '${shifted}' (index ${wrapped}).`, i, ch, shifted, wrapped, mode, effectiveShift);
+        } else if (isUpper) {
+          const code = ch.charCodeAt(0) - 65;
+          const wrapped = ((code + effectiveShift) % 26 + 26) % 26;
+          shifted = String.fromCharCode(wrapped + 65);
+          output += shifted;
+          snap([1, 4, 5], `Uppercase '${ch}' (index ${code}): shift by ${effectiveShift} with % 26 wrap → '${shifted}' (index ${wrapped}).`, i, ch, shifted, wrapped, mode, effectiveShift);
+        } else {
+          output += ch;
+          snap([1, 6], `Symbol '${ch}': non-alphabetic, preserved directly without shifting.`, i, ch, ch, -1, mode, effectiveShift);
+        }
+      }
+
+      snap([9], `${mode.toUpperCase()} complete! Final text: "${output}".`, -1, null, null, -1, mode, effectiveShift);
+      return frames;
+    }
+
+    /* ---------- THREE.JS SCENE SETUP ---------- */
+    const $canvas = document.getElementById('stage');
+    const renderer = new THREE.WebGLRenderer({ canvas: $canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize($canvas.clientWidth, $canvas.clientHeight);
+    renderer.shadowMap.enabled = true;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(35, $canvas.clientWidth / $canvas.clientHeight, 0.1, 100);
+
+    camera.position.set(0, 6.2, 11.0);
+    camera.lookAt(0, 1.2, 0);
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
+    dirLight.position.set(6, 14, 10);
+    dirLight.castShadow = true;
+    scene.add(dirLight);
+
+    const dialLight = new THREE.PointLight(0xfbbf24, 1.8, 8);
+    scene.add(dialLight);
+
+    // Floor Plate
+    const floorPlateGeo = new THREE.BoxGeometry(22, 0.2, 9);
+    const floorPlateMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.8 });
+    const floorPlate = new THREE.Mesh(floorPlateGeo, floorPlateMat);
+    floorPlate.position.y = -0.1;
+    scene.add(floorPlate);
+
+    function makeTextSprite(message, options) {
+      const opt = options || {};
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 256;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = opt.bg || 'transparent';
+      ctx.fillRect(0, 0, 256, 256);
+
+      ctx.font = opt.font || 'bold 110px sans-serif';
+      ctx.fillStyle = opt.color || '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(message, 128, 128);
+
+      const texture = new THREE.CanvasTexture(canvas);
+      const spriteMat = new THREE.SpriteMaterial({ map: texture, depthTest: false });
+      const sprite = new THREE.Sprite(spriteMat);
+      sprite.scale.set(opt.scale || 0.8, opt.scale || 0.8, 1);
+      return sprite;
+    }
+
+    // Circular Alphabet Dial Group
+    const dialGroup = new THREE.Group();
+    dialGroup.position.set(0, 1.5, -0.5);
+    scene.add(dialGroup);
+
+    // Ring Base
+    const ringGeo = new THREE.TorusGeometry(3.2, 0.12, 16, 64);
+    ringGeo.rotateX(Math.PI / 2);
+    const ringMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.3 });
+    const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+    dialGroup.add(ringMesh);
+
+    // 26 Letter Nodes on the Ring
+    const letterMeshes = [];
+    const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const radius = 3.2;
+
+    for (let i = 0; i < 26; i++) {
+      const angle = (i / 26) * Math.PI * 2 - Math.PI / 2;
+      const lx = Math.cos(angle) * radius;
+      const lz = Math.sin(angle) * radius;
+
+      const nodeGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.2, 16);
+      const nodeMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4 });
+      const node = new THREE.Mesh(nodeGeo, nodeMat);
+      node.position.set(lx, 0.1, lz);
+      dialGroup.add(node);
+
+      const sp = makeTextSprite(ALPHABET[i], { color: '#94a3b8', font: 'bold 100px monospace', scale: 0.55 });
+      sp.position.set(lx, 0.45, lz);
+      dialGroup.add(sp);
+
+      letterMeshes.push({ node, sp, angle, char: ALPHABET[i] });
+    }
+
+    // Dial Pointer Needle
+    const needleGeo = new THREE.ConeGeometry(0.2, 2.2, 16);
+    needleGeo.rotateX(Math.PI / 2);
+    needleGeo.translate(0, 0, 1.1);
+    const needleMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, emissive: 0xfbbf24, emissiveIntensity: 0.4 });
+    const needleMesh = new THREE.Mesh(needleGeo, needleMat);
+    needleMesh.position.y = 0.2;
+    dialGroup.add(needleMesh);
+
+    // Center Stage Chamber
+    const centerDisplaySprite = makeTextSprite('?', { color: '#38bdf8', font: 'bold 120px sans-serif', scale: 1.2 });
+    centerDisplaySprite.position.set(0, 0.9, 0);
+    dialGroup.add(centerDisplaySprite);
+
+    // Conveyor Output Plate (Front)
+    const outPlateGeo = new THREE.BoxGeometry(16, 0.12, 1.8);
+    const outPlateMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5 });
+    const outPlate = new THREE.Mesh(outPlateGeo, outPlateMat);
+    outPlate.position.set(0, 0.1, 2.8);
+    scene.add(outPlate);
+
+    const outTextSprite = makeTextSprite('', { color: '#22c55e', font: 'bold 80px monospace', scale: 2.0 });
+    outTextSprite.position.set(0, 0.7, 2.8);
+    scene.add(outTextSprite);
+
+    let currentConfig = PRESETS[0];
+    let simFrames = [];
+    let curFrameIdx = 0;
+    let isPlaying = false;
+    let playTimer = null;
+    let stepSpeed = 850;
+
+    function buildScene(cfg) {
+      document.getElementById('mode-label').textContent = cfg.mode.toUpperCase();
+      document.getElementById('shift-label').textContent = `SHIFT: ${cfg.shift > 0 ? '+' : ''}${cfg.shift}`;
+      document.getElementById('input-stream').textContent = `"${cfg.text}"`;
+
+      simFrames = simulate(cfg.text, cfg.shift, cfg.mode);
+      curFrameIdx = 0;
+      applyFrame(0, false);
+    }
+
+    /* ---------- FRAME APPLICATION ---------- */
+    const $stepBadge = document.getElementById('step-badge');
+    const $captionText = document.getElementById('caption-text');
+    const $outputStream = document.getElementById('output-stream');
+
+    function applyFrame(idx, animate) {
+      if (!simFrames || simFrames.length === 0) return;
+      curFrameIdx = Math.max(0, Math.min(idx, simFrames.length - 1));
+      const frame = simFrames[curFrameIdx];
+
+      $stepBadge.textContent = `STEP ${curFrameIdx + 1} / ${simFrames.length}`;
+      $captionText.textContent = frame.msg;
+
+      highlightLines(frame.lines);
+
+      $outputStream.innerHTML = frame.outputSoFar 
+        ? `<span class="cipher-text-badge">"${frame.outputSoFar}"</span>`
+        : '—';
+
+      outTextSprite.material.map = makeTextSprite(frame.outputSoFar, {
+        color: '#22c55e', font: 'bold 70px monospace', scale: 2.0
+      }).material.map;
+
+      // Update Center Chamber Letter
+      if (frame.origChar) {
+        centerDisplaySprite.material.map = makeTextSprite(frame.origChar, {
+          color: '#38bdf8', font: 'bold 120px monospace', scale: 1.2
+        }).material.map;
+      } else {
+        centerDisplaySprite.material.map = makeTextSprite('', { scale: 0.1 }).material.map;
+      }
+
+      // Reset Letter Nodes on Dial
+      letterMeshes.forEach(lm => {
+        lm.node.material.color.setHex(0x1e293b);
+        lm.sp.material.color.setHex(0x94a3b8);
+      });
+
+      // Update Dial Pointer Needle Angle
+      if (frame.ringIndex >= 0 && frame.ringIndex < 26) {
+        const targetAngle = (frame.ringIndex / 26) * Math.PI * 2 - Math.PI / 2;
+        needleMesh.rotation.y = -targetAngle + Math.PI / 2;
+        needleMesh.visible = true;
+
+        const targetNode = letterMeshes[frame.ringIndex];
+        targetNode.node.material.color.setHex(0x22c55e); // Green Match
+        targetNode.sp.material.color.setHex(0x22c55e);
+
+        dialLight.position.set(Math.cos(targetAngle) * 3.2, 2.5, Math.sin(targetAngle) * 3.2 - 0.5);
+      } else {
+        needleMesh.visible = false;
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    /* ---------- PLAYBACK CONTROLS ---------- */
+    const $btnPlay = document.getElementById('btn-play');
+    const $btnPrev = document.getElementById('btn-prev');
+    const $btnNext = document.getElementById('btn-next');
+    const $btnReset = document.getElementById('btn-reset');
+    const $speedSelect = document.getElementById('speed-select');
+    const $presetSelect = document.getElementById('preset-select');
+    const $customInput = document.getElementById('custom-input');
+    const $shiftInput = document.getElementById('shift-input');
+    const $btnToggleMode = document.getElementById('btn-toggle-mode');
+    const $btnApplyCustom = document.getElementById('btn-apply-custom');
+
+    let customMode = 'encrypt';
+
+    $btnToggleMode.addEventListener('click', () => {
+      customMode = customMode === 'encrypt' ? 'decrypt' : 'encrypt';
+      $btnToggleMode.textContent = `Mode: ${customMode.charAt(0).toUpperCase() + customMode.slice(1)}`;
+    });
+
+    function stopPlay() {
+      isPlaying = false;
+      if (playTimer) clearTimeout(playTimer);
+      $btnPlay.textContent = '▶ Step Play';
+      $btnPlay.classList.remove('btn-primary');
+    }
+
+    function tick() {
+      if (!isPlaying) return;
+      if (curFrameIdx < simFrames.length - 1) {
+        applyFrame(curFrameIdx + 1, true);
+        playTimer = setTimeout(tick, stepSpeed);
+      } else {
+        stopPlay();
+      }
+    }
+
+    function startPlay() {
+      stopTour();
+      if (curFrameIdx >= simFrames.length - 1) {
+        applyFrame(0, false);
+      }
+      isPlaying = true;
+      $btnPlay.textContent = '⏸ Pause';
+      $btnPlay.classList.add('btn-primary');
+      playTimer = setTimeout(tick, stepSpeed);
+    }
+
+    $btnPlay.addEventListener('click', () => {
+      if (isPlaying) stopPlay();
+      else startPlay();
+    });
+
+    $btnNext.addEventListener('click', () => {
+      stopTour();
+      stopPlay();
+      if (curFrameIdx < simFrames.length - 1) applyFrame(curFrameIdx + 1, true);
+    });
+
+    $btnPrev.addEventListener('click', () => {
+      stopTour();
+      stopPlay();
+      if (curFrameIdx > 0) applyFrame(curFrameIdx - 1, true);
+    });
+
+    $btnReset.addEventListener('click', () => {
+      stopTour();
+      stopPlay();
+      applyFrame(0, false);
+      updateTourStatusUI(0, false);
+    });
+
+    $speedSelect.addEventListener('change', () => {
+      stepSpeed = parseInt($speedSelect.value, 10) || 850;
+    });
+
+    $presetSelect.addEventListener('change', () => {
+      stopTour();
+      stopPlay();
+      const idx = parseInt($presetSelect.value, 10);
+      currentConfig = PRESETS[idx];
+      buildScene(currentConfig);
+      updateTourStatusUI(0, false);
+    });
+
+    /* ---------- GUIDED AUDIO TOUR CONTROLLER ---------- */
+    const $btnTour = document.getElementById('btn-tour');
+    const $btnMute = document.getElementById('btn-mute');
+    const $tourStatus = document.getElementById('tour-status');
+    const $tourBadge = document.getElementById('tour-badge');
+    const $tourMsg = document.getElementById('tour-msg');
+
+    let isTourActive = false;
+    let isMuted = false;
+    let currentAudio = null;
+    let tourCueTimers = [];
+    let tourToken = 0;
+    let currentMilestoneIdx = 0;
+
+    const WALKTHROUGHS = {
+    preset0: {
+      name: 'hello, world! (shift +3)',
+      match: function(input) {
+        return input && input.text === 'hello, world!' && input.shift === 3;
+      },
+      milestones: [
+        {
+          id: 'clip_01_setup',
+          file: 'audio/clip_01_setup.mp3',
+          title: 'Setup & Alphabet Ring Configuration',
+          startIdx: 0,
+          endIdx: 0,
+          cues: [
+            { time: 0.0, frameIdx: 0 }
+          ]
+        },
+        {
+          id: 'clip_02_first_letters',
+          file: 'audio/clip_02_first_letters.mp3',
+          title: 'Shifting First Word Characters',
+          startIdx: 1,
+          endIdx: 5,
+          cues: [
+            { time: 0.0, frameIdx: 1 },
+            { time: 4.5, frameIdx: 2 },
+            { time: 9.0, frameIdx: 3 },
+            { time: 13.5, frameIdx: 5 }
+          ]
+        },
+        {
+          id: 'clip_03_non_alpha_symbols',
+          file: 'audio/clip_03_non_alpha_symbols.mp3',
+          title: 'Preserving Punctuation & Whitespace',
+          startIdx: 6,
+          endIdx: 7,
+          cues: [
+            { time: 0.0, frameIdx: 6 },
+            { time: 7.0, frameIdx: 7 }
+          ]
+        },
+        {
+          id: 'clip_04_second_word_and_wrap',
+          file: 'audio/clip_04_second_word_and_wrap.mp3',
+          title: 'Shifting Second Word Characters',
+          startIdx: 8,
+          endIdx: 12,
+          cues: [
+            { time: 0.0, frameIdx: 8 },
+            { time: 4.5, frameIdx: 9 },
+            { time: 9.0, frameIdx: 10 },
+            { time: 13.5, frameIdx: 12 }
+          ]
+        },
+        {
+          id: 'clip_05_completion',
+          file: 'audio/clip_05_completion.mp3',
+          title: 'Encryption Complete: Ciphertext Produced',
+          startIdx: 13,
+          endIdx: 14,
+          cues: [
+            { time: 0.0, frameIdx: 13 },
+            { time: 5.0, frameIdx: 14 }
+          ]
+        }
+      ]
+    }
+  };
+
+    function clearTourTimers() {
+      tourCueTimers.forEach(t => clearTimeout(t));
+      tourCueTimers = [];
+    }
+
+    function stopTourAudio() {
+      clearTourTimers();
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.onended = null;
+        currentAudio.ontimeupdate = null;
+        currentAudio.onerror = null;
+        currentAudio = null;
+      }
+    }
+
+    function stopTour() {
+      isTourActive = false;
+      stopTourAudio();
+      tourToken++;
+      if ($btnTour) {
+        $btnTour.textContent = '🎙️ Audio Tour';
+        $btnTour.classList.remove('active');
+        $btnTour.style.background = '#38bdf8';
+        $btnTour.style.color = '#0f172a';
+      }
+    }
+
+    function getActiveWalkthrough() {
+      for (const k in WALKTHROUGHS) {
+        if (WALKTHROUGHS[k].match(currentConfig)) return WALKTHROUGHS[k];
+      }
+      return null;
+    }
+
+    function updateTourStatusUI(mIdx, isFinished) {
+      const wt = getActiveWalkthrough();
+      if (!wt) {
+        if ($tourStatus) $tourStatus.style.display = 'none';
+        return;
+      }
+      if ($tourStatus) $tourStatus.style.display = 'inline-flex';
+      const totalM = wt.milestones.length;
+      if (isFinished || curFrameIdx >= simFrames.length - 1) {
+        if ($tourBadge) $tourBadge.textContent = 'Complete';
+        if ($tourMsg) $tourMsg.textContent = 'Guided tour complete!';
+      } else if (mIdx !== undefined && wt.milestones[mIdx]) {
+        if ($tourBadge) $tourBadge.textContent = 'Milestone ' + (mIdx + 1) + '/' + totalM;
+        if ($tourMsg) $tourMsg.textContent = isMuted ? (wt.milestones[mIdx].title + ' (Muted)') : wt.milestones[mIdx].title;
+      }
+    }
+
+    function startMilestone(mIdx) {
+      const wt = getActiveWalkthrough();
+      if (!wt || mIdx >= wt.milestones.length) {
+        stopTour();
+        updateTourStatusUI(undefined, true);
+        return;
+      }
+      currentMilestoneIdx = mIdx;
+      const m = wt.milestones[mIdx];
+      updateTourStatusUI(mIdx, false);
+
+      const thisToken = ++tourToken;
+      stopTourAudio();
+
+      if (isMuted) {
+        runSilentMilestone(m, thisToken, mIdx);
+        return;
+      }
+
+      try {
+        const audio = new Audio(m.file);
+        currentAudio = audio;
+
+        let appliedCueIndex = -1;
+        audio.ontimeupdate = () => {
+          if (thisToken !== tourToken || !isTourActive) return;
+          const ct = audio.currentTime;
+          for (let i = m.cues.length - 1; i >= 0; i--) {
+            if (ct >= m.cues[i].time) {
+              if (appliedCueIndex !== i) {
+                appliedCueIndex = i;
+                applyFrame(m.cues[i].frameIdx, true);
+              }
+              break;
+            }
+          }
+        };
+
+        audio.onended = () => {
+          if (thisToken !== tourToken || !isTourActive) return;
+          if (mIdx + 1 < wt.milestones.length) {
+            startMilestone(mIdx + 1);
+          } else {
+            stopTour();
+            updateTourStatusUI(undefined, true);
+          }
+        };
+
+        audio.onerror = () => {
+          console.warn('Audio playback error, falling back to silent step for milestone:', m.id);
+          runSilentMilestone(m, thisToken, mIdx);
+        };
+
+        applyFrame(m.cues[0].frameIdx, true);
+
+        const playPromise = audio.play();
+        if (playPromise) {
+          playPromise.catch(err => {
+            console.warn('Audio play restricted or failed, falling back to silent milestone:', err);
+            runSilentMilestone(m, thisToken, mIdx);
+          });
+        }
+      } catch (e) {
+        console.warn('Audio construction failed:', e);
+        runSilentMilestone(m, thisToken, mIdx);
+      }
+    }
+
+    function runSilentMilestone(m, token, mIdx) {
+      const wt = getActiveWalkthrough();
+      clearTourTimers();
+      m.cues.forEach((cue, i) => {
+        const delay = (i === 0) ? 0 : (cue.time * 1000);
+        const t = setTimeout(() => {
+          if (token !== tourToken || !isTourActive) return;
+          applyFrame(cue.frameIdx, true);
+          if (i === m.cues.length - 1) {
+            const nextDelay = 1500;
+            const tNext = setTimeout(() => {
+              if (token !== tourToken || !isTourActive) return;
+              if (wt && mIdx + 1 < wt.milestones.length) {
+                startMilestone(mIdx + 1);
+              } else {
+                stopTour();
+                updateTourStatusUI(undefined, true);
+              }
+            }, nextDelay);
+            tourCueTimers.push(tNext);
+          }
+        }, delay);
+        tourCueTimers.push(t);
+      });
+    }
+
+    function startTour() {
+      stopPlay();
+      const wt = getActiveWalkthrough();
+      if (!wt) {
+        alert('Guided Audio Tour is available for Preset 1 (default preset).');
+        return;
+      }
+      isTourActive = true;
+      if ($btnTour) {
+        $btnTour.textContent = '⏸ Pause Tour';
+        $btnTour.classList.add('active');
+        $btnTour.style.background = '#e2e8f0';
+        $btnTour.style.color = '#0f172a';
+      }
+      if (curFrameIdx >= simFrames.length - 1) {
+        applyFrame(0, false);
+      }
+      let startM = 0;
+      for (let i = 0; i < wt.milestones.length; i++) {
+        if (curFrameIdx >= wt.milestones[i].startIdx && curFrameIdx <= wt.milestones[i].endIdx) {
+          startM = i;
+          break;
+        }
+      }
+      startMilestone(startM);
+    }
+
+    $btnTour.addEventListener('click', () => {
+      if (isTourActive) stopTour();
+      else startTour();
+    });
+
+    $btnMute.addEventListener('click', () => {
+      isMuted = !isMuted;
+      $btnMute.textContent = isMuted ? '🔇' : '🔊';
+      $btnMute.title = isMuted ? 'Voiceover Muted (Silent Mode)' : 'Voiceover Enabled';
+      if (isTourActive) {
+        startMilestone(currentMilestoneIdx);
+      }
+    });
+
+    $btnApplyCustom.addEventListener('click', () => {
+      const val = $customInput.value.trim();
+      const shiftVal = parseInt($shiftInput.value, 10) || 3;
+      if (val) {
+        stopPlay();
+        currentConfig = { text: val, shift: shiftVal, mode: customMode };
+        buildScene(currentConfig);
+      }
+    });
+
+    $customInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') $btnApplyCustom.click();
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (document.activeElement === $customInput || document.activeElement === $shiftInput) return;
+      if (e.code === 'Space') {
+      e.preventDefault();
+      if (getActiveWalkthrough()) {
+        $btnTour.click();
+      } else {
+        $btnPlay.click();
+      }
+    } else if (e.code === 'KeyM') {
+      e.preventDefault();
+      $btnMute.click();
+    } else if (e.code === 'ArrowRight') {
+        e.preventDefault();
+        $btnNext.click();
+      } else if (e.code === 'ArrowLeft') {
+        e.preventDefault();
+        $btnPrev.click();
+      } else if (e.code === 'KeyR') {
+        e.preventDefault();
+        $btnReset.click();
+      }
+    });
+
+    const $btnToggleCode = document.getElementById('btn-toggle-code');
+    const $codeToggleLabel = document.getElementById('code-toggle-label');
+    const $codePanel = document.getElementById('code-panel');
+    let isCodeVisible = true;
+
+    $btnToggleCode.addEventListener('click', () => {
+      isCodeVisible = !isCodeVisible;
+      if (isCodeVisible) {
+        $codePanel.classList.remove('hidden');
+        $codeToggleLabel.textContent = 'Hide Code';
+      } else {
+        $codePanel.classList.add('hidden');
+        $codeToggleLabel.textContent = 'Show Code';
+      }
+      onWindowResize();
+    });
+
+    const $legendCard = document.getElementById('legend-card');
+    document.getElementById('legend-toggle').addEventListener('click', () => {
+      $legendCard.classList.toggle('collapsed');
+    });
+
+    let isDragging = false;
+    let prevMouseX = 0;
+    let currentYaw = 0;
+
+    $canvas.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      prevMouseX = e.clientX;
+    });
+
+    window.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const deltaX = e.clientX - prevMouseX;
+      prevMouseX = e.clientX;
+
+      currentYaw -= deltaX * 0.005;
+      currentYaw = Math.max(-0.45, Math.min(0.45, currentYaw));
+
+      const dist = 11.0;
+      camera.position.x = Math.sin(currentYaw) * dist;
+      camera.position.z = Math.cos(currentYaw) * dist;
+      camera.lookAt(0, 1.2, 0);
+      renderer.render(scene, camera);
+    });
+
+    function onWindowResize() {
+      const container = document.getElementById('stage-container');
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+      renderer.render(scene, camera);
+    }
+    window.addEventListener('resize', onWindowResize);
+
+    function animateLoop() {
+      requestAnimationFrame(animateLoop);
+      renderer.render(scene, camera);
+    }
+    animateLoop();
+
+    buildScene(currentConfig);
+
+  })();
+  </script>
+</body>
+</html>

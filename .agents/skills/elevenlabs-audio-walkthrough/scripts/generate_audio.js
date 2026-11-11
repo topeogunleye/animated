@@ -96,9 +96,12 @@ export function parseScriptMarkdown(scriptPath) {
     if (line.startsWith('|') && line.endsWith('|')) {
       const parts = line.split('|').map(p => p.trim()).slice(1, -1);
       if (!inTable) {
-        // Check header row
+        // Check header row: prioritize explicit 'filename' or 'file' before generic 'clip' / 'id'
         const lower = parts.map(p => p.toLowerCase());
-        fileCol = lower.findIndex(p => p.includes('file') || p.includes('clip') || p.includes('id'));
+        fileCol = lower.findIndex(p => p.includes('filename') || p.includes('file'));
+        if (fileCol === -1) {
+          fileCol = lower.findIndex(p => p.includes('clip') || p.includes('id'));
+        }
         textCol = lower.findIndex(p => p.includes('spoken') || p.includes('text') || p.includes('narration') || p.includes('script'));
         titleCol = lower.findIndex(p => p.includes('title') || p.includes('segment') || p.includes('milestone'));
         if (fileCol !== -1 && textCol !== -1) {
@@ -158,26 +161,36 @@ export async function generateClips({
     }
   }
 
-  // 1. Fetch available voices
-  console.log('Connecting to ElevenLabs API to resolve voice...');
-  const voiceRes = await fetch('https://api.elevenlabs.io/v1/voices', {
-    headers: {
-      'xi-api-key': apiKey,
-      'Accept': 'application/json'
+  // 1. Fetch available voices (with fallback for scoped/restricted API keys)
+  let selectedVoice = null;
+  const KNOWN_VOICES = {
+    lauren: { name: 'Lauren - Friendly, Comforting and Soft', voice_id: 'DODLEQrClDo8wCz460ld' },
+    alice: { name: 'Alice - Clear, Engaging and Professional', voice_id: 'Xb7hH8MSUJpSbSDYk0k2' }
+  };
+
+  try {
+    const voiceRes = await fetch('https://api.elevenlabs.io/v1/voices', {
+      headers: {
+        'xi-api-key': apiKey,
+        'Accept': 'application/json'
+      }
+    });
+
+    if (voiceRes.ok) {
+      const voiceData = await voiceRes.json();
+      const voices = voiceData.voices || [];
+      selectedVoice = voices.find(v => v.name && v.name.toLowerCase().includes(voiceName.toLowerCase())) ||
+        voices.find(v => v.name && v.name.toLowerCase().includes('alice')) ||
+        voices[0];
+    } else {
+      // Scoped keys may lack voices_read permission
+      const lowerReq = voiceName.toLowerCase();
+      selectedVoice = KNOWN_VOICES[lowerReq] || KNOWN_VOICES['lauren'];
+      console.log(`Note: Voice catalog endpoint returned ${voiceRes.status}; using direct ID for "${selectedVoice.name}" (${selectedVoice.voice_id})`);
     }
-  });
-
-  if (!voiceRes.ok) {
-    const errText = await voiceRes.text();
-    console.error(`ElevenLabs API Error (${voiceRes.status}): ${errText}`);
-    process.exit(1);
+  } catch (err) {
+    selectedVoice = KNOWN_VOICES['lauren'];
   }
-
-  const voiceData = await voiceRes.json();
-  const voices = voiceData.voices || [];
-  const selectedVoice = voices.find(v => v.name && v.name.toLowerCase().includes(voiceName.toLowerCase())) ||
-    voices.find(v => v.name && v.name.toLowerCase().includes('alice')) ||
-    voices[0];
 
   if (!selectedVoice) {
     console.error(`Could not locate voice '${voiceName}'. Available: ${voices.map(v => v.name).join(', ')}`);

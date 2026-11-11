@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tower of Hanoi: recursion, step by step</title>
+<style>
+:root{--bg:#fff;--fg:#1f2430;--mut:#6a7183;--card:#f5f6f9;--line:#d5d9e3;--acc:#2f6fed;--hi:#fff0b8;--err:#c4262e;
+box-sizing:border-box;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14161c;--fg:#e8eaf0;--mut:#9aa1b4;--card:#1d2028;--line:#343948;--acc:#6b9bff;--hi:#4a3f12;--err:#ff7b81;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#14161c;--fg:#e8eaf0;--mut:#9aa1b4;--card:#1d2028;--line:#343948;--acc:#6b9bff;--hi:#4a3f12;--err:#ff7b81;color-scheme:dark}
+*,*:before,*:after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1200px;margin:0 auto;padding:14px 14px 28px}
+h1{font-size:20px;margin:0 0 10px}
+.top{display:grid;gap:12px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:900px){.top{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);align-items:start}#stage{height:460px!important}}
+#stage{height:clamp(260px,45vh,460px);width:100%;border:1px solid var(--line);border-radius:12px;background:var(--card);overflow:hidden}
+#stage canvas{display:block}
+#cap{font-size:17px;font-weight:600;line-height:1.45;min-height:2.9em;margin:12px 2px 8px}
+#cap.err{color:var(--err)}
+.ctl{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+button,select{font:inherit;font-size:14px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+button{cursor:pointer}button:disabled{opacity:.4;cursor:default}
+#play{background:var(--acc);color:#fff;border-color:var(--acc);min-width:76px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;min-width:0}
+.code h3{font:600 13px/1.4 system-ui,sans-serif;margin:0 0 8px;color:var(--fg)}
+.key{font-weight:400;font-size:12px;margin-left:6px;color:var(--mut)}
+#code{font:13px/1.7 ui-monospace,Menlo,Consolas,monospace;overflow-x:auto}
+.ln{white-space:pre;padding:0 8px 0 0;border-radius:4px}
+.ln:before{content:attr(data-n);display:inline-block;width:2.2em;margin-right:8px;text-align:right;color:var(--mut)}
+.ln.on{background:var(--hi)}
+.ln.wait{outline:1.5px dashed var(--mut);outline-offset:-1px}
+</style>
+</head>
+<body>
+<main>
+<h1>Tower of Hanoi: recursion, step by step</h1>
+<div class="top">
+ <div>
+  <div id="stage"></div>
+  <p id="cap" aria-live="polite"></p>
+  <div class="ctl">
+   <button id="back">Back</button><button id="play">Play</button><button id="next">Next</button><button id="reset">Reset</button>
+   <select id="preset" aria-label="Input">
+    <option value="3">3 disks (classic)</option><option value="1">1 disk</option><option value="0">0 disks (base case only)</option><option value="4">4 disks</option><option value="-1">n = −1 (error branch)</option>
+   </select>
+   <select id="speed" aria-label="Speed"><option value="0">Slow</option><option value="1" selected>Normal</option><option value="2">Fast</option><option value="3">Very fast</option></select>
+  </div>
+ </div>
+ <div class="card code"><h3>Code<span class="key">yellow = running, dashed = waiting</span></h3><div id="code"></div></div>
+</div>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const SRC = String.raw`def hanoi(n, source, target, helper):
+    if n < 0:
+        raise ValueError("n must be non-negative")
+    if n == 0:
+        return []
+    first_part = hanoi(n - 1, source, helper, target)
+    middle_part = [(source, target)]
+    last_part = hanoi(n - 1, helper, target, source)
+    return first_part + middle_part + last_part
+print(hanoi(3, "A", "C", "B"))`.split('\n');
+
+// SIM_START
+function simulate(N){
+  const frames=[],stack=[],pegs={A:[],B:[],C:[]};
+  for(let d=N;d>=1;d--)pegs.A.push(d);
+  const total=N>0?Math.pow(2,N)-1:0;
+  const snap=(lines,msg,x={})=>frames.push({lines,msg,pegs:{A:[...pegs.A],B:[...pegs.B],C:[...pegs.C]},stack:stack.map(c=>({...c})),kind:x.kind||'step',mover:x.mover||0,err:!!x.err,hold:x.hold||1});
+  const disks=k=>k+' disk'+(k===1?'':'s');
+  const moves=k=>k+' move'+(k===1?'':'s');
+  const call=c=>`hanoi(${c.n}, ${c.s}, ${c.t}, ${c.h})`;
+  function hanoi(n,s,t,h){
+    const par=stack[stack.length-1];
+    const me={n,s,t,h,at:null};stack.push(me);
+    const to=par?call(par):'print';
+    if(n<0){
+      snap([0,1],`Call ${call(me)}: n is negative.`,{kind:'enter'});
+      snap([2],'ValueError: n must be non-negative, so the program stops.',{kind:'err',err:true});
+      throw 'neg';
+    }
+    if(n===0){
+      snap([0,1,3],`Call ${call(me)}: n is 0, so there is nothing to move.`,{kind:'enter'});
+      snap([4],`Return [] to ${to}.`,{kind:'ret'});
+      stack.pop();return [];
+    }
+    snap([0,1,3],`Call ${call(me)} to move ${disks(n)} from ${s} to ${t}.`,{kind:'enter'});
+    me.at=5;
+    const first=hanoi(n-1,s,h,t);
+    me.at=null;
+    if(pegs[s][pegs[s].length-1]!==n)throw new Error('simulation out of sync');
+    pegs[s].pop();pegs[t].push(n);
+    snap([6],`Move disk ${n} from ${s} to ${t}.`,{kind:'move',mover:n,hold:1.8});
+    const middle=[[s,t]];
+    me.at=7;
+    const last=hanoi(n-1,h,t,s);
+    me.at=null;
+    const res=first.concat(middle,last);
+    snap([8],`Return ${moves(res.length)} to ${to}.`,{kind:'ret'});
+    stack.pop();return res;
+  }
+  snap([9],N>0?`Goal: move ${disks(N)} from A to C.`:`Run hanoi(${N}, A, C, B).`,{kind:'start'});
+  let out=[];
+  try{
+    out=hanoi(N,'A','C','B');
+    snap([9],out.length?`print shows all ${moves(out.length)}.`:'print shows an empty list.',{kind:'end'});
+  }catch(e){if(e!=='neg')throw e;}
+  return {frames,total,out};
+}
+// SIM_END
+
+const $=id=>document.getElementById(id);
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const PAL=['#e5484d','#f5a524','#30a46c','#3e63dd','#8e4ec6','#12a594'];
+const PX={A:-4,B:0,C:4},LIFT=4.1,SPEEDS=[[2000,.1],[1300,.13],[700,.2],[250,.4]];
+let N=3,sim=simulate(N),FR=sim.frames,idx=0,playing=false,timer=null,ms=1300,K=.13;
+
+const printLine=n=>`print(hanoi(${n}, "A", "C", "B"))`;
+const codeEls=SRC.map((s,k)=>{const d=document.createElement('div');d.className='ln';d.dataset.n=k+1;d.textContent=s||' ';$('code').appendChild(d);return d;});
+codeEls[codeEls.length-1].textContent=printLine(N);
+
+const stage=$('stage');
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+stage.appendChild(renderer.domElement);
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(40,1,.1,100);
+scene.add(new THREE.AmbientLight(0xffffff,.8));
+const dl=new THREE.DirectionalLight(0xffffff,.7);dl.position.set(4,10,9);scene.add(dl);
+const pivot=new THREE.Group();scene.add(pivot);
+let root,disks=[],blocks=[],pegLab={};
+const tc=new Map();
+function tex(text,color,w,h,fs){const k=[text,color,w,h,fs].join('|');let t=tc.get(k);if(t)return t;
+  const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');
+  x.fillStyle=color;x.font='600 '+fs+'px system-ui,-apple-system,"Segoe UI",sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText(text,w/2,h/2+2);
+  t=new THREE.CanvasTexture(c);tc.set(k,t);return t;}
+function spr(w,h,sw,sh){const s=new THREE.Sprite(new THREE.SpriteMaterial({transparent:true,depthTest:false}));s.scale.set(sw,sh,1);s.userData={w,h};return s;}
+function lab(s,text,color,fs){s.material.map=tex(text,color,s.userData.w,s.userData.h,fs);s.material.needsUpdate=true;}
+
+function build(){
+  if(root)pivot.remove(root);
+  tc.clear();disks=[];blocks=[];pegLab={};
+  root=new THREE.Group();root.position.x=-3.5;pivot.add(root);
+  const lineC=css('--line');
+  const plate=new THREE.Mesh(new THREE.BoxGeometry(11,.3,3),new THREE.MeshLambertMaterial({color:lineC}));plate.position.set(0,-.15,0);root.add(plate);
+  ['A','B','C'].forEach(p=>{
+    const peg=new THREE.Mesh(new THREE.CylinderGeometry(.1,.1,3.3,16),new THREE.MeshLambertMaterial({color:css('--mut')}));peg.position.set(PX[p],1.65,0);root.add(peg);
+    const s=spr(512,80,4.6,.72);s.position.set(PX[p],-.8,.6);root.add(s);pegLab[p]=s;
+  });
+  for(let d=1;d<=Math.max(N,0);d++){
+    const r=.45+.3*d;
+    const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,.46,40),new THREE.MeshLambertMaterial({color:PAL[(d-1)%6]}));
+    const n=spr(64,64,.5,.5);n.position.set(0,0,r+.02);lab(n,String(d),'#fff',44);m.add(n);
+    m.userData={peg:'A',phase:2,tx:PX.A,ty:.23};m.position.set(PX.A,.23,0);root.add(m);disks[d]=m;
+  }
+  const t=spr(512,64,3.4,.42);t.position.set(10,4.5,0);lab(t,'call stack',css('--mut'),32);root.add(t);
+  for(let i=0;i<6;i++){
+    const b=new THREE.Mesh(new THREE.BoxGeometry(5.2,.7,.6),new THREE.MeshLambertMaterial({color:lineC}));
+    b.position.set(10,.4+i*.85,0);b.scale.y=0;
+    const s=spr(512,64,5,.625);s.position.z=.35;b.add(s);b.userData={s:0,sp:s};root.add(b);blocks.push(b);
+  }
+}
+
+function show(i,instant){
+  idx=Math.max(0,Math.min(FR.length-1,i));const f=FR[idx];
+  codeEls.forEach((e,k)=>{e.classList.toggle('on',f.lines.includes(k));e.classList.toggle('wait',f.stack.slice(0,-1).some(c=>c.at===k));});
+  const cap=$('cap');cap.textContent=f.msg;cap.classList.toggle('err',f.err);
+  $('back').disabled=idx===0;$('next').disabled=idx===FR.length-1;
+  const top=f.stack[f.stack.length-1];
+  for(let d=1;d<disks.length;d++){
+    const m=disks[d],u=m.userData;let peg='A',lv=0;
+    for(const p of 'ABC'){const k=f.pegs[p].indexOf(d);if(k>=0){peg=p;lv=k;}}
+    u.tx=PX[peg];u.ty=.23+lv*.5;
+    if(instant){m.position.set(u.tx,u.ty,0);u.phase=2;}
+    else if(peg!==u.peg)u.phase=0;
+    u.peg=peg;
+    m.material.emissive.setHex(f.mover===d?0x8a6a00:0);
+  }
+  const role=top?{[top.s]:['source','#4c8dff'],[top.t]:['target','#2eb67d'],[top.h]:['helper',css('--mut')]}:{};
+  ['A','B','C'].forEach(p=>lab(pegLab[p],role[p]?p+' · '+role[p][0]:p,role[p]?role[p][1]:css('--mut'),40));
+  blocks.forEach((b,k)=>{
+    const e=f.stack[k];b.userData.want=e?1:0;
+    if(e){const isTop=k===f.stack.length-1;
+      b.material.color.set(isTop?(f.err?'#c4262e':f.kind==='ret'?'#8e4ec6':'#2f6fed'):css('--line'));
+      lab(b.userData.sp,`hanoi(${e.n}, ${e.s}, ${e.t}, ${e.h})`,isTop?'#fff':css('--fg'),40);}
+    if(instant)b.userData.s=b.userData.want;
+  });
+}
+
+function anim(){
+  disks.forEach(m=>{if(!m)return;const u=m.userData,p=m.position;
+    if(u.phase===0){p.y+=(LIFT-p.y)*K;if(Math.abs(LIFT-p.y)<.06)u.phase=1;}
+    else if(u.phase===1){p.y+=(LIFT-p.y)*K;p.x+=(u.tx-p.x)*K;if(Math.abs(u.tx-p.x)<.06)u.phase=2;}
+    else{p.x+=(u.tx-p.x)*K;p.y+=(u.ty-p.y)*K;}
+  });
+  blocks.forEach(b=>{const u=b.userData;u.s+=((u.want||0)-u.s)*.25;b.scale.y=Math.max(u.s,.001);u.sp.visible=u.s>.6;});
+}
+function loop(t){requestAnimationFrame(loop);pivot.rotation.y=Math.sin(t/2000)*.12;anim();renderer.render(scene,camera);}
+
+function resize(){
+  const w=stage.clientWidth,h=stage.clientHeight;if(!w||!h)return;
+  renderer.setSize(w,h);camera.aspect=w/h;
+  const tv=Math.tan(20*Math.PI/180),d=Math.max(10/(tv*camera.aspect),5.2/tv)*1.04;
+  camera.position.set(0,4.2,d);camera.lookAt(0,2.1,0);camera.updateProjectionMatrix();
+}
+window.addEventListener('resize',resize);
+
+function pause(){playing=false;clearTimeout(timer);$('play').textContent='Play';}
+function tick(){if(!playing)return;if(idx>=FR.length-1){pause();return;}show(idx+1);timer=setTimeout(tick,ms*FR[idx].hold);}
+function play(){if(idx>=FR.length-1)show(0,true);playing=true;$('play').textContent='Pause';timer=setTimeout(tick,350);}
+$('play').onclick=()=>playing?pause():play();
+$('next').onclick=()=>{pause();show(idx+1);};
+$('back').onclick=()=>{pause();show(idx-1);};
+$('reset').onclick=()=>{pause();show(0,true);};
+$('speed').onchange=e=>{[ms,K]=SPEEDS[+e.target.value];};
+$('preset').onchange=e=>{pause();N=+e.target.value;sim=simulate(N);FR=sim.frames;codeEls[codeEls.length-1].textContent=printLine(N);build();show(0,true);};
+function rebuild(){const i=idx;build();show(i,true);}
+try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',rebuild);}catch(e){}
+new MutationObserver(rebuild).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+
+build();resize();show(0,true);requestAnimationFrame(loop);
+</script>
+</body>
+</html>

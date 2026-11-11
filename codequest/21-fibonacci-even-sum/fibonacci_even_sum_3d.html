@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CodeQuest Q21 — Fibonacci Sequence Even Sum in 3D</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --panel: #0f172a;
+      --panel-border: #1e293b;
+      --ink: #f8fafc;
+      --muted: #94a3b8;
+      --accent-cyan: #38bdf8;
+      --accent-amber: #fbbf24;
+      --accent-green: #22c55e;
+      --accent-red: #ef4444;
+      --accent-purple: #c084fc;
+      --code-bg: #0b1120;
+      --code-hl: rgba(56, 189, 248, 0.22);
+      --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      --font-code: "JetBrains Mono", Consolas, "Courier New", monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font-ui);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+    }
+
+    header {
+      background: var(--panel);
+      border-bottom: 1px solid var(--panel-border);
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 10;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .badge {
+      background: linear-gradient(135deg, #0284c7, #38bdf8);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: var(--muted);
+      margin-left: 8px;
+      font-weight: 400;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .main-layout {
+      flex: 1;
+      display: flex;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #viewport-container {
+      flex: 1;
+      position: relative;
+      height: 100%;
+    }
+
+    #webgl-canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .stage-hud {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      padding: 12px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .hud-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+
+    .hud-val {
+      font-size: 18px;
+      font-weight: 700;
+      font-family: var(--font-code);
+      color: var(--accent-cyan);
+    }
+
+    .hud-sub {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .legend-card {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 11px;
+      z-index: 5;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+    }
+
+    .legend-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+    }
+
+    .side-panel {
+      width: 440px;
+      background: var(--panel);
+      border-left: 1px solid var(--panel-border);
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      z-index: 10;
+    }
+
+    .panel-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--panel-border);
+      background: #0b1120;
+    }
+
+    .panel-tab {
+      flex: 1;
+      padding: 10px 14px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s ease;
+    }
+
+    .panel-tab.active {
+      color: var(--accent-cyan);
+      border-bottom-color: var(--accent-cyan);
+      background: rgba(56, 189, 248, 0.05);
+    }
+
+    .code-container {
+      flex: 1;
+      overflow-y: auto;
+      background: var(--code-bg);
+      padding: 14px 0;
+      font-family: var(--font-code);
+      font-size: 11.5px;
+      line-height: 1.55;
+    }
+
+    .code-line {
+      display: flex;
+      padding: 1px 16px;
+      transition: background 0.15s ease;
+      white-space: pre;
+    }
+
+    .code-line.active {
+      background: var(--code-hl);
+      border-left: 3px solid var(--accent-cyan);
+      padding-left: 13px;
+    }
+
+    .line-num {
+      width: 28px;
+      text-align: right;
+      color: #475569;
+      margin-right: 14px;
+      user-select: none;
+      flex-shrink: 0;
+    }
+
+    .line-text {
+      color: #cbd5e1;
+    }
+
+    .kw { color: #f472b6; font-weight: 600; }
+    .fn { color: #38bdf8; font-weight: 600; }
+    .str { color: #a3e635; }
+    .op { color: #f59e0b; }
+    .num { color: #fbbf24; }
+    .cmt { color: #64748b; font-style: italic; }
+
+    .bottom-bar {
+      background: var(--panel);
+      border-top: 1px solid var(--panel-border);
+      padding: 10px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 10;
+    }
+
+    .caption-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: 24px;
+    }
+
+    .step-pill {
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: var(--accent-cyan);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .caption-text {
+      font-size: 13px;
+      color: var(--ink);
+      flex: 1;
+    }
+
+    .controls-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .btn-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    button.btn-ctrl {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    button.btn-ctrl:hover {
+      background: #334155;
+      border-color: #475569;
+    }
+
+    button.btn-ctrl.primary {
+      background: linear-gradient(135deg, #0284c7, #0ea5e9);
+      border-color: #38bdf8;
+      color: #fff;
+    }
+
+    .scrub-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    input[type=range] {
+      flex: 1;
+      accent-color: var(--accent-cyan);
+      height: 4px;
+      background: #1e293b;
+      border-radius: 2px;
+      cursor: pointer;
+    }
+
+    .frame-counter {
+      font-size: 11px;
+      font-family: var(--font-code);
+      color: var(--muted);
+      min-width: 45px;
+    }
+
+    .preset-select {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: var(--ink);
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .speed-select {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: var(--ink);
+      font-size: 12px;
+      padding: 6px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <span class="badge">CodeQuest Q21</span>
+      <h1>Fibonacci Sequence — Even Sum</h1>
+      <span class="subtitle">Fibonacci Staircase &amp; Parity Filter in 3D</span>
+    </div>
+    <div class="header-actions">
+      <select id="preset-picker" class="preset-select">
+        <option value="0">Preset 1: N = 7 (Even sum = 10)</option>
+        <option value="1">Preset 2: N = 10 (Even sum = 44)</option>
+        <option value="2">Preset 3: N = 5 (Even sum = 2)</option>
+      </select>
+      <select id="speed-picker" class="speed-select">
+        <option value="1.5">1.5x Speed</option>
+        <option value="1.0" selected>1.0x Speed</option>
+        <option value="0.5">0.5x Speed</option>
+      </select>
+    </div>
+  </header>
+
+  <div class="main-layout">
+    <div id="viewport-container">
+      <canvas id="webgl-canvas"></canvas>
+      <div class="stage-hud">
+        <div class="hud-title">Fibonacci Metrics</div>
+        <div id="hud-even" class="hud-val">Even Sum: 0</div>
+        <div id="hud-terms" class="hud-sub">Sequence: []</div>
+      </div>
+      <div class="legend-card">
+        <div class="legend-item"><span class="legend-color" style="background: #38bdf8;"></span> Odd Fibonacci Pillar</div>
+        <div class="legend-item"><span class="legend-color" style="background: #22c55e;"></span> Even Fibonacci Pillar (Contributes to Sum)</div>
+        <div class="legend-item"><span class="legend-color" style="background: #fbbf24;"></span> Current Generated Term</div>
+        <div class="legend-item"><span class="legend-color" style="background: #a855f7;"></span> Even Sum Accumulator Pillar</div>
+      </div>
+    </div>
+
+    <div class="side-panel">
+      <div class="panel-tabs">
+        <div class="panel-tab active">Python Implementation</div>
+      </div>
+      <div id="code-panel" class="code-container"></div>
+    </div>
+  </div>
+
+  <div class="bottom-bar">
+    <div class="caption-row">
+      <span id="step-badge" class="step-pill">Step 0 / 0</span>
+      <span id="caption" class="caption-text">Initializing Fibonacci generator...</span>
+    </div>
+    <div class="tour-status" id="tour-status" style="display:none; align-items: center; gap: 8px; margin-top: 6px; background: rgba(30, 41, 59, 0.85); border: 1px solid #334155; border-radius: 999px; padding: 3px 10px; font-size: 11px; width: fit-content;">
+      <span class="tour-badge" id="tour-badge" style="background: #38bdf8; color: #020617; font-weight: 700; border-radius: 999px; padding: 1px 7px; font-size: 10px;">Milestone 1/5</span>
+      <span class="tour-msg" id="tour-msg" style="color: #94a3b8; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Ready for Tour</span>
+    </div>
+    <div class="controls-row">
+      <div class="btn-group">
+        <button id="btn-reset" class="btn-ctrl">↺ Reset</button>
+        <button id="btn-prev" class="btn-ctrl">◀ Prev</button>
+        <button id="btn-tour" class="btn-ctrl" style="background: #38bdf8; color: #0f172a; font-weight: 700; border-color: #38bdf8;">🎙️ Audio Tour</button>
+        <button id="btn-play" class="btn-ctrl primary">▶ Play</button>
+        <button id="btn-next" class="btn-ctrl">Next ▶</button>
+        <button id="btn-mute" class="btn-ctrl" style="font-size: 14px; padding: 5px 9px;">🔊</button>
+      </div>
+      <div class="scrub-container">
+        <input type="range" id="scrubber" min="0" max="100" value="0">
+        <span id="frame-display" class="frame-counter">0 / 0</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const CODE_LINES = [
+      'first = 0',
+      'second = 1',
+      'sequence_text = ""',
+      'reversed_text = ""',
+      'even_sum = 0',
+      'count = 0',
+      '',
+      'while count < n:',
+      '    if count > 0:',
+      '        sequence_text += ", "',
+      '    sequence_text += str(first)',
+      '',
+      '    if first % 2 == 0:',
+      '        even_sum += first',
+      '',
+      '    if count == 0:',
+      '        reversed_text = str(first)',
+      '    else:',
+      '        reversed_text = str(first) + ", " + reversed_text',
+      '',
+      '    first, second = second, first + second',
+      '    count += 1'
+    ];
+
+    function highlightPython(text) {
+      function escapeHtml(s) {
+        return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      }
+      const pattern = /(".*?"|'.*?'|\b(?:while|if|else)\b|\b(?:first|second|sequence_text|reversed_text|even_sum|count|n|str)\b|<=|>=|!=|==|\+=|-=|\+|-|<|>|=|\*|%)/g;
+      let result = '';
+      let lastIndex = 0;
+      let match;
+      while ((match = pattern.exec(text)) !== null) {
+        result += escapeHtml(text.slice(lastIndex, match.index));
+        const token = match[0];
+        const escaped = escapeHtml(token);
+        if (token.startsWith('"') || token.startsWith("'")) {
+          result += `<span class="str">${escaped}</span>`;
+        } else if (/^(while|if|else)$/.test(token)) {
+          result += `<span class="kw">${escaped}</span>`;
+        } else if (/^(str)$/.test(token)) {
+          result += `<span class="fn">${escaped}</span>`;
+        } else {
+          result += `<span class="op">${escaped}</span>`;
+        }
+        lastIndex = pattern.lastIndex;
+      }
+      result += escapeHtml(text.slice(lastIndex));
+      return result;
+    }
+
+    function renderCode() {
+      const panel = document.getElementById('code-panel');
+      panel.innerHTML = CODE_LINES.map((line, idx) => `
+        <div class="code-line" id="line-${idx}">
+          <span class="line-num">${idx + 1}</span>
+          <span class="line-text">${highlightPython(line) || '&nbsp;'}</span>
+        </div>
+      `).join('');
+    }
+
+    function simulate(N) {
+      const frames = [];
+      let first = 0;
+      let second = 1;
+      let even_sum = 0;
+      let count = 0;
+      const terms = [];
+
+      function snap(lines, msg, activeIdx, isEven) {
+        frames.push({
+          lines: lines.slice(),
+          msg,
+          activeIdx,
+          isEven,
+          terms: terms.slice(),
+          even_sum,
+          N
+        });
+      }
+
+      snap([0, 1, 4, 5], `Initialize first = 0, second = 1, even_sum = 0, count = 0.`, -1, false);
+
+      while (count < N) {
+        const val = first;
+        terms.push(val);
+        const isEven = (val % 2 === 0);
+
+        snap([7, 8, 9, 10], `Term ${count + 1}/${N}: current value first = ${val}.`, count, isEven);
+
+        if (isEven) {
+          even_sum += val;
+          snap([12, 13], `Parity check: ${val} % 2 == 0 is TRUE! Even term added to accumulator: even_sum += ${val} (now ${even_sum}).`, count, true);
+        } else {
+          snap([12], `Parity check: ${val} % 2 != 0 (odd). Not added to even_sum.`, count, false);
+        }
+
+        const next = first + second;
+        first = second;
+        second = next;
+        count++;
+        snap([20, 21], `Update pointers: first becomes ${first}, second becomes ${second}. Increment count to ${count}.`, count - 1, isEven);
+      }
+
+      const rev = terms.slice().reverse();
+      snap([18], `Generated ${N} Fibonacci terms: [${terms.join(', ')}]. Reversed: [${rev.join(', ')}]. Even Sum = ${even_sum}.`, -1, false);
+      return frames;
+    }
+
+    const PRESETS = [7, 10, 5];
+
+    let frames = [];
+    let curFrame = 0;
+    let isPlaying = false;
+    let playTimer = null;
+    let speed = 1.0;
+
+    // Three.js Scene Setup
+    const container = document.getElementById('viewport-container');
+    const canvas = document.getElementById('webgl-canvas');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x090d16);
+
+    const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+    camera.position.set(0, 16, 26);
+    camera.lookAt(0, 3, 0);
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    const ambLight = new THREE.AmbientLight(0xffffff, 0.7);
+    scene.add(ambLight);
+
+    const dirLight = new THREE.DirectionalLight(0x38bdf8, 0.9);
+    dirLight.position.set(14, 24, 16);
+    scene.add(dirLight);
+
+    const dirLight2 = new THREE.DirectionalLight(0x22c55e, 0.4);
+    dirLight2.position.set(-16, 12, -12);
+    scene.add(dirLight2);
+
+    // Floor Grid
+    const grid = new THREE.GridHelper(36, 36, 0x1e293b, 0x0f172a);
+    grid.position.y = -0.05;
+    scene.add(grid);
+
+    // Dynamic Objects Group
+    const visualGroup = new THREE.Group();
+    scene.add(visualGroup);
+
+    function makeTextTexture(str, bg = '#1e293b', fg = '#38bdf8') {
+      const c = document.createElement('canvas');
+      c.width = 256;
+      c.height = 128;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, 256, 128);
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 6;
+      ctx.strokeRect(4, 4, 248, 120);
+      ctx.fillStyle = fg;
+      ctx.font = 'bold 32px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(str, 128, 64);
+      return new THREE.CanvasTexture(c);
+    }
+
+    function renderFrame(fIdx) {
+      const f = frames[fIdx];
+      if (!f) return;
+
+      document.getElementById('step-badge').textContent = `Step ${fIdx + 1} / ${frames.length}`;
+      document.getElementById('caption').textContent = f.msg;
+      document.getElementById('frame-display').textContent = `${fIdx + 1} / ${frames.length}`;
+      document.getElementById('scrubber').value = (fIdx / (frames.length - 1)) * 100;
+      document.getElementById('hud-even').textContent = `Even Sum: ${f.even_sum}`;
+      document.getElementById('hud-terms').textContent = `Terms: [${f.terms.join(', ')}]`;
+
+      // Highlight code
+      document.querySelectorAll('.code-line').forEach(el => el.classList.remove('active'));
+      f.lines.forEach(lNum => {
+        const el = document.getElementById(`line-${lNum}`);
+        if (el) el.classList.add('active');
+      });
+
+      // Clear dynamic objects
+      while (visualGroup.children.length > 0) {
+        visualGroup.remove(visualGroup.children[0]);
+      }
+
+      // 1. Fibonacci Staircase Pillars (X axis: left to right)
+      const spacing = 2.4;
+      const startX = -((f.terms.length - 1) * spacing) / 2 - 2.5;
+
+      f.terms.forEach((val, idx) => {
+        const isEven = (val % 2 === 0);
+        const isActive = idx === f.activeIdx;
+        const h = Math.min(8.0, 0.6 + Math.log2(val + 1) * 1.2);
+        const col = isActive ? 0xfbbf24 : (isEven ? 0x22c55e : 0x38bdf8);
+
+        const pillar = new THREE.Mesh(
+          new THREE.BoxGeometry(1.6, h, 1.6),
+          new THREE.MeshStandardMaterial({ color: col, metalness: 0.5, roughness: 0.3 })
+        );
+        pillar.position.set(startX + idx * spacing, h / 2, 0);
+        visualGroup.add(pillar);
+
+        const tex = makeTextTexture(`${val}`, '#0f172a', '#' + new THREE.Color(col).getHexString());
+        const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.8), new THREE.MeshBasicMaterial({ map: tex, transparent: true }));
+        sign.position.set(startX + idx * spacing, h + 0.6, 0);
+        visualGroup.add(sign);
+      });
+
+      // 2. Even Sum Pillar (Right side: X = 7)
+      const sumH = Math.min(9.0, Math.max(0.4, f.even_sum * 0.2));
+      const sumPillar = new THREE.Mesh(
+        new THREE.CylinderGeometry(1.8, 1.8, sumH, 32),
+        new THREE.MeshStandardMaterial({ color: 0xa855f7, metalness: 0.6, roughness: 0.2 })
+      );
+      sumPillar.position.set(7.5, sumH / 2, 0);
+      visualGroup.add(sumPillar);
+
+      const sumTex = makeTextTexture(`EVEN SUM: ${f.even_sum}`, '#0b1120', '#a855f7');
+      const sumSign = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 1.6), new THREE.MeshBasicMaterial({ map: sumTex, transparent: true }));
+      sumSign.position.set(7.5, sumH + 1.2, 0);
+      visualGroup.add(sumSign);
+    }
+
+    function loadPreset(idx) {
+      if (typeof stopTour === 'function') stopTour();
+      const N = PRESETS[idx];
+      frames = simulate(N);
+      curFrame = 0;
+      renderFrame(0);
+    }
+
+    // Playback logic
+    function setPlaying(p) {
+      isPlaying = p;
+      document.getElementById('btn-play').textContent = isPlaying ? '⏸ Pause' : '▶ Play';
+      if (isPlaying) {
+        playTimer = setInterval(() => {
+          if (curFrame < frames.length - 1) {
+            curFrame++;
+            renderFrame(curFrame);
+          } else {
+            setPlaying(false);
+          }
+        }, 1100 / speed);
+      } else {
+        clearInterval(playTimer);
+      }
+    }
+
+    // Drag to rotate camera around Y axis
+    let isDragging = false;
+    let prevMouseX = 0;
+    let angle = 0;
+    const radius = 28;
+
+    container.addEventListener('pointerdown', (e) => {
+      isDragging = true;
+      prevMouseX = e.clientX;
+    });
+
+    window.addEventListener('pointermove', (e) => {
+      if (!isDragging) return;
+      const deltaX = e.clientX - prevMouseX;
+      prevMouseX = e.clientX;
+      angle -= deltaX * 0.008;
+      camera.position.x = Math.sin(angle) * radius;
+      camera.position.z = Math.cos(angle) * radius;
+      camera.lookAt(0, 3, 0);
+    });
+
+    window.addEventListener('pointerup', () => { isDragging = false; });
+
+    // Window Resize
+    window.addEventListener('resize', () => {
+      camera.aspect = container.clientWidth / container.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(container.clientWidth, container.clientHeight);
+    });
+
+    // Control Listeners
+    document.getElementById('btn-play').addEventListener('click', () => { stopTour(); setPlaying(!isPlaying); });
+    document.getElementById('btn-next').addEventListener('click', () => {
+      stopTour(); setPlaying(false);
+      if (curFrame < frames.length - 1) { curFrame++; renderFrame(curFrame); }
+    });
+    document.getElementById('btn-prev').addEventListener('click', () => {
+      stopTour(); setPlaying(false);
+      if (curFrame > 0) { curFrame--; renderFrame(curFrame); }
+    });
+    document.getElementById('btn-reset').addEventListener('click', () => {
+      stopTour(); setPlaying(false); updateTourStatusUI(0, false);
+      curFrame = 0;
+      renderFrame(0);
+    });
+    document.getElementById('scrubber').addEventListener('input', (e) => {
+      stopTour(); setPlaying(false);
+      const target = Math.round((e.target.value / 100) * (frames.length - 1));
+      curFrame = target;
+      renderFrame(curFrame);
+    });
+    document.getElementById('preset-picker').addEventListener('change', (e) => {
+      setPlaying(false);
+      loadPreset(parseInt(e.target.value));
+    });
+    document.getElementById('speed-picker').addEventListener('change', (e) => {
+      speed = parseFloat(e.target.value);
+      if (isPlaying) { setPlaying(false); setPlaying(true); }
+    });
+
+    // Hotkeys
+    
+    /* ---------- GUIDED AUDIO TOUR CONTROLLER ---------- */
+    const $btnTour = document.getElementById('btn-tour');
+    const $btnMute = document.getElementById('btn-mute');
+    const $tourStatus = document.getElementById('tour-status');
+    const $tourBadge = document.getElementById('tour-badge');
+    const $tourMsg = document.getElementById('tour-msg');
+
+    let isTourActive = false;
+    let isMuted = false;
+    let currentAudio = null;
+    let tourCueTimers = [];
+    let tourToken = 0;
+    let currentMilestoneIdx = 0;
+
+    const WALKTHROUGHS = {
+  "preset0": {
+    "title": "Fibonacci Even Sum Filter Walkthrough",
+    "milestones": [
+      {
+        "id": "clip_01",
+        "file": "audio/clip_01_setup.mp3",
+        "title": "1. State Setup: Pointers & Accumulator",
+        "startIdx": 0,
+        "endIdx": 0,
+        "cues": [
+          {
+            "time": 0,
+            "frameIdx": 0
+          }
+        ]
+      },
+      {
+        "id": "clip_02",
+        "file": "audio/clip_02_first_terms.mp3",
+        "title": "2. First Terms (0, 1, 1): Parity Checks",
+        "startIdx": 1,
+        "endIdx": 9,
+        "cues": [
+          {
+            "time": 0,
+            "frameIdx": 1
+          },
+          {
+            "time": 3,
+            "frameIdx": 4
+          },
+          {
+            "time": 6.5,
+            "frameIdx": 7
+          }
+        ]
+      },
+      {
+        "id": "clip_03",
+        "file": "audio/clip_03_term_two.mp3",
+        "title": "3. Term 4 (Value 2): Even Sum += 2",
+        "startIdx": 10,
+        "endIdx": 12,
+        "cues": [
+          {
+            "time": 0,
+            "frameIdx": 10
+          },
+          {
+            "time": 4.5,
+            "frameIdx": 11
+          }
+        ]
+      },
+      {
+        "id": "clip_04",
+        "file": "audio/clip_04_term_eight.mp3",
+        "title": "4. Terms 5 & 6 (Odd), Term 7 (Value 8)",
+        "startIdx": 13,
+        "endIdx": 21,
+        "cues": [
+          {
+            "time": 0,
+            "frameIdx": 13
+          },
+          {
+            "time": 3.5,
+            "frameIdx": 16
+          },
+          {
+            "time": 6.5,
+            "frameIdx": 19
+          },
+          {
+            "time": 8,
+            "frameIdx": 20
+          }
+        ]
+      },
+      {
+        "id": "clip_05",
+        "file": "audio/clip_05_summary.mp3",
+        "title": "5. Reversed Sequence & Total Even Sum",
+        "startIdx": 22,
+        "endIdx": 22,
+        "cues": [
+          {
+            "time": 0,
+            "frameIdx": 22
+          }
+        ]
+      }
+    ]
+  }
+};
+
+    function clearTourTimers() {
+      tourCueTimers.forEach(t => clearTimeout(t));
+      tourCueTimers = [];
+    }
+
+    function stopTourAudio() {
+      clearTourTimers();
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.onended = null;
+        currentAudio.ontimeupdate = null;
+        currentAudio.onerror = null;
+        currentAudio = null;
+      }
+    }
+
+    function stopTour() {
+      isTourActive = false;
+      stopTourAudio();
+      tourToken++;
+      if ($btnTour) {
+        $btnTour.textContent = '🎙️ Audio Tour';
+        $btnTour.classList.remove('active');
+        $btnTour.style.background = '#38bdf8';
+        $btnTour.style.color = '#0f172a';
+      }
+    }
+
+    function getActiveWalkthrough() {
+      const picker = document.getElementById('preset-picker');
+      const idx = picker ? parseInt(picker.value, 10) : 0;
+      if (idx === 0) return WALKTHROUGHS.preset0;
+      return null;
+    }
+
+    function updateTourStatusUI(mIdx, isFinished) {
+      const wt = getActiveWalkthrough();
+      if (!wt) {
+        if ($tourStatus) $tourStatus.style.display = 'none';
+        return;
+      }
+      if ($tourStatus) $tourStatus.style.display = 'inline-flex';
+      const totalM = wt.milestones.length;
+      if (isFinished || curFrame >= frames.length - 1) {
+        if ($tourBadge) $tourBadge.textContent = 'Complete';
+        if ($tourMsg) $tourMsg.textContent = 'Guided tour complete!';
+      } else if (mIdx !== undefined && wt.milestones[mIdx]) {
+        if ($tourBadge) $tourBadge.textContent = 'Milestone ' + (mIdx + 1) + '/' + totalM;
+        if ($tourMsg) $tourMsg.textContent = isMuted ? (wt.milestones[mIdx].title + ' (Muted)') : wt.milestones[mIdx].title;
+      }
+    }
+
+    function startMilestone(mIdx) {
+      const wt = getActiveWalkthrough();
+      if (!wt || mIdx >= wt.milestones.length) {
+        stopTour();
+        updateTourStatusUI(undefined, true);
+        return;
+      }
+      currentMilestoneIdx = mIdx;
+      const m = wt.milestones[mIdx];
+      updateTourStatusUI(mIdx, false);
+
+      const thisToken = ++tourToken;
+      stopTourAudio();
+
+      if (isMuted) {
+        runSilentMilestone(m, thisToken, mIdx);
+        return;
+      }
+
+      try {
+        const audio = new Audio(m.file);
+        currentAudio = audio;
+
+        let appliedCueIndex = -1;
+        audio.ontimeupdate = () => {
+          if (thisToken !== tourToken || !isTourActive) return;
+          const ct = audio.currentTime;
+          for (let i = m.cues.length - 1; i >= 0; i--) {
+            if (ct >= m.cues[i].time) {
+              if (appliedCueIndex !== i) {
+                appliedCueIndex = i;
+                curFrame = m.cues[i].frameIdx;
+                renderFrame(curFrame);
+              }
+              break;
+            }
+          }
+        };
+
+        audio.onended = () => {
+          if (thisToken !== tourToken || !isTourActive) return;
+          if (mIdx + 1 < wt.milestones.length) {
+            startMilestone(mIdx + 1);
+          } else {
+            stopTour();
+            updateTourStatusUI(undefined, true);
+          }
+        };
+
+        audio.onerror = () => {
+          console.warn('Audio playback error, falling back to silent step for milestone:', m.id);
+          runSilentMilestone(m, thisToken, mIdx);
+        };
+
+        curFrame = m.cues[0].frameIdx;
+        renderFrame(curFrame);
+
+        const playPromise = audio.play();
+        if (playPromise) {
+          playPromise.catch(err => {
+            console.warn('Audio play restricted or failed, falling back to silent milestone:', err);
+            runSilentMilestone(m, thisToken, mIdx);
+          });
+        }
+      } catch (e) {
+        console.warn('Audio construction failed:', e);
+        runSilentMilestone(m, thisToken, mIdx);
+      }
+    }
+
+    function runSilentMilestone(m, token, mIdx) {
+      const wt = getActiveWalkthrough();
+      clearTourTimers();
+      m.cues.forEach((cue, i) => {
+        const delay = (i === 0) ? 0 : (cue.time * 1000);
+        const t = setTimeout(() => {
+          if (token !== tourToken || !isTourActive) return;
+          curFrame = cue.frameIdx;
+          renderFrame(curFrame);
+          if (i === m.cues.length - 1) {
+            const nextDelay = 1500;
+            const tNext = setTimeout(() => {
+              if (token !== tourToken || !isTourActive) return;
+              if (wt && mIdx + 1 < wt.milestones.length) {
+                startMilestone(mIdx + 1);
+              } else {
+                stopTour();
+                updateTourStatusUI(undefined, true);
+              }
+            }, nextDelay);
+            tourCueTimers.push(tNext);
+          }
+        }, delay);
+        tourCueTimers.push(t);
+      });
+    }
+
+    function startTour() {
+      setPlaying(false);
+      const wt = getActiveWalkthrough();
+      if (!wt) {
+        alert('Guided Audio Tour is available for Preset 1 (default preset).');
+        return;
+      }
+      isTourActive = true;
+      if ($btnTour) {
+        $btnTour.textContent = '⏸ Pause Tour';
+        $btnTour.classList.add('active');
+        $btnTour.style.background = '#e2e8f0';
+        $btnTour.style.color = '#0f172a';
+      }
+      if (curFrame >= frames.length - 1) {
+        curFrame = 0;
+        renderFrame(0);
+      }
+      let startM = 0;
+      for (let i = 0; i < wt.milestones.length; i++) {
+        if (curFrame >= wt.milestones[i].startIdx && curFrame <= wt.milestones[i].endIdx) {
+          startM = i;
+          break;
+        }
+      }
+      startMilestone(startM);
+    }
+
+    if ($btnTour) {
+      $btnTour.addEventListener('click', () => {
+        if (isTourActive) stopTour();
+        else startTour();
+      });
+    }
+
+    if ($btnMute) {
+      $btnMute.addEventListener('click', () => {
+        isMuted = !isMuted;
+        $btnMute.textContent = isMuted ? '🔇' : '🔊';
+        $btnMute.title = isMuted ? 'Voiceover Muted (Silent Mode)' : 'Voiceover Enabled';
+        if (isTourActive) {
+          startMilestone(currentMilestoneIdx);
+        }
+      });
+    }
+  
+
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        if (getActiveWalkthrough()) {
+          if ($btnTour) $btnTour.click();
+        } else {
+          setPlaying(!isPlaying);
+        }
+      } else if (e.code === 'KeyM') {
+        e.preventDefault();
+        if ($btnMute) $btnMute.click();
+      }
+      else if (e.code === 'ArrowRight') { e.preventDefault(); document.getElementById('btn-next').click(); }
+      else if (e.code === 'ArrowLeft') { e.preventDefault(); document.getElementById('btn-prev').click(); }
+      else if (e.code === 'KeyR') { e.preventDefault(); document.getElementById('btn-reset').click(); }
+    });
+
+    // Render loop
+    function animate() {
+      requestAnimationFrame(animate);
+      renderer.render(scene, camera);
+    }
+
+    renderCode();
+    loadPreset(0);
+    animate();
+  </script>
+</body>
+</html>

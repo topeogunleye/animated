@@ -1,0 +1,1413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CodeQuest Q3 — Word Frequency in 3D</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --panel: #0f172a;
+      --panel-border: #1e293b;
+      --ink: #f8fafc;
+      --muted: #94a3b8;
+      --accent-cyan: #38bdf8;
+      --accent-amber: #fbbf24;
+      --accent-green: #22c55e;
+      --accent-red: #ef4444;
+      --code-bg: #0b1120;
+      --code-hl: rgba(56, 189, 248, 0.22);
+      --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      --font-code: "JetBrains Mono", Consolas, "Courier New", monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font-ui);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+    }
+
+    /* Header */
+    header {
+      background: var(--panel);
+      border-bottom: 1px solid var(--panel-border);
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 10;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .badge {
+      background: linear-gradient(135deg, #0284c7, #38bdf8);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: var(--muted);
+      margin-left: 8px;
+      font-weight: 400;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    button.btn-ghost {
+      background: transparent;
+      border: 1px solid var(--panel-border);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    button.btn-ghost:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--ink);
+      border-color: #334155;
+    }
+
+    /* Main Workspace */
+    #workspace {
+      flex: 1;
+      display: flex;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #stage-container {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    canvas#stage {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: grab;
+    }
+
+    canvas#stage:active {
+      cursor: grabbing;
+    }
+
+    /* Floating Legend */
+    #legend-card {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: rgba(15, 23, 42, 0.90);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 12px;
+      z-index: 5;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      max-width: 280px;
+      transition: all 0.2s ease;
+    }
+
+    #legend-card.collapsed .legend-body {
+      display: none;
+    }
+
+    .legend-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-weight: 700;
+      color: var(--ink);
+      cursor: pointer;
+    }
+
+    .legend-body {
+      margin-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 11.5px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* Right Code Panel */
+    #code-panel {
+      width: 440px;
+      background: var(--code-bg);
+      border-left: 1px solid var(--panel-border);
+      display: flex;
+      flex-direction: column;
+      transition: width 0.2s ease, transform 0.2s ease;
+      z-index: 6;
+    }
+
+    #code-panel.hidden {
+      display: none;
+    }
+
+    .code-header {
+      padding: 10px 16px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--panel-border);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    pre#code-display {
+      flex: 1;
+      padding: 14px 0;
+      overflow-y: auto;
+      font-family: var(--font-code);
+      font-size: 12px;
+      line-height: 1.65;
+    }
+
+    .code-line {
+      display: flex;
+      padding: 0 16px;
+      transition: background 0.15s ease;
+    }
+
+    .code-line.active {
+      background: var(--code-hl);
+      border-left: 3px solid var(--accent-cyan);
+      padding-left: 13px;
+    }
+
+    .ln {
+      width: 24px;
+      color: #475569;
+      text-align: right;
+      margin-right: 14px;
+      flex-shrink: 0;
+    }
+
+    .code-text {
+      color: #cbd5e1;
+      white-space: pre;
+    }
+
+    .kw { color: #f472b6; font-weight: 600; }
+    .fn { color: #60a5fa; font-weight: 600; }
+    .op { color: #38bdf8; }
+    .str { color: #a7f3d0; }
+
+    /* Footer Controls */
+    footer {
+      background: var(--panel);
+      border-top: 1px solid var(--panel-border);
+      padding: 12px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 10;
+    }
+
+    .caption-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .caption-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .step-badge {
+      background: #1e293b;
+      color: var(--accent-cyan);
+      font-family: var(--font-code);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid #334155;
+      white-space: nowrap;
+    }
+
+    .caption-text {
+      font-size: 13.5px;
+      color: var(--ink);
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .controls-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .left-controls, .center-controls, .right-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Buttons */
+    .btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .btn:hover {
+      background: #334155;
+      border-color: #475569;
+    }
+
+    .btn-primary {
+      background: #0284c7;
+      border-color: #0369a1;
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: #0369a1;
+    }
+
+    select, input[type="text"] {
+      background: #0b1120;
+      border: 1px solid #334155;
+      color: var(--ink);
+      font-size: 12.5px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      outline: none;
+    }
+
+    select:focus, input[type="text"]:focus {
+      border-color: var(--accent-cyan);
+    }
+
+    input[type="text"] {
+      width: 220px;
+    }
+
+    /* Status Overlay */
+    #status-overlay {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: rgba(15, 23, 42, 0.88);
+      border: 1px solid var(--panel-border);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-family: var(--font-code);
+      font-weight: 700;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 5;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #64748b;
+    }
+
+    .status-dot.active { background: var(--accent-cyan); box-shadow: 0 0 8px var(--accent-cyan); }
+    .status-dot.success { background: var(--accent-green); box-shadow: 0 0 8px var(--accent-green); }
+
+    /* Results Bar below stage */
+    #results-bar {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      right: 16px;
+      background: rgba(15, 23, 42, 0.90);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12.5px;
+      font-family: var(--font-code);
+      z-index: 5;
+    }
+
+    .winner-badge {
+      background: rgba(251, 191, 36, 0.15);
+      border: 1px solid var(--accent-amber);
+      color: var(--accent-amber);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <span class="badge">CodeQuest Q3</span>
+      <h1>Word Frequency & Dictionary Counter</h1>
+      <span class="subtitle">Tokenizing, punctuation stripping, and 3D frequency bins</span>
+    </div>
+    <div class="header-actions">
+      <button class="btn-ghost" id="btn-toggle-code">
+        <span id="code-toggle-label">Hide Code</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Workspace -->
+  <div id="workspace">
+
+    <!-- 3D Stage -->
+    <div id="stage-container">
+      <canvas id="stage"></canvas>
+
+      <!-- Floating Legend -->
+      <div id="legend-card">
+        <div class="legend-header" id="legend-toggle">
+          <span>Legend & Bins</span>
+          <span style="font-size: 10px; color: var(--muted)">▾</span>
+        </div>
+        <div class="legend-body">
+          <div class="legend-row">
+            <span class="dot" style="background: #38bdf8;"></span>
+            <span><strong>Word Tokens</strong> (cleaned & dropping)</span>
+          </div>
+          <div class="legend-row">
+            <span class="dot" style="background: #1e293b; border: 1px solid #475569;"></span>
+            <span><strong>Frequency Bins</strong> (hash map keys)</span>
+          </div>
+          <div class="legend-row">
+            <span class="dot" style="background: #22c55e;"></span>
+            <span><strong>Count Blocks</strong> (vertical tally)</span>
+          </div>
+          <div class="legend-row">
+            <span class="dot" style="background: #fbbf24;"></span>
+            <span><strong>Crown Winner</strong> = Most Frequent Word</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- State Pill -->
+      <div id="status-overlay">
+        <span class="status-dot active" id="status-dot"></span>
+        <span id="status-text">COUNTING WORDS</span>
+      </div>
+
+      <!-- Results Summary Bar -->
+      <div id="results-bar">
+        <div><strong>Dictionary Keys:</strong> <span id="keys-count">0 words</span></div>
+        <div><strong>Winner:</strong> <span id="winner-tag">—</span></div>
+      </div>
+    </div>
+
+    <!-- Code Panel -->
+    <div id="code-panel">
+      <div class="code-header">
+        <span>PYTHON SOLUTION</span>
+        <span style="font-size: 11px; color: #64748b;">Hash Map · O(N)</span>
+      </div>
+      <pre id="code-display"></pre>
+    </div>
+
+  </div>
+
+  <!-- Footer Controls -->
+  <footer>
+    <div class="caption-row">
+      <div class="caption-box">
+        <span class="step-badge" id="step-badge">STEP 0 / 0</span>
+        <span class="caption-text" id="caption-text">Initializing word counter...</span>
+      </div>
+      <div class="tour-status" id="tour-status" style="display:none; align-items: center; gap: 8px; margin-left: 12px; background: rgba(30, 41, 59, 0.85); border: 1px solid var(--panel-border); border-radius: 999px; padding: 3px 10px; font-size: 11px;">
+        <span class="tour-badge" id="tour-badge" style="background: var(--accent); color: #020617; font-weight: 700; border-radius: 999px; padding: 1px 7px; font-size: 10px;">Milestone 1/5</span>
+        <span class="tour-msg" id="tour-msg" style="color: var(--muted); max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Ready for Tour</span>
+      </div>
+    </div>
+
+    <div class="controls-row">
+      <!-- Preset Selection & Custom Input -->
+      <div class="left-controls">
+        <label for="preset-select" style="font-size: 12px; color: var(--muted); font-weight: 600;">Preset:</label>
+        <select id="preset-select">
+          <option value="0">"Python is fun, and Python is powerful!" (Default)</option>
+          <option value="1">"To be, or not to be, that is the question." (Shakespeare)</option>
+          <option value="2">"buffalo Buffalo buffalo Buffalo buffalo" (Casing Test)</option>
+          <option value="3">"Hello World!" (All unique words)</option>
+          <option value="4">"" (Empty String)</option>
+        </select>
+
+        <input type="text" id="custom-input" placeholder="Type custom sentence...">
+        <button class="btn" id="btn-apply-custom">Apply</button>
+      </div>
+
+      <!-- Transport Controls -->
+      <div class="center-controls">
+        <button class="btn" id="btn-reset" title="Reset (R)">↺ Reset</button>
+        <button class="btn" id="btn-prev" title="Step Back (Left Arrow)">⏮ Prev</button>
+        <button class="btn btn-tour" id="btn-tour" title="Guided Audio Tour (Space)" style="background: #38bdf8; color: #0f172a; font-weight: 700; border-color: #38bdf8;">🎙️ Audio Tour</button>
+        <button class="btn btn-primary" id="btn-play" title="Silent Step Play">▶ Step Play</button>
+        <button class="btn" id="btn-next" title="Step Forward (Right Arrow)">Next ⏭</button>
+        <button class="btn btn-ghost" id="btn-mute" title="Toggle Voiceover (M)" style="font-size: 14px; padding: 5px 9px;">🔊</button>
+      </div>
+
+      <!-- Speed Control -->
+      <div class="right-controls">
+        <label for="speed-select" style="font-size: 12px; color: var(--muted); font-weight: 600;">Speed:</label>
+        <select id="speed-select">
+          <option value="1400">Slow (1.4s)</option>
+          <option value="850" selected>Normal (0.85s)</option>
+          <option value="400">Fast (0.4s)</option>
+        </select>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Three.js from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <script>
+  (function(){
+    'use strict';
+
+    /* ---------- PYTHON SOURCE LINES ---------- */
+    const CODE_LINES = [
+      'def count_words(words):',
+      '    frequencies = {}',
+      '    for word in words:',
+      '        cleaned = ""',
+      '        for ch in word.lower():',
+      '            if "a" <= ch <= "z": cleaned += ch',
+      '        if cleaned:',
+      '            frequencies[cleaned] = frequencies.get(cleaned, 0) + 1',
+      '    return frequencies',
+      'def most_frequent(freq):',
+      '    best_word, best_count = "", 0',
+      '    for word, count in freq.items():',
+      '        if count > best_count:',
+      '            best_word, best_count = word, count',
+      '    return best_word'
+    ];
+
+    /* ---------- SAFE TOKEN-BASED SYNTAX HIGHLIGHTER ---------- */
+    function escapeHtml(s) {
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function highlightPython(text) {
+      const pattern = /(".*?"|'.*?'|\b(?:def|return|while|if|not|elif|else|True|False|or|and|for|in)\b|\b(?:count_words|most_frequent|lower|frequencies|cleaned|words|word|ch|freq|items|get|best_word|best_count)\b|<=|>=|!=|==|\+=|-=|\+|-|<|>|=)/g;
+      let result = '';
+      let lastIndex = 0;
+      let match;
+
+      while ((match = pattern.exec(text)) !== null) {
+        result += escapeHtml(text.slice(lastIndex, match.index));
+        const token = match[0];
+        const escapedToken = escapeHtml(token);
+
+        if (token.startsWith('"') || token.startsWith("'")) {
+          result += '<span class="str">' + escapedToken + '</span>';
+        } else if (/^(def|return|while|if|not|elif|else|True|False|or|and|for|in)$/.test(token)) {
+          result += '<span class="kw">' + escapedToken + '</span>';
+        } else if (/^(count_words|most_frequent|lower|get|items)$/.test(token)) {
+          result += '<span class="fn">' + escapedToken + '</span>';
+        } else if (/^(<=|>=|!=|==|\+=|-=|\+|-|<|>|=)$/.test(token)) {
+          result += '<span class="op">' + escapedToken + '</span>';
+        } else {
+          result += escapedToken;
+        }
+        lastIndex = pattern.lastIndex;
+      }
+      result += escapeHtml(text.slice(lastIndex));
+      return result;
+    }
+
+    /* ---------- INITIALIZE CODE PANEL ---------- */
+    const $codeDisplay = document.getElementById('code-display');
+    function initCodePanel() {
+      $codeDisplay.innerHTML = '';
+      CODE_LINES.forEach((line, idx) => {
+        const div = document.createElement('div');
+        div.className = 'code-line';
+        div.id = 'line-' + idx;
+
+        const ln = document.createElement('span');
+        ln.className = 'ln';
+        ln.textContent = String(idx);
+
+        const codeSpan = document.createElement('span');
+        codeSpan.className = 'code-text';
+        codeSpan.innerHTML = highlightPython(line);
+
+        div.appendChild(ln);
+        div.appendChild(codeSpan);
+        $codeDisplay.appendChild(div);
+      });
+    }
+    initCodePanel();
+
+    function highlightLines(lines) {
+      document.querySelectorAll('.code-line').forEach(el => el.classList.remove('active'));
+      if (!lines) return;
+      lines.forEach(l => {
+        const el = document.getElementById('line-' + l);
+        if (el) el.classList.add('active');
+      });
+    }
+
+    /* ---------- PRESETS DATA ---------- */
+    const PRESETS = [
+      "Python is fun, and Python is powerful!",
+      "To be, or not to be, that is the question.",
+      "buffalo Buffalo buffalo Buffalo buffalo",
+      "Hello World!",
+      ""
+    ];
+
+    /* ---------- SIMULATION GENERATOR ---------- */
+    function simulate(text) {
+      const rawWords = text.trim() ? text.split(/\s+/) : [];
+      const frames = [];
+
+      function snap(lines, msg, phase, wordIdx, activeWord, activeCleaned, bins, bestWord, bestCount) {
+        frames.push({
+          lines: lines.slice(),
+          msg,
+          phase,
+          wordIdx,
+          activeWord,
+          activeCleaned,
+          bins: Object.entries(bins).map(([w, c]) => ({ word: w, count: c })),
+          bestWord,
+          bestCount
+        });
+      }
+
+      if (rawWords.length === 0) {
+        snap([0, 1], "Empty text. Zero words to count. Returned empty frequency dictionary.", 'done', -1, null, null, {}, "", 0);
+        return frames;
+      }
+
+      const bins = {};
+      snap([0, 1], `Initialize empty frequency dictionary. Input contains ${rawWords.length} words to process.`, 'init', -1, null, null, bins, "", 0);
+
+      for (let i = 0; i < rawWords.length; i++) {
+        const raw = rawWords[i];
+        let cleaned = '';
+        for (let ch of raw.toLowerCase()) {
+          if ('a' <= ch && ch <= 'z') cleaned += ch;
+        }
+
+        if (!cleaned) {
+          snap([2, 3, 4], `Token "${raw}" contains no alphabetic characters. Skipped.`, 'count', i, raw, null, bins, "", 0);
+          continue;
+        }
+
+        const isNew = !(cleaned in bins);
+        bins[cleaned] = (bins[cleaned] || 0) + 1;
+
+        if (isNew) {
+          snap([3, 4, 5, 6, 7], `"${raw}" cleaned to "${cleaned}". New word! Added bin "${cleaned}" (count: 1).`, 'count', i, raw, cleaned, bins, "", 0);
+        } else {
+          snap([3, 4, 5, 6, 7], `"${raw}" cleaned to "${cleaned}". Found in dictionary! Incremented bin "${cleaned}" to ${bins[cleaned]}.`, 'count', i, raw, cleaned, bins, "", 0);
+        }
+      }
+
+      // Phase 2: Find Most Frequent
+      let bestWord = "";
+      let bestCount = 0;
+      snap([9, 10], `Counting complete across ${Object.keys(bins).length} unique bins. Starting manual search for most frequent word.`, 'find_max', -1, null, null, bins, bestWord, bestCount);
+
+      for (const [w, cnt] of Object.entries(bins)) {
+        if (cnt > bestCount) {
+          bestWord = w;
+          bestCount = cnt;
+          snap([11, 12, 13], `Inspecting bin "${w}" with count ${cnt} > previous best (${bestCount}). Updated most frequent word to "${w}".`, 'find_max', -1, null, w, bins, bestWord, bestCount);
+        } else {
+          snap([11, 12], `Inspecting bin "${w}" with count ${cnt} <= best (${bestCount}). "${bestWord}" remains current leader.`, 'find_max', -1, null, w, bins, bestWord, bestCount);
+        }
+      }
+
+      snap([14], `Scan finished! Most frequent word: "${bestWord}" appearing ${bestCount} times.`, 'done', -1, null, null, bins, bestWord, bestCount);
+      return frames;
+    }
+
+    /* ---------- THREE.JS SCENE SETUP ---------- */
+    const $canvas = document.getElementById('stage');
+    const renderer = new THREE.WebGLRenderer({ canvas: $canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize($canvas.clientWidth, $canvas.clientHeight);
+    renderer.shadowMap.enabled = true;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(36, $canvas.clientWidth / $canvas.clientHeight, 0.1, 100);
+
+    camera.position.set(0, 5.5, 12.0);
+    camera.lookAt(0, 1.2, 0);
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
+    dirLight.position.set(6, 14, 10);
+    dirLight.castShadow = true;
+    scene.add(dirLight);
+
+    const focusLight = new THREE.PointLight(0x38bdf8, 1.5, 10);
+    scene.add(focusLight);
+
+    // Floor Plate
+    const floorPlateGeo = new THREE.BoxGeometry(26, 0.2, 9);
+    const floorPlateMat = new THREE.MeshStandardMaterial({
+      color: 0x0f172a,
+      roughness: 0.8,
+      metalness: 0.2
+    });
+    const floorPlate = new THREE.Mesh(floorPlateGeo, floorPlateMat);
+    floorPlate.position.y = -0.1;
+    floorPlate.receiveShadow = true;
+    scene.add(floorPlate);
+
+    // Helper: 2D Canvas Text Sprite
+    function makeTextSprite(message, options) {
+      const opt = options || {};
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 256;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = opt.bg || 'transparent';
+      ctx.fillRect(0, 0, 256, 256);
+
+      ctx.font = opt.font || 'bold 110px sans-serif';
+      ctx.fillStyle = opt.color || '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(message, 128, 128);
+
+      const texture = new THREE.CanvasTexture(canvas);
+      const spriteMat = new THREE.SpriteMaterial({ map: texture, depthTest: false });
+      const sprite = new THREE.Sprite(spriteMat);
+      sprite.scale.set(opt.scale || 0.8, opt.scale || 0.8, 1);
+      return sprite;
+    }
+
+    // Input Word Badges along the back
+    const wordStreamGroup = new THREE.Group();
+    scene.add(wordStreamGroup);
+
+    // Bins Group along the front
+    const binsGroup = new THREE.Group();
+    scene.add(binsGroup);
+
+    let currentText = PRESETS[0];
+    let simFrames = [];
+    let curFrameIdx = 0;
+    let isPlaying = false;
+    let playTimer = null;
+    let stepSpeed = 850;
+
+    let binObjects = new Map(); // word -> { group, labelSprite, countSprite, crownSprite, blocks: [] }
+    let streamSprites = [];
+
+    const binSpacing = 2.4;
+
+    function buildScene(text) {
+      while (binsGroup.children.length > 0) binsGroup.remove(binsGroup.children[0]);
+      while (wordStreamGroup.children.length > 0) wordStreamGroup.remove(wordStreamGroup.children[0]);
+      binObjects.clear();
+      streamSprites = [];
+
+      const rawWords = text.trim() ? text.split(/\s+/) : [];
+
+      // Build Top Stream of Words
+      const streamSpacing = 1.6;
+      const streamStartX = -((rawWords.length - 1) * streamSpacing) / 2;
+
+      rawWords.forEach((rw, idx) => {
+        const sprite = makeTextSprite(rw, { color: '#94a3b8', font: 'bold 75px sans-serif', scale: 0.95 });
+        sprite.position.set(streamStartX + idx * streamSpacing, 4.2, -2.5);
+        wordStreamGroup.add(sprite);
+        streamSprites.push(sprite);
+      });
+
+      simFrames = simulate(text);
+      curFrameIdx = 0;
+      applyFrame(0, false);
+    }
+
+    function getOrCreateBin(word, index, totalUnique) {
+      if (binObjects.has(word)) return binObjects.get(word);
+
+      const startX = -((totalUnique - 1) * binSpacing) / 2;
+      const posX = startX + index * binSpacing;
+
+      const group = new THREE.Group();
+      group.position.set(posX, 0, 0.5);
+
+      // Open Bin Geometry (base + low side walls)
+      const baseGeo = new THREE.BoxGeometry(1.6, 0.12, 1.4);
+      const wallMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5 });
+      const baseMesh = new THREE.Mesh(baseGeo, wallMat);
+      baseMesh.position.y = 0.06;
+      group.add(baseMesh);
+
+      // Label sprite on front of bin
+      const labelSprite = makeTextSprite(word, { color: '#38bdf8', font: 'bold 80px monospace', scale: 0.95 });
+      labelSprite.position.set(0, -0.05, 1.1);
+      group.add(labelSprite);
+
+      // Count Badge floating above
+      const countSprite = makeTextSprite('0', { color: '#22c55e', font: 'bold 110px monospace', scale: 0.85 });
+      countSprite.position.set(0, 0.9, 0);
+      group.add(countSprite);
+
+      // Crown Marker
+      const crownSprite = makeTextSprite('👑 WINNER', { color: '#fbbf24', font: 'bold 75px sans-serif', scale: 0.8 });
+      crownSprite.position.set(0, 1.6, 0);
+      crownSprite.visible = false;
+      group.add(crownSprite);
+
+      binsGroup.add(group);
+
+      const binData = {
+        group,
+        baseMesh,
+        labelSprite,
+        countSprite,
+        crownSprite,
+        blocks: [],
+        posX
+      };
+      binObjects.set(word, binData);
+      return binData;
+    }
+
+    /* ---------- FRAME APPLICATION ---------- */
+    const $stepBadge = document.getElementById('step-badge');
+    const $captionText = document.getElementById('caption-text');
+    const $statusDot = document.getElementById('status-dot');
+    const $statusText = document.getElementById('status-text');
+    const $keysCount = document.getElementById('keys-count');
+    const $winnerTag = document.getElementById('winner-tag');
+
+    function applyFrame(idx, animate) {
+      if (!simFrames || simFrames.length === 0) return;
+      curFrameIdx = Math.max(0, Math.min(idx, simFrames.length - 1));
+      const frame = simFrames[curFrameIdx];
+
+      $stepBadge.textContent = `STEP ${curFrameIdx + 1} / ${simFrames.length}`;
+      $captionText.textContent = frame.msg;
+
+      $statusText.textContent = frame.phase.toUpperCase();
+      highlightLines(frame.lines);
+
+      $keysCount.textContent = `${frame.bins.length} unique words`;
+      $winnerTag.innerHTML = frame.bestWord 
+        ? `<span class="winner-badge">${frame.bestWord} (${frame.bestCount})</span>`
+        : '—';
+
+      // Update Top Stream Highlights
+      streamSprites.forEach((sp, i) => {
+        if (i === frame.wordIdx) {
+          sp.scale.set(1.2, 1.2, 1);
+          sp.material.color.setHex(0xfbbf24); // Gold active
+        } else if (i < frame.wordIdx) {
+          sp.scale.set(0.85, 0.85, 1);
+          sp.material.color.setHex(0x475569); // Passed
+        } else {
+          sp.scale.set(0.95, 0.95, 1);
+          sp.material.color.setHex(0x94a3b8);
+        }
+      });
+
+      // Synchronize Bins in 3D
+      const totalUnique = Math.max(1, frame.bins.length);
+      frame.bins.forEach((b, i) => {
+        const bin = getOrCreateBin(b.word, i, totalUnique);
+
+        // Reposition dynamically if new bins arrived
+        const startX = -((totalUnique - 1) * binSpacing) / 2;
+        bin.group.position.x = startX + i * binSpacing;
+
+        // Update count text
+        bin.countSprite.material.map = makeTextSprite(String(b.count), {
+          color: '#22c55e',
+          font: 'bold 110px monospace'
+        }).material.map;
+
+        // Render stacked cubes inside bin
+        while (bin.blocks.length < b.count) {
+          const blockGeo = new THREE.BoxGeometry(0.85, 0.35, 0.85);
+          const blockMat = new THREE.MeshStandardMaterial({
+            color: 0x22c55e,
+            roughness: 0.3,
+            metalness: 0.1
+          });
+          const block = new THREE.Mesh(blockGeo, blockMat);
+          const stackY = 0.2 + bin.blocks.length * 0.38;
+          block.position.set(0, stackY, 0);
+          bin.group.add(block);
+          bin.blocks.push(block);
+        }
+
+        while (bin.blocks.length > b.count) {
+          const rem = bin.blocks.pop();
+          bin.group.remove(rem);
+        }
+
+        bin.countSprite.position.y = 0.35 + b.count * 0.38 + 0.45;
+
+        // Crown on current best word
+        if (frame.bestWord && frame.bestWord === b.word) {
+          bin.crownSprite.visible = true;
+          bin.crownSprite.position.y = bin.countSprite.position.y + 0.65;
+        } else {
+          bin.crownSprite.visible = false;
+        }
+
+        // Active inspection glow
+        if (frame.activeCleaned === b.word) {
+          bin.baseMesh.material.color.setHex(0xfbbf24);
+          focusLight.position.set(bin.group.position.x, 3.5, 2.0);
+        } else {
+          bin.baseMesh.material.color.setHex(0x1e293b);
+        }
+      });
+
+      renderer.render(scene, camera);
+    }
+
+    /* ---------- PLAYBACK CONTROLS ---------- */
+    const $btnPlay = document.getElementById('btn-play');
+    const $btnPrev = document.getElementById('btn-prev');
+    const $btnNext = document.getElementById('btn-next');
+    const $btnReset = document.getElementById('btn-reset');
+    const $speedSelect = document.getElementById('speed-select');
+    const $presetSelect = document.getElementById('preset-select');
+    const $customInput = document.getElementById('custom-input');
+    const $btnApplyCustom = document.getElementById('btn-apply-custom');
+
+    function stopPlay() {
+      isPlaying = false;
+      if (playTimer) clearTimeout(playTimer);
+      $btnPlay.textContent = '▶ Step Play';
+      $btnPlay.classList.remove('btn-primary');
+    }
+
+    function tick() {
+      if (!isPlaying) return;
+      if (curFrameIdx < simFrames.length - 1) {
+        applyFrame(curFrameIdx + 1, true);
+        playTimer = setTimeout(tick, stepSpeed);
+      } else {
+        stopPlay();
+      }
+    }
+
+    function startPlay() {
+      stopTour();
+      if (curFrameIdx >= simFrames.length - 1) {
+        applyFrame(0, false);
+      }
+      isPlaying = true;
+      $btnPlay.textContent = '⏸ Pause';
+      $btnPlay.classList.add('btn-primary');
+      playTimer = setTimeout(tick, stepSpeed);
+    }
+
+    $btnPlay.addEventListener('click', () => {
+      if (isPlaying) stopPlay();
+      else startPlay();
+    });
+
+    $btnNext.addEventListener('click', () => {
+      stopTour();
+      stopPlay();
+      if (curFrameIdx < simFrames.length - 1) applyFrame(curFrameIdx + 1, true);
+    });
+
+    $btnPrev.addEventListener('click', () => {
+      stopTour();
+      stopPlay();
+      if (curFrameIdx > 0) applyFrame(curFrameIdx - 1, true);
+    });
+
+    $btnReset.addEventListener('click', () => {
+      stopTour();
+      stopPlay();
+      applyFrame(0, false);
+      updateTourStatusUI(0, false);
+    });
+
+    $speedSelect.addEventListener('change', () => {
+      stepSpeed = parseInt($speedSelect.value, 10) || 850;
+    });
+
+    $presetSelect.addEventListener('change', () => {
+      stopTour();
+      stopPlay();
+      const idx = parseInt($presetSelect.value, 10);
+      currentText = PRESETS[idx];
+      buildScene(currentText);
+      updateTourStatusUI(0, false);
+    });
+
+    $btnApplyCustom.addEventListener('click', () => {
+      const val = $customInput.value.trim();
+      if (val !== undefined) {
+        stopTour();
+        stopPlay();
+        currentText = val;
+        buildScene(currentText);
+        updateTourStatusUI(0, false);
+      }
+    });
+
+    /* ---------- GUIDED AUDIO TOUR CONTROLLER ---------- */
+    const $btnTour = document.getElementById('btn-tour');
+    const $btnMute = document.getElementById('btn-mute');
+    const $tourStatus = document.getElementById('tour-status');
+    const $tourBadge = document.getElementById('tour-badge');
+    const $tourMsg = document.getElementById('tour-msg');
+
+    let isTourActive = false;
+    let isMuted = false;
+    let currentAudio = null;
+    let tourCueTimers = [];
+    let tourToken = 0;
+    let currentMilestoneIdx = 0;
+
+    const WALKTHROUGHS = {
+      preset0: {
+        name: 'Python is fun, and Python is powerful!',
+        match: function(input) {
+          return typeof input === 'string' && input.startsWith('Python is fun');
+        },
+        milestones: [
+          {
+            id: 'clip_01_setup',
+            file: 'audio/clip_01_setup.mp3',
+            title: 'Setup & Frequency Dictionary Initialization',
+            startIdx: 0,
+            endIdx: 0,
+            cues: [
+              { time: 0.0, frameIdx: 0 }
+            ]
+          },
+          {
+            id: 'clip_02_cleaning_and_counting',
+            file: 'audio/clip_02_cleaning_and_counting.mp3',
+            title: 'Sanitizing Words & Adding Initial Bins',
+            startIdx: 1,
+            endIdx: 4,
+            cues: [
+              { time: 0.0, frameIdx: 1 },
+              { time: 4.0, frameIdx: 2 },
+              { time: 8.0, frameIdx: 3 },
+              { time: 11.5, frameIdx: 4 }
+            ]
+          },
+          {
+            id: 'clip_03_incrementing_counts',
+            file: 'audio/clip_03_incrementing_counts.mp3',
+            title: 'Incrementing Frequency Bins',
+            startIdx: 5,
+            endIdx: 7,
+            cues: [
+              { time: 0.0, frameIdx: 5 },
+              { time: 5.5, frameIdx: 6 },
+              { time: 9.0, frameIdx: 7 }
+            ]
+          },
+          {
+            id: 'clip_04_finding_maximum',
+            file: 'audio/clip_04_finding_maximum.mp3',
+            title: 'Scanning Frequency Bins for Leader',
+            startIdx: 8,
+            endIdx: 13,
+            cues: [
+              { time: 0.0, frameIdx: 8 },
+              { time: 3.5, frameIdx: 9 },
+              { time: 7.0, frameIdx: 10 }
+            ]
+          },
+          {
+            id: 'clip_05_conclusion',
+            file: 'audio/clip_05_conclusion.mp3',
+            title: 'Most Frequent Word Discovered',
+            startIdx: 14,
+            endIdx: 14,
+            cues: [
+              { time: 0.0, frameIdx: 14 }
+            ]
+          }
+        ]
+      }
+    };
+
+    function clearTourTimers() {
+      tourCueTimers.forEach(t => clearTimeout(t));
+      tourCueTimers = [];
+    }
+
+    function stopTourAudio() {
+      clearTourTimers();
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.onended = null;
+        currentAudio.ontimeupdate = null;
+        currentAudio.onerror = null;
+        currentAudio = null;
+      }
+    }
+
+    function stopTour() {
+      isTourActive = false;
+      stopTourAudio();
+      tourToken++;
+      if ($btnTour) {
+        $btnTour.textContent = '🎙️ Audio Tour';
+        $btnTour.classList.remove('active');
+        $btnTour.style.background = '#38bdf8';
+        $btnTour.style.color = '#0f172a';
+      }
+    }
+
+    function getActiveWalkthrough() {
+      for (const k in WALKTHROUGHS) {
+        if (WALKTHROUGHS[k].match(currentText)) return WALKTHROUGHS[k];
+      }
+      return null;
+    }
+
+    function updateTourStatusUI(mIdx, isFinished) {
+      const wt = getActiveWalkthrough();
+      if (!wt) {
+        if ($tourStatus) $tourStatus.style.display = 'none';
+        return;
+      }
+      if ($tourStatus) $tourStatus.style.display = 'inline-flex';
+      const totalM = wt.milestones.length;
+      if (isFinished || curFrameIdx >= simFrames.length - 1) {
+        if ($tourBadge) $tourBadge.textContent = 'Complete';
+        if ($tourMsg) $tourMsg.textContent = 'Guided tour complete!';
+      } else if (mIdx !== undefined && wt.milestones[mIdx]) {
+        if ($tourBadge) $tourBadge.textContent = 'Milestone ' + (mIdx + 1) + '/' + totalM;
+        if ($tourMsg) $tourMsg.textContent = isMuted ? (wt.milestones[mIdx].title + ' (Muted)') : wt.milestones[mIdx].title;
+      }
+    }
+
+    function startMilestone(mIdx) {
+      const wt = getActiveWalkthrough();
+      if (!wt || mIdx >= wt.milestones.length) {
+        stopTour();
+        updateTourStatusUI(undefined, true);
+        return;
+      }
+      currentMilestoneIdx = mIdx;
+      const m = wt.milestones[mIdx];
+      updateTourStatusUI(mIdx, false);
+
+      const thisToken = ++tourToken;
+      stopTourAudio();
+
+      if (isMuted) {
+        runSilentMilestone(m, thisToken, mIdx);
+        return;
+      }
+
+      try {
+        const audio = new Audio(m.file);
+        currentAudio = audio;
+
+        let appliedCueIndex = -1;
+        audio.ontimeupdate = () => {
+          if (thisToken !== tourToken || !isTourActive) return;
+          const ct = audio.currentTime;
+          for (let i = m.cues.length - 1; i >= 0; i--) {
+            if (ct >= m.cues[i].time) {
+              if (appliedCueIndex !== i) {
+                appliedCueIndex = i;
+                applyFrame(m.cues[i].frameIdx, true);
+              }
+              break;
+            }
+          }
+        };
+
+        audio.onended = () => {
+          if (thisToken !== tourToken || !isTourActive) return;
+          if (mIdx + 1 < wt.milestones.length) {
+            startMilestone(mIdx + 1);
+          } else {
+            stopTour();
+            updateTourStatusUI(undefined, true);
+          }
+        };
+
+        audio.onerror = () => {
+          console.warn('Audio playback error, falling back to silent step for milestone:', m.id);
+          runSilentMilestone(m, thisToken, mIdx);
+        };
+
+        applyFrame(m.cues[0].frameIdx, true);
+
+        const playPromise = audio.play();
+        if (playPromise) {
+          playPromise.catch(err => {
+            console.warn('Audio play restricted or failed, falling back to silent milestone:', err);
+            runSilentMilestone(m, thisToken, mIdx);
+          });
+        }
+      } catch (e) {
+        console.warn('Audio construction failed:', e);
+        runSilentMilestone(m, thisToken, mIdx);
+      }
+    }
+
+    function runSilentMilestone(m, token, mIdx) {
+      const wt = getActiveWalkthrough();
+      clearTourTimers();
+      m.cues.forEach((cue, i) => {
+        const delay = (i === 0) ? 0 : (cue.time * 1000);
+        const t = setTimeout(() => {
+          if (token !== tourToken || !isTourActive) return;
+          applyFrame(cue.frameIdx, true);
+          if (i === m.cues.length - 1) {
+            const nextDelay = 1500;
+            const tNext = setTimeout(() => {
+              if (token !== tourToken || !isTourActive) return;
+              if (wt && mIdx + 1 < wt.milestones.length) {
+                startMilestone(mIdx + 1);
+              } else {
+                stopTour();
+                updateTourStatusUI(undefined, true);
+              }
+            }, nextDelay);
+            tourCueTimers.push(tNext);
+          }
+        }, delay);
+        tourCueTimers.push(t);
+      });
+    }
+
+    function startTour() {
+      stopPlay();
+      const wt = getActiveWalkthrough();
+      if (!wt) {
+        alert('Guided Audio Tour is available for Preset 1 (default preset).');
+        return;
+      }
+      isTourActive = true;
+      if ($btnTour) {
+        $btnTour.textContent = '⏸ Pause Tour';
+        $btnTour.classList.add('active');
+        $btnTour.style.background = '#e2e8f0';
+        $btnTour.style.color = '#0f172a';
+      }
+      if (curFrameIdx >= simFrames.length - 1) {
+        applyFrame(0, false);
+      }
+      let startM = 0;
+      for (let i = 0; i < wt.milestones.length; i++) {
+        if (curFrameIdx >= wt.milestones[i].startIdx && curFrameIdx <= wt.milestones[i].endIdx) {
+          startM = i;
+          break;
+        }
+      }
+      startMilestone(startM);
+    }
+
+    $btnTour.addEventListener('click', () => {
+      if (isTourActive) stopTour();
+      else startTour();
+    });
+
+    $btnMute.addEventListener('click', () => {
+      isMuted = !isMuted;
+      $btnMute.textContent = isMuted ? '🔇' : '🔊';
+      $btnMute.title = isMuted ? 'Voiceover Muted (Silent Mode)' : 'Voiceover Enabled';
+      if (isTourActive) {
+        startMilestone(currentMilestoneIdx);
+      }
+    });
+
+    /* Keyboard Shortcuts */
+    window.addEventListener('keydown', (e) => {
+      if (document.activeElement === $customInput) return;
+      if (e.code === 'Space') {
+        e.preventDefault();
+        if (getActiveWalkthrough()) {
+          $btnTour.click();
+        } else {
+          $btnPlay.click();
+        }
+      } else if (e.code === 'KeyM') {
+        e.preventDefault();
+        $btnMute.click();
+      } else if (e.code === 'ArrowRight') {
+        e.preventDefault();
+        $btnNext.click();
+      } else if (e.code === 'ArrowLeft') {
+        e.preventDefault();
+        $btnPrev.click();
+      } else if (e.code === 'KeyR') {
+        e.preventDefault();
+        $btnReset.click();
+      }
+    });
+
+    /* Code Panel Toggle */
+    const $btnToggleCode = document.getElementById('btn-toggle-code');
+    const $codeToggleLabel = document.getElementById('code-toggle-label');
+    const $codePanel = document.getElementById('code-panel');
+    let isCodeVisible = true;
+
+    $btnToggleCode.addEventListener('click', () => {
+      isCodeVisible = !isCodeVisible;
+      if (isCodeVisible) {
+        $codePanel.classList.remove('hidden');
+        $codeToggleLabel.textContent = 'Hide Code';
+      } else {
+        $codePanel.classList.add('hidden');
+        $codeToggleLabel.textContent = 'Show Code';
+      }
+      onWindowResize();
+    });
+
+    /* Collapsible Legend */
+    const $legendCard = document.getElementById('legend-card');
+    document.getElementById('legend-toggle').addEventListener('click', () => {
+      $legendCard.classList.toggle('collapsed');
+    });
+
+    /* Mouse Orbit Drag Controls (Yaw only) */
+    let isDragging = false;
+    let prevMouseX = 0;
+    let currentYaw = 0;
+
+    $canvas.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      prevMouseX = e.clientX;
+    });
+
+    window.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const deltaX = e.clientX - prevMouseX;
+      prevMouseX = e.clientX;
+
+      currentYaw -= deltaX * 0.005;
+      currentYaw = Math.max(-0.45, Math.min(0.45, currentYaw));
+
+      const dist = 12.0;
+      camera.position.x = Math.sin(currentYaw) * dist;
+      camera.position.z = Math.cos(currentYaw) * dist;
+      camera.lookAt(0, 1.2, 0);
+      renderer.render(scene, camera);
+    });
+
+    /* Resize Listener */
+    function onWindowResize() {
+      const container = document.getElementById('stage-container');
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+      renderer.render(scene, camera);
+    }
+    window.addEventListener('resize', onWindowResize);
+
+    /* Animation Loop */
+    function animateLoop() {
+      requestAnimationFrame(animateLoop);
+      renderer.render(scene, camera);
+    }
+    animateLoop();
+
+    // Initial Build
+    buildScene(currentText);
+
+  })();
+  </script>
+</body>
+</html>

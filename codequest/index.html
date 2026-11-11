@@ -1,0 +1,849 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="CodeQuest Python Study Guide — 25 Interactive 3D Algorithm Walkthroughs with Guided Audio Tours">
+  <title>CodeQuest Python 3D Study Guide — 25 Interactive Visualizers</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0b1020;
+      color: #eef2ff;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(ellipse at 15% 0%, rgb(56 84 190 / 25%), transparent 45rem),
+        radial-gradient(ellipse at 85% 20%, rgb(168 85 247 / 15%), transparent 40rem),
+        #0b1020;
+      color: #e2e8f0;
+      line-height: 1.6;
+    }
+
+    header {
+      border-bottom: 1px solid #1e293b;
+      background: rgba(11, 16, 32, 0.85);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .nav-container {
+      max-width: 78rem;
+      margin: 0 auto;
+      padding: 0.9rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .back-link {
+      color: #94a3b8;
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: color 150ms;
+    }
+    .back-link:hover { color: #38bdf8; }
+
+    .brand-badge {
+      background: #0284c7;
+      color: #f8fafc;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      letter-spacing: 0.05em;
+    }
+
+    main {
+      max-width: 78rem;
+      margin: 0 auto;
+      padding: 3rem 1.5rem 6rem;
+    }
+
+    .hero {
+      text-align: center;
+      max-width: 52rem;
+      margin: 0 auto 3rem;
+    }
+
+    .hero-eyebrow {
+      color: #38bdf8;
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 0.75rem;
+    }
+
+    .hero h1 {
+      font-size: clamp(2.4rem, 5vw, 3.8rem);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1.1;
+      margin-bottom: 1.25rem;
+      background: linear-gradient(135deg, #ffffff 40%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-lead {
+      color: #94a3b8;
+      font-size: clamp(1.05rem, 2vw, 1.2rem);
+      line-height: 1.65;
+      margin-bottom: 2rem;
+    }
+
+    .stats-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .stat-pill {
+      background: rgba(30, 41, 59, 0.7);
+      border: 1px solid #334155;
+      padding: 0.5rem 1rem;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      color: #cbd5e1;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .stat-pill strong { color: #38bdf8; }
+
+    /* Controls Bar */
+    .controls-bar {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      margin-bottom: 2.5rem;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid #1e293b;
+      border-radius: 1rem;
+      padding: 1.25rem;
+    }
+
+    .search-box {
+      width: 100%;
+      position: relative;
+    }
+
+    .search-input {
+      width: 100%;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 0.6rem;
+      padding: 0.75rem 1rem 0.75rem 2.5rem;
+      color: #f1f5f9;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 150ms;
+    }
+    .search-input:focus {
+      border-color: #38bdf8;
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+    }
+    .search-icon {
+      position: absolute;
+      left: 0.9rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #64748b;
+      font-size: 1rem;
+    }
+
+    .filter-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .filter-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #94a3b8;
+      padding: 0.4rem 0.85rem;
+      border-radius: 0.5rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 150ms;
+    }
+    .filter-btn:hover {
+      background: #334155;
+      color: #f8fafc;
+    }
+    .filter-btn.active {
+      background: #38bdf8;
+      color: #020617;
+      border-color: #38bdf8;
+    }
+
+    /* Cards Grid */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 23rem), 1fr));
+      gap: 1.5rem;
+    }
+
+    .card {
+      background: linear-gradient(150deg, rgba(30, 41, 59, 0.75), rgba(15, 23, 42, 0.9));
+      border: 1px solid #293548;
+      border-radius: 1rem;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      text-decoration: none;
+      color: inherit;
+      transition: transform 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+    }
+    .card:hover {
+      transform: translateY(-4px);
+      border-color: #38bdf8;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4), 0 0 20px rgba(56, 189, 248, 0.15);
+    }
+
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.85rem;
+    }
+
+    .q-pill {
+      background: #0284c7;
+      color: #f8fafc;
+      font-size: 0.75rem;
+      font-weight: 800;
+      padding: 0.2rem 0.55rem;
+      border-radius: 0.4rem;
+      letter-spacing: 0.05em;
+    }
+
+    .audio-pill {
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      color: #38bdf8;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .card h2 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #f8fafc;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.5rem;
+      line-height: 1.3;
+    }
+
+    .style-badge {
+      color: #a78bfa;
+      font-size: 0.78rem;
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+      display: inline-block;
+    }
+
+    .card-desc {
+      color: #94a3b8;
+      font-size: 0.88rem;
+      line-height: 1.55;
+      margin-bottom: 1.25rem;
+      flex-grow: 1;
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .tag {
+      background: rgba(51, 65, 85, 0.5);
+      color: #cbd5e1;
+      font-size: 0.72rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 0.35rem;
+    }
+
+    .card-footer {
+      border-top: 1px solid #1e293b;
+      padding-top: 0.85rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #38bdf8;
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+    .card-footer span { transition: transform 150ms; }
+    .card:hover .card-footer span { transform: translateX(3px); }
+
+    .no-results {
+      text-align: center;
+      padding: 4rem 1rem;
+      color: #64748b;
+      display: none;
+    }
+
+    footer {
+      border-top: 1px solid #1e293b;
+      text-align: center;
+      padding: 2.5rem 1rem;
+      color: #64748b;
+      font-size: 0.85rem;
+    }
+    footer a { color: #94a3b8; text-decoration: none; }
+    footer a:hover { color: #38bdf8; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="nav-container">
+      <a href="../index.html" class="back-link">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        All Animated Solutions
+      </a>
+      <span class="brand-badge">CodeQuest Python</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <p class="hero-eyebrow">Interactive 3D Study Guide</p>
+      <h1>CodeQuest Python Visualizers</h1>
+      <p class="hero-lead">
+        Master foundational and algorithmic Python concepts through 25 interactive, beginner-friendly 3D animations powered by Three.js and narrated by ElevenLabs AI.
+      </p>
+      <div class="stats-row">
+        <div class="stat-pill"><strong>25</strong> Questions Animated</div>
+        <div class="stat-pill"><strong>124</strong> Audio Walkthrough Clips</div>
+        <div class="stat-pill">🎙️ Voice: <strong>Lauren</strong></div>
+        <div class="stat-pill">⚡ <strong>100%</strong> Deterministic 3D Simulation</div>
+      </div>
+    </section>
+
+    <div class="controls-bar">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="search-input" class="search-input" placeholder="Search by question title, concept, or visual style (e.g., Two Pointers, Sieve, Matrix, Fibonacci)...">
+      </div>
+      <div class="filter-tabs" id="filter-tabs">
+        <button class="filter-btn active" data-cat="All">All</button>
+        <button class="filter-btn " data-cat="Strings">Strings</button>
+        <button class="filter-btn " data-cat="Arrays & Lists">Arrays & Lists</button>
+        <button class="filter-btn " data-cat="Dictionaries & Sets">Dictionaries & Sets</button>
+        <button class="filter-btn " data-cat="Recursion & DP">Recursion & DP</button>
+        <button class="filter-btn " data-cat="Math & Bits">Math & Bits</button>
+        <button class="filter-btn " data-cat="2D Arrays">2D Arrays</button>
+        <button class="filter-btn " data-cat="Stacks & Queues">Stacks & Queues</button>
+        <button class="filter-btn " data-cat="Functions">Functions</button>
+      </div>
+    </div>
+
+    <div class="grid" id="problems-grid">
+      
+      <a class="card" href="01-palindrome/palindrome_3d.html" data-cat="Strings" data-tags="palindrome validator two pointers string sanitization casing equality dual-pointer walkers">
+        <div class="card-top">
+          <span class="q-pill">Q01</span>
+          <span class="audio-pill">🎙️ Audio Tour (5 clips)</span>
+        </div>
+        <h2>Palindrome Validator</h2>
+        <span class="style-badge">✦ Dual-Pointer Walkers</span>
+        <p class="card-desc">Two pointers walk inward skipping non-alphanumeric characters, comparing casing in real time.</p>
+        <div class="tag-row">
+          <span class="tag">Two Pointers</span><span class="tag">String Sanitization</span><span class="tag">Casing Equality</span>
+        </div>
+        <div class="card-footer">
+          <span>Explore in 3D</span>
+          <span>→</span>
+        </div>
+      </a>
+
+      <a class="card" href="02-student-grades/student_grades_3d.html" data-cat="Dictionaries & Sets" data-tags="student grades & averages dictionary aggregation averages conditional thresholds pillar row with grade thresholds">
+        <div class="card-top">
+          <span class="q-pill">Q02</span>
+          <span class="audio-pill">🎙️ Audio Tour (5 clips)</span>
+        </div>
+        <h2>Student Grades & Averages</h2>
+        <span class="style-badge">✦ Pillar Row with Grade Thresholds</span>
+        <p class="card-desc">Dictionary aggregation computing student subject averages, categorizing grades, and highlighting top performers.</p>
+        <div class="tag-row">
+          <span class="tag">Dictionary Aggregation</span><span class="tag">Averages</span><span class="tag">Conditional Thresholds</span>
+        </div>
+        <div class="card-footer">
+          <span>Explore in 3D</span>
+          <span>→</span>
+        </div>
+      </a>
+
+      <a class="card" href="03-word-frequency/word_frequency_3d.html" data-cat="Dictionaries & Sets" data-tags="word frequency counter hash maps tokenization frequency counting bins with arcing word droppers">
+        <div class="card-top">
+          <span class="q-pill">Q03</span>
+          <span class="audio-pill">🎙️ Audio Tour (5 clips)</span>
+        </div>
+        <h2>Word Frequency Counter</h2>
+        <span class="style-badge">✦ Bins with Arcing Word Droppers</span>
+        <p class="card-desc">Text normalization and tokenization sorting words into 3D frequency bins with a top-word leaderboard.</p>
+        <div class="tag-row">
+          <span class="tag">Hash Maps</span><span class="tag">Tokenization</span><span class="tag">Frequency Counting</span>
+        </div>
+        <div class="card-footer">
+          <span>Explore in 3D</span>
+          <span>→</span>
+        </div>
+      </a>
+
+      <a class="card" href="04-two-sum/two_sum_3d.html" data-cat="Arrays & Lists" data-tags="two sum in 3d hash map lookup complement arithmetic linear scan dual walkers with sum gauge">
+        <div class="card-top">
+          <span class="q-pill">Q04</span>
+          <span class="audio-pill">🎙️ Audio Tour (5 clips)</span>
+        </div>
+        <h2>Two Sum in 3D</h2>
+        <span class="style-badge">✦ Dual Walkers with Sum Gauge</span>
+        <p class="card-desc">Classic O(n) complement hash map lookup animated with pointers and a real-time sum dial gauge.</p>
+        <div class="tag-row">
+          <span class="tag">Hash Map Lookup</span><span class="tag">Complement Arithmetic</span><span class="tag">Linear Scan</span>
+        </div>
+        <div class="card-footer">
+          <span>Explore in 3D</span>
+          <span>→</span>
+        </div>
+      </a>
+
+      <a class="card" href="05-second-largest/second_largest_3d.html" data-cat="Arrays & Lists" data-tags="second largest number single-pass scan two-variable tracking strict inequalities podium with dual-pillar compare">
+        <div class="card-top">
+          <span class="q-pill">Q05</span>
+          <span class="audio-pill">🎙️ Audio Tour (5 clips)</span>
+        </div>
+        <h2>Second Largest Number</h2>
+        <span class="style-badge">✦ Podium with Dual-Pillar Compare</span>
+        <p class="card-desc">Single-pass scan tracking both maximum and second maximum values without sorting the array.</p>
+        <div class="tag-row">
+          <span class="tag">Single-Pass Scan</span><span class="tag">Two-Variable Tracking</span><span class="tag">Strict Inequalities</span>
+        </div>
+        <div class="card-footer">
+          <span>Explore in 3D</span>
+          <span>→</span>
+        </div>
+      </a>
+
+      <a class="card" href="06-caesar-cipher/caesar_cipher_3d.html" data-cat="Strings" data-tags="caesar cipher modulo arithmetic ascii character codes letter shifting conveyor belt with circular ring">
+        <div class="card-top">
+          <span class="q-pill">Q06</span>
+          <span class="audio-pill">🎙️ Audio Tour (5 clips)</span>
+        </div>
+        <h2>Caesar Cipher</h2>
+        <span class="style-badge">✦ Conveyor Belt with Circular Ring</span>
+        <p class="card-desc">Rotational ASCII shifting with modulo arithmetic preserving letter casing and punctuation.</p>
+        <div class="tag-row">
+          <span class="tag">Modulo Arithmetic</span><span class="tag">ASCII Character Codes</span><span class="tag">Letter Shifting</span>
+        </div>
+        <div class="card-footer">
+          <span>Explore in 3D</span>
+          <span>→</span>
+        </div>
+      </a>
+
+      <a class="card" href="07-compose-and-pipe/compose_pipe_3d.html" data-cat="Functions" data-tags="compose & pipe pipelines higher-order functions function composition data flow factory hopper pipeline">
+        <div class="card-top">
+          <span class="q-pill">Q07</span>
+          <span class="audio-pill">🎙️ Audio Tour (5 clips)</span>
+        </div>
+        <h2>Compose & Pipe Pipelines</h2>
+        <span class="style-badge">✦ Factory Hopper Pipeline</span>
+        <p class="card-desc">Functional composition comparing right-to-left compose against left-to-right pipe transformations.</p>
+        <div class="tag-row">
+          <span class="tag">Higher-Order Functions</span><span class="tag">Function Composition</span><span class="tag">Data Flow</span>
+        </div>
+        <div class="card-footer">
+          <span>Explore in 3D</span>
+          <span>→</span>
+        </div>
+      </a>
+
+      <a class="card" href="08-recursive-flatten/recursive_flatten_3d.html" data-cat="Recursion & DP" data-tags="recursive flatten & group tree recursion depth unpacking type grouping call-stack tree & bins">
+        <div class="card-top">
+          <span class="q-pill">Q08</span>
+          <span class="audio-pill">🎙️ Audio Tour (5 clips)</span>
+        </div>
+        <h2>Recursive Flatten & Group</h2>
+        <span class="style-badge">✦ Call-Stack Tree & Bins</span>
+        <p class="card-desc">Deep nested list traversal recursively unpacking arbitrary depths and grouping elements by Python type.</p>
+        <div class="tag-row">
+          <span class="tag">Tree Recursion</span><span class="tag">Depth Unpacking</span><span class="tag">Type Grouping</span>
+        </div>
+        <div class="card-footer">
+          <span>Explore in 3D</span>
+          <span>→</span>
+        </div>
+      </a>
+
+      <a class="card" href="09-memoized-fibonacci/memoized_fibonacci_3d.html" data-cat="Recursion & DP" data-tags="memoized fibonacci memoization call stack pruning overlapping subproblems call tower & cache table">
+        <div class="card-top">
+          <span class="q-pill">Q09</span>
+          <span class="audio-pill">🎙️ Audio Tour (5 clips)</span>
+        </div>
+        <h2>Memoized Fibonacci</h2>
+        <span class="style-badge">✦ Call Tower & Cache Table</span>
+        <p class="card-desc">Recursive call stack visualization demonstrating exponential redundant calls pruned via hash cache lookup.</p>
+        <div class="tag-row">
+          <span class="tag">Memoization</span><span class="tag">Call Stack Pruning</span><span class="tag">Overlapping Subproblems</span>
+        </div>
+        <div class="card-footer">
+          <span>Explore in 3D</span>
+          <span>→</span>
+        </div>
+      </a>
+
+      <a class="card" href="10-transaction-analyzer/transaction_analyzer_3d.html" data-cat="Dictionaries & Sets" data-tags="transaction analyzer multi-attribute filtering running balance anomaly detection ledger timeline & balances">
+        <div class="card-top">
+          <span class="q-pill">Q10</span>
+          <span class="audio-pill">🎙️ Audio Tour (5 clips)</span>
+        </div>
+        <h2>Transaction Analyzer</h2>
+        <span class="style-badge">✦ Ledger Timeline & Balances</span>
+        <p class="card-desc">Multi-criteria financial ledger filtering by department, computing running balances, and flagging anomalies.</p>
+        <div class="tag-row">
+          <span class="tag">Multi-Attribute Filtering</span><span class="tag">Running Balance</span><span class="tag">Anomaly Detection</span>
+        </div>
+        <div class="card-footer">
+          <span>Explore in 3D</span>
+          <span>→</span>
+        </div>
+      </a>
+
+      <a class="card" href="11-simple-calculator/simple_calculator_3d.html" data-cat="Stacks & Queues" data-tags="simple calculator with undo state history undo stack operation parsing accumulator dial & undo stack">
+        <div class="card-top">
+          <span class="q-pill">Q11</span>
+          <span class="audio-pill">🎙️ Audio Tour (5 clips)</span>
+        </div>
+        <h2>Simple Calculator with Undo</h2>
+        <span class="style-badge">✦ Accumulator Dial & Undo Stack</span>
+        <p class="card-desc">Arithmetic evaluation supporting sequential operations and state history rollback via an LIFO undo stack.</p>
+        <div class="tag-row">
+          <span class="tag">State History</span><span class="tag">Undo Stack</span><span class="tag">Operation Parsing</span>
+        </div>
+        <div class="card-footer">
+          <span>Explore in 3D</span>
+          <span>→</span>
+        </div>
+      </a>
+
+      <a class="card" href="12-list-analyser/list_analyser_3d.html" data-cat="Arrays & Lists" data-tags="list analyser extended two-pass scan metric aggregation threshold filtering multi-metric pillar row">
+        <div class="card-top">
+          <span class="q-pill">Q12</span>
+          <span class="audio-pill">🎙️ Audio Tour (5 clips)</span>
+        </div>
+        <h2>List Analyser Extended</h2>
+        <span class="style-badge">✦ Multi-Metric Pillar Row</span>
+        <p class="card-desc">Two-pass scan calculating min, max, average, and filtering elements above an arbitrary user threshold.</p>
+        <div class="tag-row">
+          <span class="tag">Two-Pass Scan</span><span class="tag">Metric Aggregation</span><span class="tag">Threshold Filtering</span>
+        </div>
+        <div class="card-footer">
+          <span>Explore in 3D</span>
+          <span>→</span>
+        </div>
+      </a>
+
+      <a class="card" href="13-linear-search/linear_search_3d.html" data-cat="Arrays & Lists" data-tags="linear search all occurrences linear traversal match collection index recording scanner beam & result tray">
+        <div class="card-top">
+          <span class="q-pill">Q13</span>
+          <span class="audio-pill">🎙️ Audio Tour (5 clips)</span>
+        </div>
+        <h2>Linear Search All Occurrences</h2>
+        <span class="style-badge">✦ Scanner Beam & Result Tray</span>
+        <p class="card-desc">Illuminated scanner beam traversing an array to collect every matching index into an output result tray.</p>
+        <div class="tag-row">
+          <span class="tag">Linear Traversal</span><span class="tag">Match Collection</span><span class="tag">Index Recording</span>
+        </div>
+        <div class="card-footer">
+          <span>Explore in 3D</span>
+          <span>→</span>
+        </div>
+      </a>
+
+      <a class="card" href="14-matrix-sums/matrix_sums_3d.html" data-cat="2D Arrays" data-tags="matrix row & column sums 2d list traversal nested loops margin totals flat tile 2d board with margins">
+        <div class="card-top">
+          <span class="q-pill">Q14</span>
+          <span class="audio-pill">🎙️ Audio Tour (5 clips)</span>
+        </div>
+        <h2>Matrix Row & Column Sums</h2>
+        <span class="style-badge">✦ Flat Tile 2D Board with Margins</span>
+        <p class="card-desc">Nested loop 2D grid traversal calculating both horizontal row totals and vertical column totals.</p>
+        <div class="tag-row">
+          <span class="tag">2D List Traversal</span><span class="tag">Nested Loops</span><span class="tag">Margin Totals</span>
+        </div>
+        <div class="card-footer">
+          <span>Explore in 3D</span>
+          <span>→</span>
+        </div>
+      </a>
+
+      <a class="card" href="15-balanced-parentheses/balanced_parentheses_3d.html" data-cat="Stacks & Queues" data-tags="balanced parentheses multi-type stack lifo mirror matching boundary checking vertical stack rack">
+        <div class="card-top">
+          <span class="q-pill">Q15</span>
+          <span class="audio-pill">🎙️ Audio Tour (5 clips)</span>
+        </div>
+        <h2>Balanced Parentheses Multi-Type</h2>
+        <span class="style-badge">✦ Vertical Stack Rack</span>
+        <p class="card-desc">Stack push and pop validation verifying balanced nesting across parentheses, brackets, and curly braces.</p>
+        <div class="tag-row">
+          <span class="tag">Stack LIFO</span><span class="tag">Mirror Matching</span><span class="tag">Boundary Checking</span>
+        </div>
+        <div class="card-footer">
+          <span>Explore in 3D</span>
+          <span>→</span>
+        </div>
+      </a>
+
+      <a class="card" href="16-todo-list/todo_list_3d.html" data-cat="Dictionaries & Sets" data-tags="to-do list extended crud operations dictionary modeling status transitions kanban board with state badges">
+        <div class="card-top">
+          <span class="q-pill">Q16</span>
+          <span class="audio-pill">🎙️ Audio Tour (5 clips)</span>
+        </div>
+        <h2>To-Do List Extended</h2>
+        <span class="style-badge">✦ Kanban Board with State Badges</span>
+        <p class="card-desc">Structured dictionary CRUD task operations animating item moves between pending and completed kanban lanes.</p>
+        <div class="tag-row">
+          <span class="tag">CRUD Operations</span><span class="tag">Dictionary Modeling</span><span class="tag">Status Transitions</span>
+        </div>
+        <div class="card-footer">
+          <span>Explore in 3D</span>
+          <span>→</span>
+        </div>
+      </a>
+
+      <a class="card" href="17-leap-year/leap_year_3d.html" data-cat="Math & Bits" data-tags="leap year decision tree compound modulo decision tree sequence generation decision tree flowchart">
+        <div class="card-top">
+          <span class="q-pill">Q17</span>
+          <span class="audio-pill">🎙️ Audio Tour (4 clips)</span>
+        </div>
+        <h2>Leap Year Decision Tree</h2>
+        <span class="style-badge">✦ Decision Tree Flowchart</span>
+        <p class="card-desc">Branching modulo decision tree testing rules for 400, 100, and 4, followed by upcoming leap year discovery.</p>
+        <div class="tag-row">
+          <span class="tag">Compound Modulo</span><span class="tag">Decision Tree</span><span class="tag">Sequence Generation</span>
+        </div>
+        <div class="card-footer">
+          <span>Explore in 3D</span>
+          <span>→</span>
+        </div>
+      </a>
+
+      <a class="card" href="18-find-duplicates/find_duplicates_3d.html" data-cat="Arrays & Lists" data-tags="find duplicates ordered scanner order-preserving deduplication set-free lookup scanner basket uniqueness scanner & basket">
+        <div class="card-top">
+          <span class="q-pill">Q18</span>
+          <span class="audio-pill">🎙️ Audio Tour (5 clips)</span>
+        </div>
+        <h2>Find Duplicates Ordered Scanner</h2>
+        <span class="style-badge">✦ Uniqueness Scanner & Basket</span>
+        <p class="card-desc">Deduplication without sets that identifies recurring numbers while strictly preserving original first-seen ordering.</p>
+        <div class="tag-row">
+          <span class="tag">Order-Preserving Deduplication</span><span class="tag">Set-Free Lookup</span><span class="tag">Scanner Basket</span>
+        </div>
+        <div class="card-footer">
+          <span>Explore in 3D</span>
+          <span>→</span>
+        </div>
+      </a>
+
+      <a class="card" href="19-run-length-encoding/run_length_3d.html" data-cat="Strings" data-tags="run-length encoding streak compression state transitions run flushing letter belt with slab squeeze">
+        <div class="card-top">
+          <span class="q-pill">Q19</span>
+          <span class="audio-pill">🎙️ Audio Tour (5 clips)</span>
+        </div>
+        <h2>Run-Length Encoding</h2>
+        <span class="style-badge">✦ Letter Belt with Slab Squeeze</span>
+        <p class="card-desc">Consecutive character streak compression squeezing identical runs into count-annotated tokens.</p>
+        <div class="tag-row">
+          <span class="tag">Streak Compression</span><span class="tag">State Transitions</span><span class="tag">Run Flushing</span>
+        </div>
+        <div class="card-footer">
+          <span>Explore in 3D</span>
+          <span>→</span>
+        </div>
+      </a>
+
+      <a class="card" href="20-prime-checker/prime_checker_3d.html" data-cat="Math & Bits" data-tags="prime checker optimized square-root optimization early exit divisor sieve square-root sieve beam">
+        <div class="card-top">
+          <span class="q-pill">Q20</span>
+          <span class="audio-pill">🎙️ Audio Tour (5 clips)</span>
+        </div>
+        <h2>Prime Checker Optimized</h2>
+        <span class="style-badge">✦ Square-Root Sieve Beam</span>
+        <p class="card-desc">Primality verification optimized with an early square root bound check and prime series accumulator.</p>
+        <div class="tag-row">
+          <span class="tag">Square-Root Optimization</span><span class="tag">Early Exit</span><span class="tag">Divisor Sieve</span>
+        </div>
+        <div class="card-footer">
+          <span>Explore in 3D</span>
+          <span>→</span>
+        </div>
+      </a>
+
+      <a class="card" href="21-fibonacci-even-sum/fibonacci_even_sum_3d.html" data-cat="Math & Bits" data-tags="fibonacci sequence even sum pointer updates parity filtering sequence reversal fibonacci staircase & filter bin">
+        <div class="card-top">
+          <span class="q-pill">Q21</span>
+          <span class="audio-pill">🎙️ Audio Tour (5 clips)</span>
+        </div>
+        <h2>Fibonacci Sequence Even Sum</h2>
+        <span class="style-badge">✦ Fibonacci Staircase & Filter Bin</span>
+        <p class="card-desc">Iterative Fibonacci generation with parity filtering, sequence reversal, and running even sum accumulation.</p>
+        <div class="tag-row">
+          <span class="tag">Pointer Updates</span><span class="tag">Parity Filtering</span><span class="tag">Sequence Reversal</span>
+        </div>
+        <div class="card-footer">
+          <span>Explore in 3D</span>
+          <span>→</span>
+        </div>
+      </a>
+
+      <a class="card" href="22-decimal-to-binary/decimal_to_binary_3d.html" data-cat="Math & Bits" data-tags="decimal to binary converter integer division bit prepending base-2 conversion division tower & bit register">
+        <div class="card-top">
+          <span class="q-pill">Q22</span>
+          <span class="audio-pill">🎙️ Audio Tour (5 clips)</span>
+        </div>
+        <h2>Decimal to Binary Converter</h2>
+        <span class="style-badge">✦ Division Tower & Bit Register</span>
+        <p class="card-desc">Successive division by two prepending remainder bits into an animated binary bit register.</p>
+        <div class="tag-row">
+          <span class="tag">Integer Division</span><span class="tag">Bit Prepending</span><span class="tag">Base-2 Conversion</span>
+        </div>
+        <div class="card-footer">
+          <span>Explore in 3D</span>
+          <span>→</span>
+        </div>
+      </a>
+
+      <a class="card" href="23-matrix-multiplication/matrix_multiplication_3d.html" data-cat="2D Arrays" data-tags="matrix multiplication triple nested loops dot product dimension validation dot-product animated matrix grid">
+        <div class="card-top">
+          <span class="q-pill">Q23</span>
+          <span class="audio-pill">🎙️ Audio Tour (5 clips)</span>
+        </div>
+        <h2>Matrix Multiplication</h2>
+        <span class="style-badge">✦ Dot-Product Animated Matrix Grid</span>
+        <p class="card-desc">Triple-nested loop matrix dot product computation illustrating row-by-column dimension checks and accumulation.</p>
+        <div class="tag-row">
+          <span class="tag">Triple Nested Loops</span><span class="tag">Dot Product</span><span class="tag">Dimension Validation</span>
+        </div>
+        <div class="card-footer">
+          <span>Explore in 3D</span>
+          <span>→</span>
+        </div>
+      </a>
+
+      <a class="card" href="24-capitalize-words/capitalize_words_3d.html" data-cat="Strings" data-tags="remove spaces & capitalize words ascii manipulation word boundary state dual string outputs string sanitizer belt">
+        <div class="card-top">
+          <span class="q-pill">Q24</span>
+          <span class="audio-pill">🎙️ Audio Tour (5 clips)</span>
+        </div>
+        <h2>Remove Spaces & Capitalize Words</h2>
+        <span class="style-badge">✦ String Sanitizer Belt</span>
+        <p class="card-desc">Character-by-character ASCII transformation generating title-cased words and whitespace-stripped outputs.</p>
+        <div class="tag-row">
+          <span class="tag">ASCII Manipulation</span><span class="tag">Word Boundary State</span><span class="tag">Dual String Outputs</span>
+        </div>
+        <div class="card-footer">
+          <span>Explore in 3D</span>
+          <span>→</span>
+        </div>
+      </a>
+
+      <a class="card" href="25-anagram-checker/anagram_checker_3d.html" data-cat="Strings" data-tags="anagram checker frequency matching character normalization hash dictionary verification dual frequency bins & scale">
+        <div class="card-top">
+          <span class="q-pill">Q25</span>
+          <span class="audio-pill">🎙️ Audio Tour (5 clips)</span>
+        </div>
+        <h2>Anagram Checker</h2>
+        <span class="style-badge">✦ Dual Frequency Bins & Scale</span>
+        <p class="card-desc">Frequency mapping comparison verifying whether two normalized strings have identical letter counts.</p>
+        <div class="tag-row">
+          <span class="tag">Frequency Matching</span><span class="tag">Character Normalization</span><span class="tag">Hash Dictionary Verification</span>
+        </div>
+        <div class="card-footer">
+          <span>Explore in 3D</span>
+          <span>→</span>
+        </div>
+      </a>
+    </div>
+
+    <div class="no-results" id="no-results">
+      <h3>No visualizations match your query</h3>
+      <p>Try searching for a different keyword or select "All".</p>
+    </div>
+  </main>
+
+  <footer>
+    <p>CodeQuest Python Study Guide 3D Animation Suite · Built with Three.js & ElevenLabs · <a href="../index.html">Back to Home</a></p>
+  </footer>
+
+  <script>
+    const searchInput = document.getElementById('search-input');
+    const filterBtns = document.querySelectorAll('.filter-btn');
+    const cards = document.querySelectorAll('.card');
+    const noResults = document.getElementById('no-results');
+
+    let currentCat = 'All';
+    let currentQuery = '';
+
+    function filterCards() {
+      let visibleCount = 0;
+      cards.forEach(card => {
+        const cat = card.getAttribute('data-cat');
+        const tags = card.getAttribute('data-tags');
+        const matchesCat = (currentCat === 'All' || cat === currentCat);
+        const matchesQuery = (!currentQuery || tags.includes(currentQuery));
+
+        if (matchesCat && matchesQuery) {
+          card.style.display = 'flex';
+          visibleCount++;
+        } else {
+          card.style.display = 'none';
+        }
+      });
+
+      noResults.style.display = visibleCount === 0 ? 'block' : 'none';
+    }
+
+    searchInput.addEventListener('input', (e) => {
+      currentQuery = e.target.value.trim().toLowerCase();
+      filterCards();
+    });
+
+    filterBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        filterBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentCat = btn.getAttribute('data-cat');
+        filterCards();
+      });
+    });
+  </script>
+</body>
+</html>

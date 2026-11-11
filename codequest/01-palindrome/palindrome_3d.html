@@ -1,0 +1,1402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CodeQuest Q1 — Palindrome in 3D</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --panel: #0f172a;
+      --panel-border: #1e293b;
+      --ink: #f8fafc;
+      --muted: #94a3b8;
+      --accent-cyan: #38bdf8;
+      --accent-amber: #fbbf24;
+      --accent-green: #22c55e;
+      --accent-red: #ef4444;
+      --code-bg: #0b1120;
+      --code-hl: rgba(56, 189, 248, 0.22);
+      --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      --font-code: "JetBrains Mono", Consolas, "Courier New", monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font-ui);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+    }
+
+    /* Header */
+    header {
+      background: var(--panel);
+      border-bottom: 1px solid var(--panel-border);
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 10;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .badge {
+      background: linear-gradient(135deg, #0284c7, #38bdf8);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: var(--muted);
+      margin-left: 8px;
+      font-weight: 400;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    button.btn-ghost {
+      background: transparent;
+      border: 1px solid var(--panel-border);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    button.btn-ghost:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--ink);
+      border-color: #334155;
+    }
+
+    /* Main Workspace */
+    #workspace {
+      flex: 1;
+      display: flex;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #stage-container {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    canvas#stage {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: grab;
+    }
+
+    canvas#stage:active {
+      cursor: grabbing;
+    }
+
+    /* Floating Legend */
+    #legend-card {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--panel-border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 12px;
+      z-index: 5;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      max-width: 260px;
+      transition: all 0.2s ease;
+    }
+
+    #legend-card.collapsed .legend-body {
+      display: none;
+    }
+
+    .legend-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-weight: 700;
+      color: var(--ink);
+      cursor: pointer;
+    }
+
+    .legend-body {
+      margin-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 11.5px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* Right Code Panel */
+    #code-panel {
+      width: 420px;
+      background: var(--code-bg);
+      border-left: 1px solid var(--panel-border);
+      display: flex;
+      flex-direction: column;
+      transition: width 0.2s ease, transform 0.2s ease;
+      z-index: 6;
+    }
+
+    #code-panel.hidden {
+      display: none;
+    }
+
+    .code-header {
+      padding: 10px 16px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--panel-border);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    pre#code-display {
+      flex: 1;
+      padding: 14px 0;
+      overflow-y: auto;
+      font-family: var(--font-code);
+      font-size: 12.5px;
+      line-height: 1.7;
+    }
+
+    .code-line {
+      display: flex;
+      padding: 0 16px;
+      transition: background 0.15s ease;
+    }
+
+    .code-line.active {
+      background: var(--code-hl);
+      border-left: 3px solid var(--accent-cyan);
+      padding-left: 13px;
+    }
+
+    .ln {
+      width: 28px;
+      color: #475569;
+      text-align: right;
+      margin-right: 14px;
+      flex-shrink: 0;
+    }
+
+    .code-text {
+      color: #cbd5e1;
+      white-space: pre;
+    }
+
+    .kw { color: #f472b6; font-weight: 600; }
+    .fn { color: #60a5fa; font-weight: 600; }
+    .op { color: #38bdf8; }
+    .str { color: #a7f3d0; }
+
+    /* Bottom Control Bar */
+    footer {
+      background: var(--panel);
+      border-top: 1px solid var(--panel-border);
+      padding: 12px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 10;
+    }
+
+    .caption-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .caption-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .step-badge {
+      background: #1e293b;
+      color: var(--accent-cyan);
+      font-family: var(--font-code);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid #334155;
+      white-space: nowrap;
+    }
+
+    .caption-text {
+      font-size: 13.5px;
+      color: var(--ink);
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .controls-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .left-controls, .center-controls, .right-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Buttons */
+    .btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .btn:hover {
+      background: #334155;
+      border-color: #475569;
+    }
+
+    .btn-primary {
+      background: #0284c7;
+      border-color: #0369a1;
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: #0369a1;
+    }
+
+    select, input[type="text"] {
+      background: #0b1120;
+      border: 1px solid #334155;
+      color: var(--ink);
+      font-size: 12.5px;
+      padding: 6px 10px;
+      border-radius: 6px;
+      outline: none;
+    }
+
+    select:focus, input[type="text"]:focus {
+      border-color: var(--accent-cyan);
+    }
+
+    input[type="text"] {
+      width: 180px;
+    }
+
+    /* Status Pill in Canvas */
+    #status-overlay {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid var(--panel-border);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-family: var(--font-code);
+      font-weight: 700;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 5;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #64748b;
+    }
+
+    .status-dot.success { background: var(--accent-green); box-shadow: 0 0 8px var(--accent-green); }
+    .status-dot.error { background: var(--accent-red); box-shadow: 0 0 8px var(--accent-red); }
+    .status-dot.running { background: var(--accent-cyan); box-shadow: 0 0 8px var(--accent-cyan); }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <span class="badge">CodeQuest Q1</span>
+      <h1>Palindrome Validator</h1>
+      <span class="subtitle">Dual-pointer outer-to-inner letter comparison</span>
+    </div>
+    <div class="header-actions">
+      <button class="btn-ghost" id="btn-toggle-code">
+        <span id="code-toggle-label">Hide Code</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Workspace -->
+  <div id="workspace">
+    
+    <!-- 3D Stage -->
+    <div id="stage-container">
+      <canvas id="stage"></canvas>
+
+      <!-- Floating Legend -->
+      <div id="legend-card">
+        <div class="legend-header" id="legend-toggle">
+          <span>Legend</span>
+          <span style="font-size: 10px; color: var(--muted)">▾</span>
+        </div>
+        <div class="legend-body">
+          <div class="legend-row">
+            <span class="dot" style="background: #38bdf8;"></span>
+            <span><strong>Left Pointer</strong> (advances right)</span>
+          </div>
+          <div class="legend-row">
+            <span class="dot" style="background: #fbbf24;"></span>
+            <span><strong>Right Pointer</strong> (advances left)</span>
+          </div>
+          <div class="legend-row">
+            <span class="dot" style="background: #22c55e;"></span>
+            <span><strong>Match Pair</strong> (equal letters)</span>
+          </div>
+          <div class="legend-row">
+            <span class="dot" style="background: #ef4444;"></span>
+            <span><strong>Mismatch Pair</strong> (returns False)</span>
+          </div>
+          <div class="legend-row">
+            <span class="dot" style="background: #475569;"></span>
+            <span><strong>Skipped Symbol</strong> (spaces/punctuation)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- State Pill -->
+      <div id="status-overlay">
+        <span class="status-dot running" id="status-dot"></span>
+        <span id="status-text">INITIALIZING</span>
+      </div>
+    </div>
+
+    <!-- Code Panel -->
+    <div id="code-panel">
+      <div class="code-header">
+        <span>PYTHON SOLUTION</span>
+        <span style="font-size: 11px; color: #64748b;">Two-Pointer · O(n)</span>
+      </div>
+      <pre id="code-display"></pre>
+    </div>
+
+  </div>
+
+  <!-- Footer Controls -->
+  <footer>
+    <div class="caption-row">
+      <div class="caption-box">
+        <span class="step-badge" id="step-badge">STEP 0 / 0</span>
+        <span class="caption-text" id="caption-text">Loading simulation...</span>
+      </div>
+      <div class="tour-status" id="tour-status" style="display:none; align-items: center; gap: 8px; margin-left: 12px; background: rgba(30, 41, 59, 0.85); border: 1px solid var(--panel-border); border-radius: 999px; padding: 3px 10px; font-size: 11px;">
+        <span class="tour-badge" id="tour-badge" style="background: var(--accent); color: #020617; font-weight: 700; border-radius: 999px; padding: 1px 7px; font-size: 10px;">Milestone 1/5</span>
+        <span class="tour-msg" id="tour-msg" style="color: var(--muted); max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Ready for Tour</span>
+      </div>
+    </div>
+
+    <div class="controls-row">
+      <!-- Preset Selection & Custom Input -->
+      <div class="left-controls">
+        <label for="preset-select" style="font-size: 12px; color: var(--muted); font-weight: 600;">Preset:</label>
+        <select id="preset-select">
+          <option value="0">"Was it a car or a cat I saw?" (Classic Palindrome)</option>
+          <option value="1">"racecar" (Odd-length clean)</option>
+          <option value="2">"noon" (Even-length clean)</option>
+          <option value="3">"Hello, World!" (Mismatch Trap)</option>
+          <option value="4">"A" (Single Letter)</option>
+          <option value="5">"" (Empty String)</option>
+        </select>
+
+        <input type="text" id="custom-input" placeholder="Type custom phrase...">
+        <button class="btn" id="btn-apply-custom">Apply</button>
+      </div>
+
+      <!-- Transport Controls -->
+      <div class="center-controls">
+        <button class="btn" id="btn-reset" title="Reset (R)">↺ Reset</button>
+        <button class="btn" id="btn-prev" title="Step Back (Left Arrow)">⏮ Prev</button>
+        <button class="btn btn-tour" id="btn-tour" title="Guided Audio Tour (Space)" style="background: #38bdf8; color: #0f172a; font-weight: 700; border-color: #38bdf8;">🎙️ Audio Tour</button>
+        <button class="btn btn-primary" id="btn-play" title="Silent Step Play">▶ Step Play</button>
+        <button class="btn" id="btn-next" title="Step Forward (Right Arrow)">Next ⏭</button>
+        <button class="btn btn-ghost" id="btn-mute" title="Toggle Voiceover (M)" style="font-size: 14px; padding: 5px 9px;">🔊</button>
+      </div>
+
+      <!-- Speed Control -->
+      <div class="right-controls">
+        <label for="speed-select" style="font-size: 12px; color: var(--muted); font-weight: 600;">Speed:</label>
+        <select id="speed-select">
+          <option value="1400">Slow (1.4s)</option>
+          <option value="850" selected>Normal (0.85s)</option>
+          <option value="400">Fast (0.4s)</option>
+        </select>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Three.js from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <script>
+  (function(){
+    'use strict';
+
+    /* ---------- PYTHON CODE LINES ---------- */
+    const CODE_LINES = [
+      'def is_letter(ch):',
+      '    return ("a" <= ch <= "z") or ("A" <= ch <= "Z")',
+      'def is_palindrome(text):',
+      '    left, right = 0, len(text) - 1',
+      '    while left < right:',
+      '        if not is_letter(text[left]):',
+      '            left += 1',
+      '        elif not is_letter(text[right]):',
+      '            right -= 1',
+      '        elif text[left].lower() != text[right].lower():',
+      '            return False',
+      '        else:',
+      '            left += 1',
+      '            right -= 1',
+      '    return True'
+    ];
+
+    /* ---------- SAFE TOKEN-BASED SYNTAX HIGHLIGHTER ---------- */
+    function escapeHtml(s) {
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function highlightPython(text) {
+      const pattern = /(".*?"|'.*?'|\b(?:def|return|while|if|not|elif|else|True|False|or|and)\b|\b(?:is_letter|is_palindrome|len|lower)\b|<=|>=|!=|==|\+=|-=|\+|-|<|>|=)/g;
+      let result = '';
+      let lastIndex = 0;
+      let match;
+
+      while ((match = pattern.exec(text)) !== null) {
+        result += escapeHtml(text.slice(lastIndex, match.index));
+        const token = match[0];
+        const escapedToken = escapeHtml(token);
+
+        if (token.startsWith('"') || token.startsWith("'")) {
+          result += '<span class="str">' + escapedToken + '</span>';
+        } else if (/^(def|return|while|if|not|elif|else|True|False|or|and)$/.test(token)) {
+          result += '<span class="kw">' + escapedToken + '</span>';
+        } else if (/^(is_letter|is_palindrome|len|lower)$/.test(token)) {
+          result += '<span class="fn">' + escapedToken + '</span>';
+        } else if (/^(<=|>=|!=|==|\+=|-=|\+|-|<|>|=)$/.test(token)) {
+          result += '<span class="op">' + escapedToken + '</span>';
+        } else {
+          result += escapedToken;
+        }
+        lastIndex = pattern.lastIndex;
+      }
+      result += escapeHtml(text.slice(lastIndex));
+      return result;
+    }
+
+    /* ---------- RENDER CODE PANEL ---------- */
+    const $codeDisplay = document.getElementById('code-display');
+    function initCodePanel() {
+      $codeDisplay.innerHTML = '';
+      CODE_LINES.forEach((line, idx) => {
+        const div = document.createElement('div');
+        div.className = 'code-line';
+        div.id = 'line-' + idx;
+
+        const ln = document.createElement('span');
+        ln.className = 'ln';
+        ln.textContent = String(idx);
+
+        const codeSpan = document.createElement('span');
+        codeSpan.className = 'code-text';
+        codeSpan.innerHTML = highlightPython(line);
+
+        div.appendChild(ln);
+        div.appendChild(codeSpan);
+        $codeDisplay.appendChild(div);
+      });
+    }
+    initCodePanel();
+
+    function highlightLines(lines) {
+      document.querySelectorAll('.code-line').forEach(el => el.classList.remove('active'));
+      if (!lines) return;
+      lines.forEach(l => {
+        const el = document.getElementById('line-' + l);
+        if (el) el.classList.add('active');
+      });
+    }
+
+    /* ---------- PRESETS DATA ---------- */
+    const PRESETS = [
+      "Was it a car or a cat I saw?",
+      "racecar",
+      "noon",
+      "Hello, World!",
+      "A",
+      ""
+    ];
+
+    /* ---------- ALGORITHM SIMULATION ---------- */
+    function is_letter(ch) {
+      if (!ch) return false;
+      return ('a' <= ch && ch <= 'z') || ('A' <= ch && ch <= 'Z');
+    }
+
+    function simulate(text) {
+      const frames = [];
+      const N = text.length;
+
+      function snap(lines, msg, action, left, right, matchedPairs, status) {
+        frames.push({
+          lines: lines.slice(),
+          msg: msg,
+          action: action,
+          left: left,
+          right: right,
+          matchedPairs: matchedPairs.map(p => [...p]),
+          status: status || 'running'
+        });
+      }
+
+      if (N === 0) {
+        snap([2, 14], "Empty string: 0 characters to compare. An empty string is considered a palindrome.", 'success', null, null, [], 'success');
+        return frames;
+      }
+
+      let left = 0;
+      let right = N - 1;
+      const matchedPairs = [];
+
+      snap([2, 3], `Initialize pointers: left at index 0 ('${text[0]}') and right at index ${right} ('${text[right]}').`, 'init', left, right, matchedPairs);
+
+      while (left < right) {
+        if (!is_letter(text[left])) {
+          snap([4, 5, 6], `'${text[left]}' at left index ${left} is not an alphanumeric letter. Skip it and advance left.`, 'skip_left', left, right, matchedPairs);
+          left++;
+        } else if (!is_letter(text[right])) {
+          snap([4, 7, 8], `'${text[right]}' at right index ${right} is not an alphanumeric letter. Skip it and retreat right.`, 'skip_right', left, right, matchedPairs);
+          right--;
+        } else {
+          const lChar = text[left].toLowerCase();
+          const rChar = text[right].toLowerCase();
+
+          if (lChar !== rChar) {
+            snap([4, 9, 10], `Mismatch detected: '${text[left]}' (index ${left}) ≠ '${text[right]}' (index ${right}). Return False immediately!`, 'mismatch', left, right, matchedPairs, 'error');
+            return frames;
+          } else {
+            matchedPairs.push([left, right]);
+            snap([4, 11, 12, 13], `Match confirmed: '${text[left]}' and '${text[right]}' are equal. Move both pointers inward.`, 'match', left, right, matchedPairs);
+            left++;
+            right--;
+          }
+        }
+      }
+
+      // Pointers met or crossed
+      snap([4, 14], `Pointers met or crossed (left = ${left}, right = ${right}) with zero mismatches. The sentence is a palindrome!`, 'success', left, right, matchedPairs, 'success');
+      return frames;
+    }
+
+    /* ---------- THREE.JS SCENE SETUP ---------- */
+    const $canvas = document.getElementById('stage');
+    const renderer = new THREE.WebGLRenderer({ canvas: $canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize($canvas.clientWidth, $canvas.clientHeight);
+    renderer.shadowMap.enabled = true;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(34, $canvas.clientWidth / $canvas.clientHeight, 0.1, 100);
+
+    // Initial camera position (front-angled view)
+    const baseCameraY = 4.2;
+    const baseCameraZ = 10.5;
+    camera.position.set(0, baseCameraY, baseCameraZ);
+    camera.lookAt(0, 0.2, 0);
+
+    // Dynamic Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
+    scene.add(ambientLight);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
+    dirLight.position.set(5, 12, 8);
+    dirLight.castShadow = true;
+    scene.add(dirLight);
+
+    const cyanPointLight = new THREE.PointLight(0x38bdf8, 1.2, 8);
+    scene.add(cyanPointLight);
+
+    const amberPointLight = new THREE.PointLight(0xfbbf24, 1.2, 8);
+    scene.add(amberPointLight);
+
+    // Floor Plate
+    const floorPlateGeo = new THREE.BoxGeometry(26, 0.2, 6);
+    const floorPlateMat = new THREE.MeshStandardMaterial({
+      color: 0x0f172a,
+      roughness: 0.8,
+      metalness: 0.2
+    });
+    const floorPlate = new THREE.Mesh(floorPlateGeo, floorPlateMat);
+    floorPlate.position.y = -0.1;
+    floorPlate.receiveShadow = true;
+    scene.add(floorPlate);
+
+    // Active Range Slab (translucent)
+    const slabGeo = new THREE.BoxGeometry(1, 0.05, 2.2);
+    const slabMat = new THREE.MeshBasicMaterial({
+      color: 0x38bdf8,
+      transparent: true,
+      opacity: 0.18
+    });
+    const activeSlab = new THREE.Mesh(slabGeo, slabMat);
+    activeSlab.position.y = 0.04;
+    scene.add(activeSlab);
+
+    // Pointer Cones
+    function createPointerCone(colorHex) {
+      const group = new THREE.Group();
+      const coneGeo = new THREE.ConeGeometry(0.24, 0.65, 16);
+      coneGeo.rotateX(Math.PI); // Point downward
+      const coneMat = new THREE.MeshStandardMaterial({
+        color: colorHex,
+        emissive: colorHex,
+        emissiveIntensity: 0.6,
+        roughness: 0.3
+      });
+      const coneMesh = new THREE.Mesh(coneGeo, coneMat);
+      coneMesh.castShadow = true;
+      group.add(coneMesh);
+      return group;
+    }
+
+    const leftPointer = createPointerCone(0x38bdf8);
+    const rightPointer = createPointerCone(0xfbbf24);
+    scene.add(leftPointer);
+    scene.add(rightPointer);
+
+    // 2D Canvas Sprite Text Helper
+    function makeTextSprite(message, options) {
+      const opt = options || {};
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 256;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = opt.bg || 'transparent';
+      ctx.fillRect(0, 0, 256, 256);
+
+      ctx.font = opt.font || 'bold 120px sans-serif';
+      ctx.fillStyle = opt.color || '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(message, 128, 128);
+
+      const texture = new THREE.CanvasTexture(canvas);
+      const spriteMat = new THREE.SpriteMaterial({ map: texture, depthTest: false });
+      const sprite = new THREE.Sprite(spriteMat);
+      sprite.scale.set(opt.scale || 0.8, opt.scale || 0.8, 1);
+      return sprite;
+    }
+
+    // Tiles Group
+    const tilesGroup = new THREE.Group();
+    scene.add(tilesGroup);
+
+    let tileMeshes = [];
+    let currentInput = PRESETS[0];
+    let simFrames = [];
+    let curFrameIdx = 0;
+    let isPlaying = false;
+    let playTimer = null;
+    let stepSpeed = 850;
+
+    // Tile Builder
+    const tileSpacing = 0.95;
+    function buildSceneForText(text) {
+      while (tilesGroup.children.length > 0) {
+        tilesGroup.remove(tilesGroup.children[0]);
+      }
+      tileMeshes = [];
+
+      const N = text.length;
+      const startX = -((N - 1) * tileSpacing) / 2;
+
+      // Adjust camera distance if string is long
+      const requiredWidth = N * tileSpacing;
+      const targetZ = Math.max(10.5, requiredWidth * 0.95);
+      camera.position.z = targetZ;
+      camera.position.y = targetZ * 0.42;
+      camera.lookAt(0, 0.2, 0);
+
+      const boxGeo = new THREE.BoxGeometry(0.8, 0.45, 0.8);
+
+      for (let i = 0; i < N; i++) {
+        const ch = text[i];
+        const isLetterChar = is_letter(ch);
+
+        const mat = new THREE.MeshStandardMaterial({
+          color: isLetterChar ? 0x1e293b : 0x090d16,
+          roughness: 0.4,
+          metalness: 0.1
+        });
+
+        const mesh = new THREE.Mesh(boxGeo, mat);
+        mesh.position.set(startX + i * tileSpacing, 0.22, 0);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+
+        // Character text sprite (facing front/up)
+        const charSprite = makeTextSprite(ch === ' ' ? '␣' : ch, {
+          color: isLetterChar ? '#f8fafc' : '#475569',
+          font: 'bold 130px monospace',
+          scale: 0.72
+        });
+        charSprite.position.set(0, 0.42, 0);
+        mesh.add(charSprite);
+
+        // Subtitle index sprite
+        const idxSprite = makeTextSprite(String(i), {
+          color: '#64748b',
+          font: 'bold 80px monospace',
+          scale: 0.4
+        });
+        idxSprite.position.set(0, -0.16, 0.46);
+        mesh.add(idxSprite);
+
+        tilesGroup.add(mesh);
+        tileMeshes.push({
+          mesh: mesh,
+          sprite: charSprite,
+          baseX: startX + i * tileSpacing,
+          baseY: 0.22,
+          isLetter: isLetterChar,
+          ch: ch
+        });
+      }
+
+      simFrames = simulate(text);
+      curFrameIdx = 0;
+      applyFrame(0, false);
+    }
+
+    /* ---------- FRAME APPLICATION & ANIMATION ---------- */
+    const $stepBadge = document.getElementById('step-badge');
+    const $captionText = document.getElementById('caption-text');
+    const $statusDot = document.getElementById('status-dot');
+    const $statusText = document.getElementById('status-text');
+
+    function applyFrame(frameIdx, animate) {
+      if (!simFrames || simFrames.length === 0) return;
+      curFrameIdx = Math.max(0, Math.min(frameIdx, simFrames.length - 1));
+      const frame = simFrames[curFrameIdx];
+
+      // Update UI
+      $stepBadge.textContent = `STEP ${curFrameIdx + 1} / ${simFrames.length}`;
+      $captionText.textContent = frame.msg;
+
+      // Status indicator
+      $statusDot.className = 'status-dot ' + (frame.status === 'success' ? 'success' : (frame.status === 'error' ? 'error' : 'running'));
+      $statusText.textContent = frame.status === 'success' ? 'PALINDROME (TRUE)' : (frame.status === 'error' ? 'MISMATCH (FALSE)' : 'SCANNING');
+
+      // Highlight code line
+      highlightLines(frame.lines);
+
+      // Reset tile colors
+      const matchedSet = new Set();
+      frame.matchedPairs.forEach(p => {
+        matchedSet.add(p[0]);
+        matchedSet.add(p[1]);
+      });
+
+      tileMeshes.forEach((t, idx) => {
+        let targetCol = t.isLetter ? 0x1e293b : 0x090d16;
+        let targetY = t.baseY;
+
+        if (matchedSet.has(idx)) {
+          targetCol = 0x22c55e; // Green
+          targetY = t.baseY + 0.08;
+        }
+
+        if (frame.status === 'error' && (idx === frame.left || idx === frame.right)) {
+          targetCol = 0xef4444; // Crimson Red mismatch
+          targetY = t.baseY + 0.18;
+        } else if (idx === frame.left || idx === frame.right) {
+          if (!matchedSet.has(idx)) {
+            targetCol = 0xf59e0b; // Gold compared
+            targetY = t.baseY + 0.12;
+          }
+        }
+
+        t.mesh.material.color.setHex(targetCol);
+        t.mesh.position.y = targetY;
+      });
+
+      // Update Pointers & Light
+      if (frame.left !== null && frame.left !== undefined && tileMeshes[frame.left]) {
+        leftPointer.visible = true;
+        const targetX = tileMeshes[frame.left].baseX;
+        leftPointer.position.set(targetX, 1.45, 0);
+        cyanPointLight.position.set(targetX, 2.0, 0.8);
+      } else {
+        leftPointer.visible = false;
+      }
+
+      if (frame.right !== null && frame.right !== undefined && tileMeshes[frame.right]) {
+        rightPointer.visible = true;
+        const targetX = tileMeshes[frame.right].baseX;
+        rightPointer.position.set(targetX, 1.45, 0);
+        amberPointLight.position.set(targetX, 2.0, 0.8);
+      } else {
+        rightPointer.visible = false;
+      }
+
+      // Update Active Range Slab
+      if (frame.left !== null && frame.right !== null && tileMeshes[frame.left] && tileMeshes[frame.right]) {
+        activeSlab.visible = true;
+        const x1 = tileMeshes[frame.left].baseX;
+        const x2 = tileMeshes[frame.right].baseX;
+        const slabWidth = Math.max(0.9, Math.abs(x2 - x1) + tileSpacing);
+        const slabCenterX = (x1 + x2) / 2;
+        activeSlab.scale.x = slabWidth;
+        activeSlab.position.x = slabCenterX;
+      } else {
+        activeSlab.visible = false;
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    /* ---------- PLAYBACK CONTROLS ---------- */
+    const $btnPlay = document.getElementById('btn-play');
+    const $btnPrev = document.getElementById('btn-prev');
+    const $btnNext = document.getElementById('btn-next');
+    const $btnReset = document.getElementById('btn-reset');
+    const $speedSelect = document.getElementById('speed-select');
+    const $presetSelect = document.getElementById('preset-select');
+    const $customInput = document.getElementById('custom-input');
+    const $btnApplyCustom = document.getElementById('btn-apply-custom');
+
+    function stopPlay() {
+      isPlaying = false;
+      if (playTimer) clearTimeout(playTimer);
+      $btnPlay.textContent = '▶ Step Play';
+      $btnPlay.classList.remove('btn-primary');
+    }
+
+    function tick() {
+      if (!isPlaying) return;
+      if (curFrameIdx < simFrames.length - 1) {
+        applyFrame(curFrameIdx + 1, true);
+        playTimer = setTimeout(tick, stepSpeed);
+      } else {
+        stopPlay();
+      }
+    }
+
+    function startPlay() {
+      stopTour();
+      if (curFrameIdx >= simFrames.length - 1) {
+        applyFrame(0, false);
+      }
+      isPlaying = true;
+      $btnPlay.textContent = '⏸ Pause';
+      $btnPlay.classList.add('btn-primary');
+      playTimer = setTimeout(tick, stepSpeed);
+    }
+
+    $btnPlay.addEventListener('click', () => {
+      if (isPlaying) stopPlay();
+      else startPlay();
+    });
+
+    $btnNext.addEventListener('click', () => {
+      stopTour();
+      stopPlay();
+      if (curFrameIdx < simFrames.length - 1) applyFrame(curFrameIdx + 1, true);
+    });
+
+    $btnPrev.addEventListener('click', () => {
+      stopTour();
+      stopPlay();
+      if (curFrameIdx > 0) applyFrame(curFrameIdx - 1, true);
+    });
+
+    $btnReset.addEventListener('click', () => {
+      stopTour();
+      stopPlay();
+      applyFrame(0, false);
+      updateTourStatusUI(0, false);
+    });
+
+    $speedSelect.addEventListener('change', () => {
+      stepSpeed = parseInt($speedSelect.value, 10) || 850;
+    });
+
+    $presetSelect.addEventListener('change', () => {
+      stopTour();
+      stopPlay();
+      const idx = parseInt($presetSelect.value, 10);
+      currentInput = PRESETS[idx];
+      buildSceneForText(currentInput);
+      updateTourStatusUI(0, false);
+    });
+
+    $btnApplyCustom.addEventListener('click', () => {
+      const val = $customInput.value.trim();
+      if (val !== undefined) {
+        stopTour();
+        stopPlay();
+        currentInput = val;
+        buildSceneForText(currentInput);
+        updateTourStatusUI(0, false);
+      }
+    });
+
+    $customInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') $btnApplyCustom.click();
+    });
+
+    /* ---------- GUIDED AUDIO TOUR CONTROLLER ---------- */
+    const $btnTour = document.getElementById('btn-tour');
+    const $btnMute = document.getElementById('btn-mute');
+    const $tourStatus = document.getElementById('tour-status');
+    const $tourBadge = document.getElementById('tour-badge');
+    const $tourMsg = document.getElementById('tour-msg');
+
+    let isTourActive = false;
+    let isMuted = false;
+    let currentAudio = null;
+    let tourCueTimers = [];
+    let tourToken = 0;
+    let currentMilestoneIdx = 0;
+
+    const WALKTHROUGHS = {
+      preset0: {
+        name: 'Was it a car or a cat I saw?',
+        match: function(text) { return text === PRESETS[0]; },
+        milestones: [
+          {
+            id: 'clip_01_setup',
+            file: 'audio/clip_01_setup.mp3',
+            title: 'Setup & Dual-Pointer Initialization',
+            startIdx: 0,
+            endIdx: 0,
+            cues: [
+              { time: 0.0, frameIdx: 0 }
+            ]
+          },
+          {
+            id: 'clip_02_skip_punctuation',
+            file: 'audio/clip_02_skip_punctuation.mp3',
+            title: 'Skipping Non-Alphanumeric Punctuation',
+            startIdx: 1,
+            endIdx: 1,
+            cues: [
+              { time: 0.0, frameIdx: 1 }
+            ]
+          },
+          {
+            id: 'clip_03_first_matches',
+            file: 'audio/clip_03_first_matches.mp3',
+            title: 'Case-Insensitive Letter Matches',
+            startIdx: 2,
+            endIdx: 4,
+            cues: [
+              { time: 0.0, frameIdx: 2 },
+              { time: 6.0, frameIdx: 3 },
+              { time: 12.0, frameIdx: 4 }
+            ]
+          },
+          {
+            id: 'clip_04_skip_spaces',
+            file: 'audio/clip_04_skip_spaces.mp3',
+            title: 'Skipping Whitespace Boundaries',
+            startIdx: 5,
+            endIdx: 18,
+            cues: [
+              { time: 0.0, frameIdx: 5 },
+              { time: 3.5, frameIdx: 7 },
+              { time: 7.0, frameIdx: 11 },
+              { time: 10.5, frameIdx: 15 }
+            ]
+          },
+          {
+            id: 'clip_05_completion',
+            file: 'audio/clip_05_completion.mp3',
+            title: 'Pointers Meet: Palindrome Verified',
+            startIdx: 19,
+            endIdx: 19,
+            cues: [
+              { time: 0.0, frameIdx: 19 }
+            ]
+          }
+        ]
+      }
+    };
+
+    function clearTourTimers() {
+      tourCueTimers.forEach(t => clearTimeout(t));
+      tourCueTimers = [];
+    }
+
+    function stopTourAudio() {
+      clearTourTimers();
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.onended = null;
+        currentAudio.ontimeupdate = null;
+        currentAudio.onerror = null;
+        currentAudio = null;
+      }
+    }
+
+    function stopTour() {
+      isTourActive = false;
+      stopTourAudio();
+      tourToken++;
+      if ($btnTour) {
+        $btnTour.textContent = '🎙️ Audio Tour';
+        $btnTour.classList.remove('active');
+        $btnTour.style.background = '#38bdf8';
+        $btnTour.style.color = '#0f172a';
+      }
+    }
+
+    function getActiveWalkthrough() {
+      for (const k in WALKTHROUGHS) {
+        if (WALKTHROUGHS[k].match(currentInput)) return WALKTHROUGHS[k];
+      }
+      return null;
+    }
+
+    function updateTourStatusUI(mIdx, isFinished) {
+      const wt = getActiveWalkthrough();
+      if (!wt) {
+        if ($tourStatus) $tourStatus.style.display = 'none';
+        return;
+      }
+      if ($tourStatus) $tourStatus.style.display = 'inline-flex';
+      const totalM = wt.milestones.length;
+      if (isFinished || curFrameIdx >= simFrames.length - 1) {
+        if ($tourBadge) $tourBadge.textContent = 'Complete';
+        if ($tourMsg) $tourMsg.textContent = 'Guided tour complete!';
+      } else if (mIdx !== undefined && wt.milestones[mIdx]) {
+        if ($tourBadge) $tourBadge.textContent = `Milestone ${mIdx + 1}/${totalM}`;
+        if ($tourMsg) $tourMsg.textContent = isMuted ? `${wt.milestones[mIdx].title} (Muted)` : wt.milestones[mIdx].title;
+      }
+    }
+
+    function startMilestone(mIdx) {
+      const wt = getActiveWalkthrough();
+      if (!wt || mIdx >= wt.milestones.length) {
+        stopTour();
+        updateTourStatusUI(undefined, true);
+        return;
+      }
+      currentMilestoneIdx = mIdx;
+      const m = wt.milestones[mIdx];
+      updateTourStatusUI(mIdx, false);
+
+      const thisToken = ++tourToken;
+      stopTourAudio();
+
+      if (isMuted) {
+        runSilentMilestone(m, thisToken, mIdx);
+        return;
+      }
+
+      try {
+        const audio = new Audio(m.file);
+        currentAudio = audio;
+
+        let appliedCueIndex = -1;
+        audio.ontimeupdate = () => {
+          if (thisToken !== tourToken || !isTourActive) return;
+          const ct = audio.currentTime;
+          for (let i = m.cues.length - 1; i >= 0; i--) {
+            if (ct >= m.cues[i].time) {
+              if (appliedCueIndex !== i) {
+                appliedCueIndex = i;
+                applyFrame(m.cues[i].frameIdx, true);
+              }
+              break;
+            }
+          }
+        };
+
+        audio.onended = () => {
+          if (thisToken !== tourToken || !isTourActive) return;
+          if (mIdx + 1 < wt.milestones.length) {
+            startMilestone(mIdx + 1);
+          } else {
+            stopTour();
+            updateTourStatusUI(undefined, true);
+          }
+        };
+
+        audio.onerror = () => {
+          console.warn('Audio playback error, falling back to silent step for milestone:', m.id);
+          runSilentMilestone(m, thisToken, mIdx);
+        };
+
+        applyFrame(m.cues[0].frameIdx, true);
+
+        const playPromise = audio.play();
+        if (playPromise) {
+          playPromise.catch(err => {
+            console.warn('Audio play restricted or failed, falling back to silent milestone:', err);
+            runSilentMilestone(m, thisToken, mIdx);
+          });
+        }
+      } catch (e) {
+        console.warn('Audio construction failed:', e);
+        runSilentMilestone(m, thisToken, mIdx);
+      }
+    }
+
+    function runSilentMilestone(m, token, mIdx) {
+      const wt = getActiveWalkthrough();
+      clearTourTimers();
+      m.cues.forEach((cue, i) => {
+        const delay = (i === 0) ? 0 : (cue.time * 1000);
+        const t = setTimeout(() => {
+          if (token !== tourToken || !isTourActive) return;
+          applyFrame(cue.frameIdx, true);
+          if (i === m.cues.length - 1) {
+            const nextDelay = 1500;
+            const tNext = setTimeout(() => {
+              if (token !== tourToken || !isTourActive) return;
+              if (wt && mIdx + 1 < wt.milestones.length) {
+                startMilestone(mIdx + 1);
+              } else {
+                stopTour();
+                updateTourStatusUI(undefined, true);
+              }
+            }, nextDelay);
+            tourCueTimers.push(tNext);
+          }
+        }, delay);
+        tourCueTimers.push(t);
+      });
+    }
+
+    function startTour() {
+      stopPlay();
+      const wt = getActiveWalkthrough();
+      if (!wt) {
+        alert('Guided Audio Tour is available for Preset 1 (default preset).');
+        return;
+      }
+      isTourActive = true;
+      if ($btnTour) {
+        $btnTour.textContent = '⏸ Pause Tour';
+        $btnTour.classList.add('active');
+        $btnTour.style.background = '#e2e8f0';
+        $btnTour.style.color = '#0f172a';
+      }
+      if (curFrameIdx >= simFrames.length - 1) {
+        applyFrame(0, false);
+      }
+      let startM = 0;
+      for (let i = 0; i < wt.milestones.length; i++) {
+        if (curFrameIdx >= wt.milestones[i].startIdx && curFrameIdx <= wt.milestones[i].endIdx) {
+          startM = i;
+          break;
+        }
+      }
+      startMilestone(startM);
+    }
+
+    $btnTour.addEventListener('click', () => {
+      if (isTourActive) stopTour();
+      else startTour();
+    });
+
+    $btnMute.addEventListener('click', () => {
+      isMuted = !isMuted;
+      $btnMute.textContent = isMuted ? '🔇' : '🔊';
+      $btnMute.title = isMuted ? 'Voiceover Muted (Silent Mode)' : 'Voiceover Enabled';
+      if (isTourActive) {
+        startMilestone(currentMilestoneIdx);
+      }
+    });
+
+    /* Keyboard Shortcuts */
+    window.addEventListener('keydown', (e) => {
+      if (document.activeElement === $customInput) return;
+      if (e.code === 'Space') {
+        e.preventDefault();
+        if (getActiveWalkthrough()) {
+          $btnTour.click();
+        } else {
+          $btnPlay.click();
+        }
+      } else if (e.code === 'KeyM') {
+        e.preventDefault();
+        $btnMute.click();
+      } else if (e.code === 'ArrowRight') {
+        e.preventDefault();
+        $btnNext.click();
+      } else if (e.code === 'ArrowLeft') {
+        e.preventDefault();
+        $btnPrev.click();
+      } else if (e.code === 'KeyR') {
+        e.preventDefault();
+        $btnReset.click();
+      }
+    });
+
+    /* Code Panel Toggle */
+    const $btnToggleCode = document.getElementById('btn-toggle-code');
+    const $codeToggleLabel = document.getElementById('code-toggle-label');
+    const $codePanel = document.getElementById('code-panel');
+    let isCodeVisible = true;
+
+    $btnToggleCode.addEventListener('click', () => {
+      isCodeVisible = !isCodeVisible;
+      if (isCodeVisible) {
+        $codePanel.classList.remove('hidden');
+        $codeToggleLabel.textContent = 'Hide Code';
+      } else {
+        $codePanel.classList.add('hidden');
+        $codeToggleLabel.textContent = 'Show Code';
+      }
+      onWindowResize();
+    });
+
+    /* Collapsible Legend */
+    const $legendCard = document.getElementById('legend-card');
+    document.getElementById('legend-toggle').addEventListener('click', () => {
+      $legendCard.classList.toggle('collapsed');
+    });
+
+    /* Mouse Orbit Drag Controls (Yaw only) */
+    let isDragging = false;
+    let prevMouseX = 0;
+    let currentYaw = 0;
+
+    $canvas.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      prevMouseX = e.clientX;
+    });
+
+    window.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const deltaX = e.clientX - prevMouseX;
+      prevMouseX = e.clientX;
+
+      currentYaw -= deltaX * 0.005;
+      currentYaw = Math.max(-0.45, Math.min(0.45, currentYaw)); // Clamped yaw
+
+      const dist = camera.position.length();
+      camera.position.x = Math.sin(currentYaw) * (dist * 0.9);
+      camera.position.z = Math.cos(currentYaw) * (dist * 0.9);
+      camera.lookAt(0, 0.2, 0);
+      renderer.render(scene, camera);
+    });
+
+    /* Resize Listener */
+    function onWindowResize() {
+      const container = document.getElementById('stage-container');
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+      renderer.render(scene, camera);
+    }
+    window.addEventListener('resize', onWindowResize);
+
+    /* Animation Loop */
+    function animateLoop() {
+      requestAnimationFrame(animateLoop);
+      renderer.render(scene, camera);
+    }
+    animateLoop();
+
+    // Initial Build
+    buildSceneForText(currentInput);
+    updateTourStatusUI(0, false);
+
+  })();
+  </script>
+</body>
+</html>
