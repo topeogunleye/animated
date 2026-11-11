@@ -25,6 +25,9 @@ jobs:
         uses: actions/checkout@v4
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
+      - name: Clean non-static assets
+        run: |
+          rm -rf node_modules .agents .github package.json package-lock.json index.js
       - name: Upload site
         uses: actions/upload-pages-artifact@v3
         with:

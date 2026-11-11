@@ -3,8 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Interactive, animated visual explanations of classic algorithms.">
-  <title>Animated Solutions</title>
+  <meta name="description" content="Interactive, animated 3D visual explanations of classic algorithms with synchronized Python code and narrated audio walkthroughs.">
+  <meta name="theme-color" content="#0b1020">
+  <meta property="og:title" content="Animated Solutions — Interactive 3D Algorithm Visualizers">
+  <meta property="og:description" content="Step-by-step 3D visualizations of classic algorithms with synchronized code highlighting and narrated audio tours.">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230284c7'/><polygon points='16,6 26,12 26,23 16,29 6,23 6,12' fill='%2338bdf8' opacity='0.85'/><polygon points='16,6 26,12 16,18 6,12' fill='%23bae6fd'/></svg>">
+  <title>Animated Solutions — Interactive 3D Algorithm Visualizations</title>
   <style>
     :root {
       color-scheme: dark;
@@ -17,103 +22,126 @@
 
     * {
       box-sizing: border-box;
+      margin: 0;
+      padding: 0;
     }
 
     body {
       min-height: 100vh;
-      margin: 0;
       background:
         radial-gradient(ellipse at 12% 0%, rgb(56 84 190 / 22%), transparent 42rem),
+        radial-gradient(ellipse at 88% 25%, rgb(168 85 247 / 15%), transparent 40rem),
         #0b1020;
+      color: #e2e8f0;
+      line-height: 1.6;
+    }
+
+    /* Top Global Header */
+    header.site-header {
+      border-bottom: 1px solid #1e293b;
+      background: rgba(11, 16, 32, 0.85);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .nav-container {
+      max-width: 76rem;
+      margin: 0 auto;
+      padding: 0.85rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .brand-link {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      text-decoration: none;
+      color: #f8fafc;
+      font-weight: 700;
+      font-size: 1.05rem;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-logo {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      background: linear-gradient(135deg, #0284c7, #38bdf8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      color: #fff;
+    }
+
+    .header-links {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .header-pill {
+      background: rgba(30, 41, 59, 0.75);
+      border: 1px solid #334155;
+      color: #cbd5e1;
+      padding: 0.35rem 0.85rem;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 150ms ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .header-pill:hover {
+      background: #334155;
+      color: #f8fafc;
+      border-color: #475569;
+    }
+
+    .header-pill.active {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: #38bdf8;
+      color: #38bdf8;
     }
 
     main {
-      width: min(100% - 2rem, 70rem);
+      width: min(100% - 2rem, 74rem);
       margin: 0 auto;
-      padding: clamp(3.5rem, 10vw, 7rem) 0;
+      padding: clamp(2.5rem, 6vw, 5rem) 0 6rem;
     }
 
     .eyebrow {
-      margin: 0 0 1rem;
+      margin: 0 0 0.85rem;
       color: #9daeff;
-      font-size: 0.8rem;
+      font-size: 0.82rem;
       font-weight: 700;
       letter-spacing: 0.14em;
       text-transform: uppercase;
     }
 
     h1 {
-      max-width: 12ch;
+      max-width: 14ch;
       margin: 0;
-      font-size: clamp(2.75rem, 8vw, 5.5rem);
-      letter-spacing: -0.065em;
-      line-height: 0.98;
+      font-size: clamp(2.5rem, 6vw, 4.5rem);
+      letter-spacing: -0.05em;
+      line-height: 1.05;
+      color: #ffffff;
     }
 
     .intro {
-      max-width: 42rem;
-      margin: 1.5rem 0 3rem;
+      max-width: 44rem;
+      margin: 1.25rem 0 2.5rem;
       color: #b7c0d9;
-      font-size: clamp(1rem, 2.2vw, 1.2rem);
+      font-size: clamp(1rem, 2vw, 1.15rem);
       line-height: 1.7;
-    }
-
-    .projects {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
-      gap: 1rem;
-    }
-
-    .project {
-      display: flex;
-      min-height: 12rem;
-      flex-direction: column;
-      align-items: flex-start;
-      padding: 1.5rem;
-      border: 1px solid #29334e;
-      border-radius: 1rem;
-      background: linear-gradient(145deg, rgb(29 39 67 / 92%), rgb(16 23 42 / 92%));
-      color: inherit;
-      text-decoration: none;
-      transition: border-color 160ms ease, transform 160ms ease, background 160ms ease;
-    }
-
-    .project:hover {
-      transform: translateY(-3px);
-      border-color: #8398ff;
-      background: linear-gradient(145deg, #202e50, #121b33);
-    }
-
-    .project:focus-visible {
-      outline: 3px solid #aebcff;
-      outline-offset: 3px;
-    }
-
-    .number {
-      margin-bottom: 1.5rem;
-      color: #9daeff;
-      font-size: 0.8rem;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-    }
-
-    h2 {
-      margin: 0;
-      font-size: 1.3rem;
-      letter-spacing: -0.025em;
-    }
-
-    .description {
-      margin: 0.65rem 0 1.25rem;
-      color: #b7c0d9;
-      line-height: 1.6;
-    }
-
-    .open {
-      margin-top: auto;
-      color: #aebcff;
-      font-size: 0.9rem;
-      font-weight: 650;
     }
 
     /* Featured CodeQuest Banner */
@@ -122,7 +150,7 @@
       flex-direction: column;
       gap: 1.25rem;
       padding: clamp(1.75rem, 4vw, 2.5rem);
-      margin-bottom: 2.5rem;
+      margin-bottom: 2.75rem;
       border-radius: 1.25rem;
       border: 1px solid rgba(56, 189, 248, 0.4);
       background: linear-gradient(135deg, rgba(14, 165, 233, 0.12), rgba(168, 85, 247, 0.12) 60%, rgba(15, 23, 42, 0.9));
@@ -210,7 +238,258 @@
       color: #38bdf8;
       font-weight: 700;
       font-size: 1rem;
-      margin-top: 0.5rem;
+      margin-top: 0.25rem;
+    }
+
+    /* Search & Filter Controls Bar */
+    .controls-bar {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid #1e293b;
+      border-radius: 1rem;
+      padding: 1.25rem;
+    }
+
+    .search-box {
+      width: 100%;
+      position: relative;
+    }
+
+    .search-input {
+      width: 100%;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 0.6rem;
+      padding: 0.75rem 2.5rem 0.75rem 2.5rem;
+      color: #f1f5f9;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 150ms;
+    }
+    .search-input:focus {
+      border-color: #38bdf8;
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+    }
+    .search-icon {
+      position: absolute;
+      left: 0.9rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #64748b;
+      font-size: 1rem;
+      pointer-events: none;
+    }
+    .clear-search {
+      position: absolute;
+      right: 0.85rem;
+      top: 50%;
+      transform: translateY(-50%);
+      background: transparent;
+      border: none;
+      color: #64748b;
+      font-size: 1.1rem;
+      cursor: pointer;
+      padding: 4px;
+      display: none;
+    }
+    .clear-search:hover { color: #f1f5f9; }
+
+    .filter-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .filter-btn {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #94a3b8;
+      padding: 0.45rem 0.9rem;
+      border-radius: 0.5rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 150ms ease;
+    }
+    .filter-btn:hover {
+      background: #334155;
+      color: #f8fafc;
+    }
+    .filter-btn.active {
+      background: #38bdf8;
+      color: #020617;
+      border-color: #38bdf8;
+    }
+
+    .results-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.25rem;
+      font-size: 0.88rem;
+      color: #94a3b8;
+    }
+    .results-row strong {
+      color: #38bdf8;
+    }
+
+    /* Projects Grid */
+    .projects {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 21.5rem), 1fr));
+      gap: 1.25rem;
+    }
+
+    .project {
+      display: flex;
+      min-height: 14rem;
+      flex-direction: column;
+      align-items: flex-start;
+      padding: 1.5rem;
+      border: 1px solid #29334e;
+      border-radius: 1rem;
+      background: linear-gradient(145deg, rgb(29 39 67 / 92%), rgb(16 23 42 / 92%));
+      color: inherit;
+      text-decoration: none;
+      transition: border-color 160ms ease, transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
+    }
+
+    .project:hover {
+      transform: translateY(-3px);
+      border-color: #8398ff;
+      background: linear-gradient(145deg, #202e50, #121b33);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+    }
+
+    .project:focus-visible {
+      outline: 3px solid #aebcff;
+      outline-offset: 3px;
+    }
+
+    .card-top {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      width: 100%;
+      margin-bottom: 1rem;
+    }
+
+    .number {
+      color: #9daeff;
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+    }
+
+    .badge-group {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .badge-diff {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.15rem 0.5rem;
+      border-radius: 0.35rem;
+      letter-spacing: 0.02em;
+    }
+    .badge-diff.easy { background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
+    .badge-diff.medium { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-diff.hard { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+
+    .badge-audio {
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      color: #38bdf8;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.15rem 0.45rem;
+      border-radius: 999px;
+    }
+
+    .badge-cat {
+      background: #1e293b;
+      color: #94a3b8;
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 0.15rem 0.45rem;
+      border-radius: 0.35rem;
+      border: 1px solid #334155;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 1.25rem;
+      letter-spacing: -0.025em;
+      color: #f8fafc;
+    }
+
+    .description {
+      margin: 0.65rem 0 1.25rem;
+      color: #b7c0d9;
+      line-height: 1.6;
+      font-size: 0.92rem;
+    }
+
+    .open {
+      margin-top: auto;
+      color: #aebcff;
+      font-size: 0.88rem;
+      font-weight: 650;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .project:hover .open {
+      color: #ffffff;
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 4rem 1.5rem;
+      background: rgba(15, 23, 42, 0.4);
+      border: 1px dashed #334155;
+      border-radius: 1rem;
+      margin: 2rem 0;
+    }
+    .empty-state p {
+      color: #94a3b8;
+      font-size: 1.1rem;
+      margin-bottom: 1rem;
+    }
+    .empty-state button {
+      background: #0284c7;
+      color: #fff;
+      border: none;
+      padding: 0.5rem 1.2rem;
+      border-radius: 0.5rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* Footer */
+    footer.site-footer {
+      border-top: 1px solid #1e293b;
+      padding: 2.5rem 1.5rem;
+      text-align: center;
+      color: #64748b;
+      font-size: 0.85rem;
+    }
+    footer.site-footer a {
+      color: #94a3b8;
+      text-decoration: none;
+    }
+    footer.site-footer a:hover {
+      color: #38bdf8;
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -224,16 +503,31 @@
   </style>
 </head>
 <body>
+  <header class="site-header">
+    <div class="nav-container">
+      <a class="brand-link" href="index.html">
+        <div class="brand-logo">⚡</div>
+        <span>Animated Solutions</span>
+      </a>
+      <nav class="header-links" aria-label="Collections">
+        <a class="header-pill active" href="index.html">Classic Visualizers (26)</a>
+        <a class="header-pill" href="codequest/index.html">CodeQuest 3D (25)</a>
+      </nav>
+    </div>
+  </header>
+
   <main>
     <p class="eyebrow">Interactive algorithm visualizations</p>
     <h1>Animated Solutions</h1>
     <p class="intro">
-      Explore classic problems through step-by-step animations. Choose a visualization
-      to open it in your browser.
+      Explore classic computer science algorithms and data structures through interactive, 
+      step-by-step Three.js 3D animations with synchronized Python code tracing and guided ElevenLabs voiceovers.
     </p>
+
+    <!-- Featured CodeQuest Banner -->
     <a class="featured-banner" href="codequest/index.html">
       <div class="featured-badge-row">
-        <span class="featured-tag">✨ New Collection</span>
+        <span class="featured-tag">✨ Complete Collection</span>
         <span class="featured-audio-tag">🎙️ Guided Audio Tours (Lauren)</span>
       </div>
       <h2>CodeQuest Python Study Guide (Q1 – Q25)</h2>
@@ -253,110 +547,561 @@
       </div>
     </a>
 
-    <nav class="projects" aria-label="Algorithm visualizations">
-      <a class="project" href="01-leftmost-binary-search/leftmost_binary_search_animation.html">
-        <span class="number">01</span>
+    <!-- Controls Bar: Search & Filter Tabs -->
+    <div class="controls-bar" role="search" aria-label="Filter algorithm visualizations">
+      <div class="search-box">
+        <span class="search-icon" aria-hidden="true">🔍</span>
+        <input 
+          type="text" 
+          id="searchInput" 
+          class="search-input" 
+          placeholder="Search 26 classic algorithms by title, concept, or keywords... (Press / to focus)"
+          aria-label="Search algorithms"
+          autocomplete="off"
+          spellcheck="false"
+        >
+        <button id="clearSearch" class="clear-search" aria-label="Clear search" title="Clear">✕</button>
+      </div>
+      <div class="filter-tabs" role="tablist" aria-label="Category filters">
+        <button class="filter-btn active" data-filter="all" role="tab" aria-selected="true">All (26)</button>
+        <button class="filter-btn" data-filter="search" role="tab" aria-selected="false">Searching & Sorting</button>
+        <button class="filter-btn" data-filter="dp" role="tab" aria-selected="false">Dynamic Programming</button>
+        <button class="filter-btn" data-filter="data-structures" role="tab" aria-selected="false">Data Structures</button>
+        <button class="filter-btn" data-filter="grids" role="tab" aria-selected="false">Graphs & Grids</button>
+        <button class="filter-btn" data-filter="recursion" role="tab" aria-selected="false">Recursion & Backtracking</button>
+        <button class="filter-btn" data-filter="games" role="tab" aria-selected="false">Games & Simulation</button>
+        <button class="filter-btn" data-filter="strings" role="tab" aria-selected="false">Strings & Arrays</button>
+        <button class="filter-btn" data-filter="audio" role="tab" aria-selected="false">🎙️ Audio Tours</button>
+      </div>
+    </div>
+
+    <div class="results-row">
+      <div id="resultsCount">Showing <strong>26</strong> visualizations</div>
+    </div>
+
+    <div id="emptyState" class="empty-state" hidden>
+      <p>No visualizations found matching your query.</p>
+      <button id="resetSearchBtn" type="button">Reset Filters</button>
+    </div>
+
+    <!-- 26 Classic Algorithm Visualizers Grid -->
+    <nav class="projects" id="projectsGrid" aria-label="Algorithm visualizations">
+
+      <!-- 01 Leftmost Binary Search -->
+      <a class="project" href="01-leftmost-binary-search/leftmost_binary_search_animation.html" data-category="search" data-audio="true" data-tags="binary search searching divide and conquer low high mid pointer array sorted">
+        <div class="card-top">
+          <span class="number">01</span>
+          <div class="badge-group">
+            <span class="badge-diff easy">Easy</span>
+            <span class="badge-cat">Search</span>
+            <span class="badge-audio">🎙️ Tour</span>
+          </div>
+        </div>
         <h2>Leftmost Binary Search</h2>
-        <p class="description">Follow a binary search as it finds the first occurrence of a target.</p>
+        <p class="description">Follow a binary search as it finds the first occurrence of a target value in a sorted list.</p>
         <span class="open">Open visualization →</span>
       </a>
-      <a class="project" href="01-leftmost-binary-search/Recursive%20leftmost%20binary%20search%20in%203D.html">
-        <span class="number">01 · RECURSIVE</span>
+
+      <!-- 01 Recursive Leftmost Binary Search -->
+      <a class="project" href="01-leftmost-binary-search/Recursive%20leftmost%20binary%20search%20in%203D.html" data-category="recursion" data-audio="true" data-tags="recursive binary search call stack recursion divide and conquer">
+        <div class="card-top">
+          <span class="number">01 · RECURSIVE</span>
+          <div class="badge-group">
+            <span class="badge-diff easy">Easy</span>
+            <span class="badge-cat">Recursion</span>
+            <span class="badge-audio">🎙️ Tour</span>
+          </div>
+        </div>
         <h2>Recursive Leftmost Binary Search</h2>
-        <p class="description">Trace recursive calls as the search finds the first occurrence of a target.</p>
+        <p class="description">Trace recursive function calls and call stack frames as the search zeroes in on the target.</p>
         <span class="open">Open visualization →</span>
       </a>
-      <a class="project" href="02-run-length-round-trip/Run-Length%20Round%20Trip.html">
-        <span class="number">02</span>
+
+      <!-- 02 Run-Length Round Trip -->
+      <a class="project" href="02-run-length-round-trip/Run-Length%20Round%20Trip.html" data-category="strings" data-audio="true" data-tags="run length rle compression string encoding decoding count">
+        <div class="card-top">
+          <span class="number">02</span>
+          <div class="badge-group">
+            <span class="badge-diff easy">Easy</span>
+            <span class="badge-cat">Strings</span>
+            <span class="badge-audio">🎙️ Tour</span>
+          </div>
+        </div>
         <h2>Run-Length Round Trip</h2>
-        <p class="description">See repeated characters encoded and decoded step by step.</p>
+        <p class="description">See repeated characters encoded into count pairs and reconstructed back step by step.</p>
         <span class="open">Open visualization →</span>
       </a>
-      <a class="project" href="03-Maximum-Sub-Array/Maximum%20Subarray%20Two%20Ways.html">
-        <span class="number">03</span>
+
+      <!-- 03 Maximum Subarray Two Ways -->
+      <a class="project" href="03-Maximum-Sub-Array/Maximum%20Subarray%20Two%20Ways.html" data-category="dp" data-audio="true" data-tags="maximum subarray kadane dynamic programming prefix sum contiguous array">
+        <div class="card-top">
+          <span class="number">03</span>
+          <div class="badge-group">
+            <span class="badge-diff medium">Medium</span>
+            <span class="badge-cat">DP</span>
+            <span class="badge-audio">🎙️ Tour</span>
+          </div>
+        </div>
         <h2>Maximum Subarray Two Ways</h2>
-        <p class="description">Compare two approaches to finding the maximum-sum contiguous subarray.</p>
+        <p class="description">Compare Kadane’s algorithm with a prefix approach to find the maximum-sum contiguous subarray.</p>
         <span class="open">Open visualization →</span>
       </a>
-      <a class="project" href="04-Integer-to-roman/Integer%20to%20Roman%20in%203D,%20step%20by%20step.html">
-        <span class="number">04</span>
+
+      <!-- 04 Integer to Roman -->
+      <a class="project" href="04-Integer-to-roman/Integer%20to%20Roman%20in%203D,%20step%20by%20step.html" data-category="strings" data-audio="true" data-tags="integer to roman numeral conversion greedy math string">
+        <div class="card-top">
+          <span class="number">04</span>
+          <div class="badge-group">
+            <span class="badge-diff medium">Medium</span>
+            <span class="badge-cat">Strings</span>
+            <span class="badge-audio">🎙️ Tour</span>
+          </div>
+        </div>
         <h2>Integer to Roman</h2>
-        <p class="description">Watch an integer transform into Roman numerals in an animated 3D scene.</p>
+        <p class="description">Watch an integer decompose and transform into Roman numerals in an animated 3D scene.</p>
         <span class="open">Open visualization →</span>
       </a>
-      <a class="project" href="05-tower-of-hanoi/Tower%20of%20Hanoi%20in%203D,%20step%20by%20step.html">
-        <span class="number">05</span>
+
+      <!-- 05 Tower of Hanoi -->
+      <a class="project" href="05-tower-of-hanoi/Tower%20of%20Hanoi%20in%203D,%20step%20by%20step.html" data-category="recursion" data-audio="true" data-tags="tower of hanoi recursion disks pegs call stack">
+        <div class="card-top">
+          <span class="number">05</span>
+          <div class="badge-group">
+            <span class="badge-diff medium">Medium</span>
+            <span class="badge-cat">Recursion</span>
+            <span class="badge-audio">🎙️ Tour</span>
+          </div>
+        </div>
         <h2>Tower of Hanoi</h2>
-        <p class="description">Explore the recursive solution as disks move between three pegs.</p>
+        <p class="description">Explore the recursive solution as disks move smoothly between three pegs with height validation.</p>
         <span class="open">Open visualization →</span>
       </a>
-      <a class="project" href="06-bubble-sort/Bubble%20sort%20in%203D,%20step%20by%20step.html">
-        <span class="number">06</span>
+
+      <!-- 05 Tower of Hanoi (Simplified) -->
+      <a class="project" href="05-tower-of-hanoi/hanoi_animation_simplified.html" data-category="recursion" data-audio="false" data-tags="tower of hanoi recursion simplified minimal flat">
+        <div class="card-top">
+          <span class="number">05 · FLAT</span>
+          <div class="badge-group">
+            <span class="badge-diff medium">Medium</span>
+            <span class="badge-cat">Recursion</span>
+          </div>
+        </div>
+        <h2>Tower of Hanoi (Simplified)</h2>
+        <p class="description">A clean, minimal 2D/3D flat visualizer tracing recursive disk transfers across three pegs.</p>
+        <span class="open">Open visualization →</span>
+      </a>
+
+      <!-- 06 Bubble Sort -->
+      <a class="project" href="06-bubble-sort/Bubble%20sort%20in%203D,%20step%20by%20step.html" data-category="search" data-audio="true" data-tags="bubble sort sorting comparison swap array list">
+        <div class="card-top">
+          <span class="number">06</span>
+          <div class="badge-group">
+            <span class="badge-diff easy">Easy</span>
+            <span class="badge-cat">Sorting</span>
+            <span class="badge-audio">🎙️ Tour</span>
+          </div>
+        </div>
         <h2>Bubble Sort</h2>
-        <p class="description">Watch neighboring values compare and swap as the list is sorted.</p>
+        <p class="description">Watch neighboring values compare and swap as the largest unsorted numbers float to the top.</p>
         <span class="open">Open visualization →</span>
       </a>
-      <a class="project" href="07-pascals-triangle/Pascal's%20Triangle%20in%203D,%20step%20by%20step.html">
-        <span class="number">07</span>
+
+      <!-- 07 Pascal's Triangle -->
+      <a class="project" href="07-pascals-triangle/Pascal%27s%20Triangle%20in%203D,%20step%20by%20step.html" data-category="dp" data-audio="true" data-tags="pascals triangle dynamic programming combinatorics math binomial pyramid">
+        <div class="card-top">
+          <span class="number">07</span>
+          <div class="badge-group">
+            <span class="badge-diff easy">Easy</span>
+            <span class="badge-cat">DP</span>
+            <span class="badge-audio">🎙️ Tour</span>
+          </div>
+        </div>
         <h2>Pascal’s Triangle</h2>
-        <p class="description">Build Pascal’s Triangle row by row in an animated 3D view.</p>
+        <p class="description">Build Pascal’s Triangle row by row in an animated 3D pyramid view.</p>
         <span class="open">Open visualization →</span>
       </a>
-      <a class="project" href="07-pascals-triangle/Pascal's%20row%20(one%20list)%20in%203D,%20step%20by%20step.html">
-        <span class="number">08</span>
+
+      <!-- 07 Pascal's Row (One List) -->
+      <a class="project" href="07-pascals-triangle/Pascal%27s%20row%20(one%20list)%20in%203D,%20step%20by%20step.html" data-category="dp" data-audio="true" data-tags="pascals row one list in place space optimization dynamic programming">
+        <div class="card-top">
+          <span class="number">07 · IN-PLACE</span>
+          <div class="badge-group">
+            <span class="badge-diff medium">Medium</span>
+            <span class="badge-cat">DP</span>
+            <span class="badge-audio">🎙️ Tour</span>
+          </div>
+        </div>
         <h2>Pascal’s Row with One List</h2>
-        <p class="description">See how one list can be updated in place to calculate a row.</p>
+        <p class="description">See how a single list updates in place from right to left to compute row values in O(k) memory.</p>
         <span class="open">Open visualization →</span>
       </a>
-      <a class="project" href="08-hangman/Hangman%20in%203D,%20step%20by%20step.html">
-        <span class="number">09</span>
+
+      <!-- 08 Hangman in 3D -->
+      <a class="project" href="08-hangman/Hangman%20in%203D,%20step%20by%20step.html" data-category="games" data-audio="true" data-tags="hangman game simulation letters state machine word">
+        <div class="card-top">
+          <span class="number">08</span>
+          <div class="badge-group">
+            <span class="badge-diff easy">Easy</span>
+            <span class="badge-cat">Games</span>
+            <span class="badge-audio">🎙️ Tour</span>
+          </div>
+        </div>
         <h2>Hangman in 3D</h2>
-        <p class="description">Follow the word-guessing game and its state through each turn.</p>
+        <p class="description">Follow the word-guessing game and its letter state through each turn in 3D.</p>
         <span class="open">Open visualization →</span>
       </a>
-      <a class="project" href="08-hangman/Hangman%20in%203D_%20step%20by%20step%20bonus.html">
-        <span class="number">10</span>
+
+      <!-- 08 Hangman: Bonus -->
+      <a class="project" href="08-hangman/Hangman%20in%203D_%20step%20by%20step%20bonus.html" data-category="games" data-audio="true" data-tags="hangman bonus game simulation custom word input">
+        <div class="card-top">
+          <span class="number">08 · BONUS</span>
+          <div class="badge-group">
+            <span class="badge-diff easy">Easy</span>
+            <span class="badge-cat">Games</span>
+            <span class="badge-audio">🎙️ Tour</span>
+          </div>
+        </div>
         <h2>Hangman in 3D: Bonus</h2>
-        <p class="description">Explore the bonus version of the animated Hangman walkthrough.</p>
+        <p class="description">Explore the bonus version of the animated Hangman walkthrough with custom input capabilities.</p>
         <span class="open">Open visualization →</span>
       </a>
-      <a class="project" href="09-subsets-and-permutations/Subsets%20and%20permutations%20in%203D-bonus.html">
-        <span class="number">11</span>
+
+      <!-- 09 Subsets and Permutations -->
+      <a class="project" href="09-subsets-and-permutations/Subsets%20and%20permutations%20in%203D-bonus.html" data-category="recursion" data-audio="true" data-tags="subsets permutations recursion backtracking combinatorics subset sum">
+        <div class="card-top">
+          <span class="number">09</span>
+          <div class="badge-group">
+            <span class="badge-diff medium">Medium</span>
+            <span class="badge-cat">Recursion</span>
+            <span class="badge-audio">🎙️ Tour</span>
+          </div>
+        </div>
         <h2>Subsets and Permutations</h2>
-        <p class="description">Visualize recursive subsets, permutations, and a subset-sum bonus.</p>
+        <p class="description">Visualize recursive subsets, permutations, and a subset-sum bonus decision tree.</p>
         <span class="open">Open visualization →</span>
       </a>
-      <a class="project" href="09-subsets/subsets_3d.html">
-        <span class="number">11 · COMPANION</span>
+
+      <!-- 09 Subsets Focused -->
+      <a class="project" href="09-subsets/subsets_3d.html" data-category="recursion" data-audio="true" data-tags="subsets recursion include skip binary decision powerset">
+        <div class="card-top">
+          <span class="number">09 · COMPANION</span>
+          <div class="badge-group">
+            <span class="badge-diff medium">Medium</span>
+            <span class="badge-cat">Recursion</span>
+            <span class="badge-audio">🎙️ Tour</span>
+          </div>
+        </div>
         <h2>Subsets: Focused Walkthrough</h2>
         <p class="description">Trace the include-or-skip recursion and compare subset and permutation counts for n = 0–8.</p>
         <span class="open">Open visualization →</span>
       </a>
-      <a class="project" href="10-count-ways/performance-lab-3d.html">
-        <span class="number">12</span>
+
+      <!-- 10 The Performance Lab -->
+      <a class="project" href="10-count-ways/performance-lab-3d.html" data-category="dp" data-audio="true" data-tags="count ways performance lab memoization dynamic programming hash maps asymptotic complexity">
+        <div class="card-top">
+          <span class="number">10</span>
+          <div class="badge-group">
+            <span class="badge-diff hard">Hard</span>
+            <span class="badge-cat">DP</span>
+            <span class="badge-audio">🎙️ Tour</span>
+          </div>
+        </div>
         <h2>The Performance Lab</h2>
-        <p class="description">Explore recursion, memoization, hash maps, and performance tradeoffs.</p>
+        <p class="description">Benchmark brute-force recursion vs. memoization, hash maps, and tabulated dynamic programming.</p>
         <span class="open">Open visualization →</span>
       </a>
-      <a class="project" href="insertion-sort/Insertion%20sort%20in%203D,%20step%20by%20step.html">
-        <span class="number">13</span>
+
+      <!-- 11 Insertion Sort -->
+      <a class="project" href="insertion-sort/Insertion%20sort%20in%203D,%20step%20by%20step.html" data-category="search" data-audio="true" data-tags="insertion sort sorting in-place keys slide array list">
+        <div class="card-top">
+          <span class="number">11</span>
+          <div class="badge-group">
+            <span class="badge-diff easy">Easy</span>
+            <span class="badge-cat">Sorting</span>
+            <span class="badge-audio">🎙️ Tour</span>
+          </div>
+        </div>
         <h2>Insertion Sort</h2>
-        <p class="description">Watch keys lift out, larger items slide right, and elements insert into place.</p>
+        <p class="description">Watch keys lift out, larger items slide right, and elements insert precisely into place.</p>
         <span class="open">Open visualization →</span>
       </a>
-      <a class="project" href="11-spiral-matrix/Spiral%20matrix%20in%203D,%20step%20by%20step.html">
-        <span class="number">14</span>
+
+      <!-- 12 Spiral Matrix -->
+      <a class="project" href="11-spiral-matrix/Spiral%20matrix%20in%203D,%20step%20by%20step.html" data-category="grids" data-audio="true" data-tags="spiral matrix 2d array grid boundaries traversal simulation">
+        <div class="card-top">
+          <span class="number">12</span>
+          <div class="badge-group">
+            <span class="badge-diff medium">Medium</span>
+            <span class="badge-cat">Grids</span>
+            <span class="badge-audio">🎙️ Tour</span>
+          </div>
+        </div>
         <h2>Spiral Matrix</h2>
-        <p class="description">Watch four sliding boundary walls walk a grid in clockwise spiral order.</p>
+        <p class="description">Watch four sliding boundary walls traverse a 2D matrix in clockwise spiral order.</p>
         <span class="open">Open visualization →</span>
       </a>
-      <a class="project" href="12-balanced-brackets/Balanced%20brackets%20in%203D,%20step%20by%20step.html">
-        <span class="number">15</span>
+
+      <!-- 13 Balanced Brackets -->
+      <a class="project" href="12-balanced-brackets/Balanced%20brackets%20in%203D,%20step%20by%20step.html" data-category="data-structures" data-audio="true" data-tags="balanced brackets stack lifo parentheses parsing">
+        <div class="card-top">
+          <span class="number">13</span>
+          <div class="badge-group">
+            <span class="badge-diff easy">Easy</span>
+            <span class="badge-cat">Stack</span>
+            <span class="badge-audio">🎙️ Tour</span>
+          </div>
+        </div>
         <h2>Balanced Brackets</h2>
         <p class="description">Watch opening brackets push to a 3D stack rack and pop as matching pairs resolve.</p>
         <span class="open">Open visualization →</span>
       </a>
+
+      <!-- 14 Shop Inventory -->
+      <a class="project" href="13-shop-inventory/Shop%20inventory%20in%203D,%20step%20by%20step.html" data-category="data-structures" data-audio="true" data-tags="shop inventory dictionary immutable state stock validation dictionary map">
+        <div class="card-top">
+          <span class="number">14</span>
+          <div class="badge-group">
+            <span class="badge-diff easy">Easy</span>
+            <span class="badge-cat">Dict</span>
+            <span class="badge-audio">🎙️ Tour</span>
+          </div>
+        </div>
+        <h2>Shop Inventory (Immutable State)</h2>
+        <p class="description">Track dictionary operations, stock restocking, price validation, and immutable data flow in 3D.</p>
+        <span class="open">Open visualization →</span>
+      </a>
+
+      <!-- 15 Tic-Tac-Toe Referee -->
+      <a class="project" href="14-tic-tac-toe-referee/Tic-Tac-Toe%20referee%20in%203D,%20step%20by%20step.html" data-category="games" data-audio="true" data-tags="tic tac toe game referee matrix 3x3 diagonal win draw validation">
+        <div class="card-top">
+          <span class="number">15</span>
+          <div class="badge-group">
+            <span class="badge-diff easy">Easy</span>
+            <span class="badge-cat">Games</span>
+            <span class="badge-audio">🎙️ Tour</span>
+          </div>
+        </div>
+        <h2>Tic-Tac-Toe Referee</h2>
+        <p class="description">Evaluate 3x3 boards in 3D across rows, columns, and diagonals for win and draw detection.</p>
+        <span class="open">Open visualization →</span>
+      </a>
+
+      <!-- 15 Tic-Tac-Toe Referee Code Trace -->
+      <a class="project" href="14-tic-tac-toe-referee/Tic-Tac-Toe%20referee%20in%203D,%20every%20line%20of%20code.html" data-category="games" data-audio="true" data-tags="tic tac toe code trace line by line referee validation">
+        <div class="card-top">
+          <span class="number">15 · CODE TRACE</span>
+          <div class="badge-group">
+            <span class="badge-diff medium">Medium</span>
+            <span class="badge-cat">Games</span>
+            <span class="badge-audio">🎙️ Tour</span>
+          </div>
+        </div>
+        <h2>Tic-Tac-Toe: Deep Line Tracing</h2>
+        <p class="description">Trace every line of Python logic evaluating boards, slices, sets, and early termination checks.</p>
+        <span class="open">Open visualization →</span>
+      </a>
+
+      <!-- 16 Coins Bottom-Up DP -->
+      <a class="project" href="15-coins-bottom-up/Coins,%20bottom-up,%20in%203D.html" data-category="dp" data-audio="true" data-tags="coins bottom up coin change dynamic programming dp table minimum coins">
+        <div class="card-top">
+          <span class="number">16</span>
+          <div class="badge-group">
+            <span class="badge-diff medium">Medium</span>
+            <span class="badge-cat">DP</span>
+            <span class="badge-audio">🎙️ Tour</span>
+          </div>
+        </div>
+        <h2>Coins: Bottom-Up Dynamic Programming</h2>
+        <p class="description">Build the classic 2D coin-change DP table row by row with illuminated 3D height pillars.</p>
+        <span class="open">Open visualization →</span>
+      </a>
+
+      <!-- 17 Cache That Forgets Wisely (LRU & FIFO) -->
+      <a class="project" href="16-cache-that-forgets-wisely/The%20cache%20that%20forgets%20wisely,%20in%203D.html" data-category="data-structures" data-audio="true" data-tags="cache lru least recently used fifo eviction hash map linked list queue">
+        <div class="card-top">
+          <span class="number">17</span>
+          <div class="badge-group">
+            <span class="badge-diff hard">Hard</span>
+            <span class="badge-cat">Cache</span>
+            <span class="badge-audio">🎙️ Tour</span>
+          </div>
+        </div>
+        <h2>The Cache That Forgets Wisely (LRU)</h2>
+        <p class="description">Compare Least-Recently-Used (LRU) vs. First-In-First-Out (FIFO) eviction policies in 3D memory slots.</p>
+        <span class="open">Open visualization →</span>
+      </a>
+
+      <!-- 18 Shortest Route BFS -->
+      <a class="project" href="17-shortest-route-BFS/Shortest%20route%20(BFS)%20in%203D.html" data-category="grids" data-audio="true" data-tags="shortest route bfs breadth first search graph grid queue frontier pathfinding">
+        <div class="card-top">
+          <span class="number">18</span>
+          <div class="badge-group">
+            <span class="badge-diff medium">Medium</span>
+            <span class="badge-cat">BFS</span>
+            <span class="badge-audio">🎙️ Tour</span>
+          </div>
+        </div>
+        <h2>Shortest Route (BFS)</h2>
+        <p class="description">Explore grid frontiers using a Breadth-First Search queue and trace shortest path backtracking.</p>
+        <span class="open">Open visualization →</span>
+      </a>
+
+      <!-- 19 Edit Distance Table -->
+      <a class="project" href="18-edit-distance-table/Edit%20distance%20table%20in%203D.html" data-category="dp" data-audio="true" data-tags="edit distance levenshtein dynamic programming matrix string alignment insert delete substitute">
+        <div class="card-top">
+          <span class="number">19</span>
+          <div class="badge-group">
+            <span class="badge-diff hard">Hard</span>
+            <span class="badge-cat">DP</span>
+            <span class="badge-audio">🎙️ Tour</span>
+          </div>
+        </div>
+        <h2>Edit Distance Table (Levenshtein)</h2>
+        <p class="description">Calculate minimum insert, delete, and replace operations on a 3D dynamic programming grid.</p>
+        <span class="open">Open visualization →</span>
+      </a>
+
+      <!-- 20 Lagos Traffic Adventure -->
+      <a class="project" href="19-your-own-adventure/Lagos%20Traffic%20Adventure.html" data-category="games" data-audio="true" data-tags="lagos traffic choose your own adventure state machine fsm simulation transitions">
+        <div class="card-top">
+          <span class="number">20</span>
+          <div class="badge-group">
+            <span class="badge-diff medium">Medium</span>
+            <span class="badge-cat">FSM</span>
+            <span class="badge-audio">🎙️ Tour</span>
+          </div>
+        </div>
+        <h2>Lagos Traffic Adventure (State Machine)</h2>
+        <p class="description">Navigate a dynamic finite state machine simulating commute routes, Danfo buses, and choices.</p>
+        <span class="open">Open visualization →</span>
+      </a>
+
     </nav>
   </main>
+
+  <footer class="site-footer">
+    <p>
+      Animated Solutions — Interactive 3D Algorithm & Data Structure Visualizations · 
+      Built with Three.js & ElevenLabs · Open Source
+    </p>
+  </footer>
+
+  <script>
+    (function () {
+      const $searchInput = document.getElementById('searchInput');
+      const $clearSearch = document.getElementById('clearSearch');
+      const $filterBtns = document.querySelectorAll('.filter-btn');
+      const $cards = document.querySelectorAll('.project');
+      const $resultsCount = document.getElementById('resultsCount');
+      const $emptyState = document.getElementById('emptyState');
+      const $resetSearchBtn = document.getElementById('resetSearchBtn');
+
+      let activeFilter = 'all';
+      let searchQuery = '';
+
+      function updateView() {
+        let visibleCount = 0;
+        const q = searchQuery.trim().toLowerCase();
+
+        $cards.forEach(card => {
+          const category = card.dataset.category || '';
+          const hasAudio = card.dataset.audio === 'true';
+          const tags = (card.dataset.tags || '').toLowerCase();
+          const title = card.querySelector('h2').textContent.toLowerCase();
+          const desc = card.querySelector('.description').textContent.toLowerCase();
+
+          // Filter check
+          let matchesFilter = false;
+          if (activeFilter === 'all') {
+            matchesFilter = true;
+          } else if (activeFilter === 'audio') {
+            matchesFilter = hasAudio;
+          } else {
+            matchesFilter = (category === activeFilter);
+          }
+
+          // Search check
+          let matchesSearch = true;
+          if (q) {
+            matchesSearch = title.includes(q) || desc.includes(q) || tags.includes(q);
+          }
+
+          if (matchesFilter && matchesSearch) {
+            card.style.display = 'flex';
+            visibleCount++;
+          } else {
+            card.style.display = 'none';
+          }
+        });
+
+        // Update Counter
+        $resultsCount.innerHTML = `Showing <strong>${visibleCount}</strong> of <strong>${$cards.length}</strong> visualizations`;
+
+        // Empty state
+        if (visibleCount === 0) {
+          $emptyState.hidden = false;
+        } else {
+          $emptyState.hidden = true;
+        }
+
+        // Clear button visibility
+        $clearSearch.style.display = q ? 'block' : 'none';
+      }
+
+      // Filter click handler
+      $filterBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          $filterBtns.forEach(b => {
+            b.classList.remove('active');
+            b.setAttribute('aria-selected', 'false');
+          });
+          btn.classList.add('active');
+          btn.setAttribute('aria-selected', 'true');
+          activeFilter = btn.dataset.filter;
+          updateView();
+        });
+      });
+
+      // Search input handler
+      $searchInput.addEventListener('input', (e) => {
+        searchQuery = e.target.value;
+        updateView();
+      });
+
+      // Clear search button
+      $clearSearch.addEventListener('click', () => {
+        $searchInput.value = '';
+        searchQuery = '';
+        updateView();
+        $searchInput.focus();
+      });
+
+      // Reset filters button in empty state
+      $resetSearchBtn.addEventListener('click', () => {
+        $searchInput.value = '';
+        searchQuery = '';
+        activeFilter = 'all';
+        $filterBtns.forEach(b => {
+          b.classList.toggle('active', b.dataset.filter === 'all');
+          b.setAttribute('aria-selected', b.dataset.filter === 'all' ? 'true' : 'false');
+        });
+        updateView();
+        $searchInput.focus();
+      });
+
+      // Keyboard shortcut '/' to search
+      window.addEventListener('keydown', (e) => {
+        if (e.key === '/' && document.activeElement !== $searchInput) {
+          e.preventDefault();
+          $searchInput.focus();
+        } else if (e.key === 'Escape' && document.activeElement === $searchInput) {
+          $searchInput.value = '';
+          searchQuery = '';
+          updateView();
+          $searchInput.blur();
+        }
+      });
+    })();
+  </script>
 </body>
 </html>

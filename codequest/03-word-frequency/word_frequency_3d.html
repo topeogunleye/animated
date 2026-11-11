@@ -411,6 +411,66 @@
       border-radius: 4px;
       font-weight: 700;
     }
+  
+    /* CodeQuest Header Navigation */
+    .cq-nav-back, .cq-nav-home {
+      color: #94a3b8;
+      text-decoration: none;
+      font-size: 11.5px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 5px;
+      border: 1px solid var(--panel-border, #1e293b);
+      background: rgba(255, 255, 255, 0.03);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.15s ease;
+      flex-shrink: 0;
+    }
+    .cq-nav-back:hover, .cq-nav-home:hover {
+      color: #38bdf8;
+      border-color: #38bdf8;
+      background: rgba(56, 189, 248, 0.08);
+    }
+    .cq-nav-sequence {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid var(--panel-border, #1e293b);
+      border-radius: 6px;
+      padding: 3px 6px;
+      flex-shrink: 0;
+    }
+    .cq-nav-btn {
+      color: #94a3b8;
+      text-decoration: none;
+      font-size: 11.5px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 4px;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+    }
+    .cq-nav-btn:hover:not(.disabled) {
+      color: #f8fafc;
+      background: rgba(255, 255, 255, 0.08);
+    }
+    .cq-nav-btn.disabled {
+      opacity: 0.35;
+      pointer-events: none;
+      cursor: default;
+    }
+    .cq-nav-indicator {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #38bdf8;
+      padding: 0 4px;
+      font-variant-numeric: tabular-nums;
+    }
+
   </style>
 </head>
 <body>
@@ -418,9 +478,16 @@
   <!-- Header -->
   <header>
     <div class="brand">
+      <a href="../index.html" class="cq-nav-back" title="Back to CodeQuest Gallery">← Gallery</a>
+      <a href="../../index.html" class="cq-nav-home" title="Animated Solutions Home">🏠</a>
       <span class="badge">CodeQuest Q3</span>
       <h1>Word Frequency & Dictionary Counter</h1>
       <span class="subtitle">Tokenizing, punctuation stripping, and 3D frequency bins</span>
+    </div>
+    <div class="cq-nav-sequence" aria-label="Question sequence">
+      <a class="cq-nav-btn" href="../02-student-grades/student_grades_3d.html" title="Previous Question (Q2)">‹ Prev</a>
+      <span class="cq-nav-indicator">Q3 of 25</span>
+      <a class="cq-nav-btn" href="../04-two-sum/two_sum_3d.html" title="Next Question (Q4)">Next ›</a>
     </div>
     <div class="header-actions">
       <button class="btn-ghost" id="btn-toggle-code">

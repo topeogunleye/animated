@@ -5,3 +5,7 @@ __pycache__/
 *.pyc
 scratch/
 ElevenLabs_*.mp3
+*.zip
+hanoi-*.mp3
+.DS_Store
+Thumbs.db

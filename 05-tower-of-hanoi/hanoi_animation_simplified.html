@@ -31,11 +31,38 @@ button{cursor:pointer}button:disabled{opacity:.4;cursor:default}
 .ln:before{content:attr(data-n);display:inline-block;width:2.2em;margin-right:8px;text-align:right;color:var(--mut)}
 .ln.on{background:var(--hi)}
 .ln.wait{outline:1.5px dashed var(--mut);outline-offset:-1px}
+
+.top-nav{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 0 10px;margin-bottom:10px;border-bottom:1px solid var(--line);font-size:0.875rem}
+.top-nav a{color:var(--fg);text-decoration:none;display:inline-flex;align-items:center;gap:6px;font-weight:550;padding:4px 8px;border-radius:6px;transition:background 120ms ease,color 120ms ease}
+.top-nav a:hover{background:var(--card);color:var(--acc)}
+.top-nav a:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.nav-back{display:inline-flex;align-items:center;gap:6px;font-weight:600}
+.nav-back .nav-arrow{font-size:1.05em;transition:transform 120ms ease}
+.nav-back:hover .nav-arrow{transform:translateX(-2px)}
+.nav-sequence{display:inline-flex;align-items:center;gap:6px}
+.nav-btn{background:var(--bg);border:1px solid var(--line);padding:3px 9px;border-radius:6px;color:var(--fg);text-decoration:none;display:inline-flex;align-items:center;gap:4px;font-size:0.82rem;font-weight:550}
+.nav-btn:hover:not(.disabled){background:var(--card);border-color:var(--acc);color:var(--acc)}
+.nav-btn.disabled{opacity:0.35;cursor:not-allowed;pointer-events:none}
+.nav-indicator{font-size:0.8rem;color:var(--mut);padding:0 6px;font-variant-numeric:tabular-nums;user-select:none;font-weight:600}
+.nav-arrow{font-size:1em;line-height:1}
+
 </style>
 </head>
 <body>
 <main>
-<h1>Tower of Hanoi: recursion, step by step</h1>
+<nav class="top-nav" aria-label="Visualizations navigation">
+    <a class="nav-back" href="../index.html" title="Return to all algorithm visualizations">
+      <span class="nav-arrow" aria-hidden="true">←</span>
+      <span>All Visualizations</span>
+    </a>
+    <div class="nav-sequence">
+      <button id="bShowCodeNav" type="button" class="nav-btn btn-show-code" title="Show code panel (C)" aria-label="Show code panel" hidden><span class="eye-icon" aria-hidden="true">👁</span><span class="nav-label">Show Code</span></button>
+      <a class="nav-btn prev" href="Tower%20of%20Hanoi%20in%203D%2C%20step%20by%20step.html" title="Previous visualization: Tower of Hanoi"><span class="nav-arrow" aria-hidden="true">‹</span><span class="nav-label">Prev</span></a>
+      <span class="nav-indicator" aria-label="Visualization 7 of 26" title="Visualization 7 of 26">7 / 26</span>
+      <a class="nav-btn next" href="../06-bubble-sort/Bubble%20sort%20in%203D%2C%20step%20by%20step.html" title="Next visualization: Bubble Sort"><span class="nav-label">Next</span><span class="nav-arrow" aria-hidden="true">›</span></a>
+    </div>
+  </nav>
+  <h1>Tower of Hanoi: recursion, step by step (Simplified)</h1>
 <div class="top">
  <div>
   <div id="stage"></div>
