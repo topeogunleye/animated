@@ -1,0 +1,1470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Can Sum in 3D: trying every pair</title>
+<style>
+:root {
+  --bg: #f6f7fb;
+  --panel: #ffffff;
+  --ink: #1b2030;
+  --muted: #5d6679;
+  --line: #d9deea;
+  --hl-bg: #fff3c4;
+  --hl-bar: #f59e0b;
+  --stage: #eef2f8;
+  --plate: #c3ccd7;
+  --accent: #2f6df6;
+  --btn: #ffffff;
+  --btnHover: #eef2f8;
+  --i-col: #3b82f6;
+  --j-col: #f59e0b;
+  --win-col: #22c55e;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12151d;
+    --panel: #1b2030;
+    --ink: #e8ebf4;
+    --muted: #98a2b8;
+    --line: #2c3347;
+    --hl-bg: #4a3f12;
+    --hl-bar: #f59e0b;
+    --stage: #141a24;
+    --plate: #333d4e;
+    --accent: #7aa2ff;
+    --btn: #1b2030;
+    --btnHover: #252c40;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12151d;
+  --panel: #1b2030;
+  --ink: #e8ebf4;
+  --muted: #98a2b8;
+  --line: #2c3347;
+  --hl-bg: #4a3f12;
+  --hl-bar: #f59e0b;
+  --stage: #141a24;
+  --plate: #333d4e;
+  --accent: #7aa2ff;
+  --btn: #1b2030;
+  --btnHover: #252c40;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  min-height: 100vh;
+}
+main {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 12px 14px 32px;
+}
+
+/* ---------- top navigation bar ---------- */
+.top-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.875rem;
+}
+.top-nav a {
+  color: var(--ink);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 550;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 120ms ease, color 120ms ease;
+}
+.top-nav a:hover {
+  background: var(--btnHover);
+  color: var(--accent);
+}
+.top-nav a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.nav-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+.nav-back .nav-arrow {
+  font-size: 1.05em;
+  transition: transform 120ms ease;
+}
+.nav-back:hover .nav-arrow {
+  transform: translateX(-2px);
+}
+.nav-sequence {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.nav-btn {
+  background: var(--btn);
+  border: 1px solid var(--line);
+  padding: 3px 9px;
+  border-radius: 6px;
+  color: var(--ink);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.82rem;
+  font-weight: 550;
+}
+.nav-btn:hover:not(.disabled) {
+  background: var(--btnHover);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.nav-btn.disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.nav-indicator {
+  font-size: 0.8rem;
+  color: var(--muted);
+  padding: 0 6px;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+  font-weight: 600;
+}
+.nav-arrow {
+  font-size: 1em;
+  line-height: 1;
+}
+@media (max-width: 540px) {
+  .top-nav { flex-wrap: wrap; gap: 8px; }
+  .nav-back span:not(.nav-arrow) { font-size: 0.82rem; }
+  .btn-show-code .nav-label { display: none; }
+  .btn-show-code { padding: 3px 8px; }
+}
+
+h1 {
+  font-size: 1.25rem;
+  margin: 6px 0 2px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+.goal {
+  color: var(--muted);
+  margin: 0 0 14px;
+  font-size: 0.92rem;
+}
+
+/* ---------- 2-column layout ---------- */
+.wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  transition: grid-template-columns 180ms ease;
+}
+.wrap.code-hidden {
+  grid-template-columns: minmax(0, 1fr);
+}
+.wrap.code-hidden .code-pane {
+  display: none;
+}
+@media (max-width: 760px) {
+  .wrap { grid-template-columns: minmax(0, 1fr); }
+}
+
+.stagebox {
+  position: relative;
+  background: var(--stage);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  aspect-ratio: 4/3;
+  min-height: 280px;
+  max-height: 64vh;
+  width: 100%;
+  touch-action: pan-y;
+}
+#cv {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+#cv:active {
+  cursor: grabbing;
+}
+.hint {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  font-size: 11px;
+  color: var(--muted);
+  pointer-events: none;
+}
+.tag {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  right: 10px;
+  width: max-content;
+  max-width: calc(100% - 20px);
+  font: 600 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  padding: 2px 9px;
+  border-radius: 999px;
+  color: var(--ink);
+  pointer-events: none;
+}
+.err {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 20px;
+  color: var(--muted);
+  background: var(--stage);
+}
+.err[hidden] {
+  display: none;
+}
+
+#caption {
+  margin: 10px 2px 6px;
+  min-height: 2.8em;
+  font-size: 0.95rem;
+  color: var(--ink);
+  line-height: 1.5;
+}
+#step {
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+button, select {
+  font: inherit;
+  font-size: 0.88rem;
+  color: var(--ink);
+  background: var(--btn);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 12px;
+  min-height: 36px;
+}
+button {
+  cursor: pointer;
+}
+button:hover:not(:disabled) {
+  background: var(--btnHover);
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+button:focus-visible, select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.btn-tour {
+  background: var(--accent);
+  color: #ffffff;
+  font-weight: 650;
+  border-color: transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn-tour:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+.btn-tour.playing {
+  background: #ea580c;
+  color: #ffffff;
+}
+.btn-mute {
+  min-width: 40px;
+  padding: 6px 9px;
+  font-size: 1rem;
+}
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Tour status pill */
+.tour-status {
+  margin-top: 8px;
+  font-size: 0.85rem;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 1.8em;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 4px 10px;
+}
+.tour-badge {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.tour-msg {
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* How to read this details */
+details.how-to {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 13.5px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+details.how-to summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--ink);
+}
+.sw {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  margin-right: 5px;
+  vertical-align: -1px;
+}
+
+/* ---------- collapsible code pane ---------- */
+.code-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-bottom: none;
+  border-radius: 12px 12px 0 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.code-header .code-title {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.75rem;
+}
+.btn-toggle-code {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--muted);
+  padding: 2px 8px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: unset;
+  min-width: unset;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+.btn-toggle-code:hover {
+  background: var(--btnHover);
+  color: var(--ink);
+  border-color: var(--line);
+}
+.btn-toggle-code:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.btn-show-code {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.btn-show-code[hidden] {
+  display: none !important;
+}
+
+#code {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+  padding: 8px 0;
+  overflow: auto;
+  max-height: 52vh;
+  font: 13px/1.7 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  margin: 0;
+}
+@media (max-width: 420px) {
+  #code { font-size: 12px; }
+}
+.row {
+  display: flex;
+  min-width: max-content;
+  white-space: pre;
+  padding-right: 12px;
+  border-left: 4px solid transparent;
+}
+.ln {
+  flex: 0 0 2.4em;
+  text-align: right;
+  padding-right: 12px;
+  color: var(--muted);
+  user-select: none;
+}
+.row.active {
+  background: var(--hl-bg);
+  border-left-color: var(--hl-bar);
+}
+
+.notes-card {
+  margin-top: 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+.notes-card h2 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin: 0 0 6px;
+}
+#notes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13.5px;
+}
+#notes li {
+  margin: 4px 0;
+  padding-left: 8px;
+  border-left: 3px solid var(--hl-bar);
+  line-height: 1.45;
+}
+#notes b {
+  font-family: ui-monospace, monospace;
+}
+</style>
+</head>
+<body>
+<main>
+  <nav class="top-nav" aria-label="Visualizations navigation">
+    <a class="nav-back" href="../index.html" title="Return to all algorithm visualizations">
+      <span class="nav-arrow" aria-hidden="true">←</span>
+      <span>All Visualizations</span>
+    </a>
+    <div class="nav-sequence">
+      <button id="bShowCodeNav" type="button" class="nav-btn btn-show-code" title="Show code panel (C)" aria-label="Show code panel" hidden>
+        <span class="eye-icon" aria-hidden="true">👁</span><span class="nav-label">Show Code</span>
+      </button>
+      <a class="nav-btn prev" href="../19-your-own-adventure/Lagos%20Traffic%20Adventure.html" title="Previous visualization: Lagos Traffic Adventure">
+        <span class="nav-arrow" aria-hidden="true">‹</span><span class="nav-label">Prev</span>
+      </a>
+      <span class="nav-indicator" aria-label="Visualization 27 of 27" title="Visualization 27 of 27">27 / 27</span>
+      <span class="nav-btn next disabled" aria-disabled="true"><span class="nav-label">Next</span><span class="nav-arrow" aria-hidden="true">›</span></span>
+    </div>
+  </nav>
+
+  <h1>Can Sum in 3D: trying every pair</h1>
+  <p class="goal">Goal: return the first two numbers (left to right) that add up to the target, or None if no pair does.</p>
+
+  <div class="wrap" id="wrap">
+    <div>
+      <div class="stagebox" id="stage">
+        <canvas id="cv" role="img" aria-label="3D visualization of array elements and recursive pointers"></canvas>
+        <div class="tag" id="tag"></div>
+        <div class="hint">drag to rotate · double-click to reset</div>
+        <div class="err" id="err" hidden>3D view needs WebGL. Code and captions below still step.</div>
+      </div>
+      <p id="caption" role="status" aria-live="polite"></p>
+      <div id="step"></div>
+
+      <div class="controls" role="group" aria-label="Playback controls">
+        <button id="bTour" type="button" class="btn-tour" title="Start guided audio tour (Space)">
+          <span class="tour-icon" id="tourIcon" aria-hidden="true">▶</span>
+          <span class="tour-label" id="tourLabel">Audio Tour</span>
+        </button>
+        <button id="bBack" type="button" title="Previous step (Left Arrow)">Back</button>
+        <button id="bPlay" type="button" title="Play / Pause (Space)">Play</button>
+        <button id="bNext" type="button" title="Next step (Right Arrow)">Next</button>
+        <button id="bReset" type="button" title="Reset to beginning">Reset</button>
+        <button id="bMute" type="button" class="btn-mute" aria-pressed="false" title="Toggle audio voiceover (M)">
+          <span class="mute-icon" id="muteIcon" aria-hidden="true">🔊</span>
+        </button>
+        <label class="sr" for="preset">Preset Example</label>
+        <select id="preset" aria-label="Preset Example"></select>
+        <label class="sr" for="speed">Playback Speed</label>
+        <select id="speed" aria-label="Playback Speed">
+          <option value="1300">Slow</option>
+          <option value="850" selected>Normal</option>
+          <option value="450">Fast</option>
+          <option value="220">Very fast</option>
+        </select>
+      </div>
+
+      <div class="tour-status" id="tourStatus" role="status" aria-live="polite">
+        <span class="tour-badge" id="tourBadge">Milestone 1/4</span>
+        <span class="tour-msg" id="tourMsg">Ready to start guided audio tour.</span>
+      </div>
+
+      <details class="how-to">
+        <summary>How to read this visualization</summary>
+        <p style="margin:8px 0 0">
+          Each bar is a number; height is proportional to magnitude. Values are above bars and indices (0, 1, 2…) are in front.
+          <br><span class="sw" style="background:var(--i-col)"></span><b>Blue bar & arrow i</b>: the first number of the pair.
+          <br><span class="sw" style="background:var(--j-col)"></span><b>Orange bar & arrow j</b>: the second number of the pair. When j sits past the last bar, it has run off the end.
+          <br><span class="sw" style="background:var(--win-col)"></span><b>Green bars & beam</b>: the matching pair that adds up to the target.
+          <br>Drag the 3D scene sideways to rotate; double-click to reset angle.
+        </p>
+      </details>
+    </div>
+
+    <div class="code-pane">
+      <div class="code-header">
+        <span class="code-title">Python Source</span>
+        <button id="bToggleCode" class="btn-toggle-code" type="button" aria-expanded="true" title="Hide code panel (C)">
+          <span class="eye-icon" aria-hidden="true">👁</span>
+          <span class="toggle-label">Hide Code</span>
+        </button>
+      </div>
+      <pre id="code" role="region" aria-label="Python source code"></pre>
+
+      <div class="notes-card">
+        <h2>What the highlighted lines do</h2>
+        <ul id="notes"></ul>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+
+/* SOURCE:BEGIN */
+const SRC = [
+  "def can_sum(nums, target, i = 0, j = 1):",
+  "    if i >= len(nums) - 1:",
+  "        return None",
+  "    if j >= len(nums):",
+  "        return can_sum(nums, target, i + 1, i + 2)",
+  "    if nums[i] + nums[j] == target:",
+  "        return (nums[i], nums[j])",
+  "    return can_sum(nums, target, i, j + 1)"
+];
+
+const NOTES = [
+  "Defines the function. i is the position of the first number and j of the second. They start at 0 and 1.",
+  "Guard: if i is on the last number (or beyond), nothing is left to its right to pair with: all pairs tested.",
+  "Guard was true: stop and return None (Python's 'nothing found').",
+  "If j has run past the end, element nums[i] has exhausted all its possible partners.",
+  "Advance i by 1 and reset j to sit right after it (i + 2 with the old i).",
+  "Add the numbers at positions i and j. If the sum equals the target, this is our pair.",
+  "Match found! Return the two numbers as a winning pair.",
+  "No match: call the function again with j one step to the right and i unchanged."
+];
+/* SOURCE:END */
+
+/* PRESETS:BEGIN */
+const PRESETS = [
+  { name: "[2, 4, 6, 10], target 16", a: [2, 4, 6, 10], t: 16, hasTour: true },
+  { name: "[3, 5, 7], target 12", a: [3, 5, 7], t: 12, hasTour: false },
+  { name: "[-3, 4, 5], target 3", a: [-3, 4, 5], t: 3, hasTour: false },
+  { name: "Edge: [5], target 5 (one number)", a: [5], t: 5, hasTour: false },
+  { name: "Edge: [], target 0 (empty)", a: [], t: 0, hasTour: false },
+  { name: "Edge: [4, 4, 9], target 8 (duplicates)", a: [4, 4, 9], t: 8, hasTour: false }
+];
+/* PRESETS:END */
+
+/* SIMULATE:BEGIN */
+function simulate(a, t) {
+  const F = [], n = a.length;
+  let i = 0, j = 1, c = 1;
+  const P = o => F.push(Object.assign({ i, j, c, hold: 1, found: false, eq: null, kind: 'step' }, o));
+
+  P({
+    lines: [1],
+    kind: 'start',
+    msg: "Call 1 starts with i = 0 and j = 1: look at the first two numbers."
+  });
+
+  for (;;) {
+    if (i >= n - 1) {
+      P({
+        lines: [1, 2, 3],
+        kind: 'end',
+        hold: 1.8,
+        result: 'None',
+        msg: n < 2
+          ? `The list has only ${n} number${n === 1 ? '' : 's'}, so no pair can exist. The guard stops us right away: returns None.`
+          : "i is on the last number, so nothing is to its right. Every pair was tried and none added up to the target: returns None."
+      });
+      break;
+    }
+    if (j >= n) {
+      P({
+        lines: [1, 2, 4, 5],
+        msg: `j ran past the end, so ${a[i]} has no partners left. Move i one step right and put j just after it.`
+      });
+      i++;
+      j = i + 1;
+      c++;
+      continue;
+    }
+    const s = a[i] + a[j], eq = `${a[i]} + ${a[j]} = ${s}`;
+    if (s === t) {
+      P({
+        lines: [1, 2, 4, 6, 7],
+        kind: 'win',
+        hold: 2,
+        found: true,
+        eq,
+        result: `(${a[i]}, ${a[j]})`,
+        msg: `${eq} is exactly the target ${t}. Returns the pair (${a[i]}, ${a[j]}).`
+      });
+      break;
+    }
+    P({
+      lines: [1, 2, 4, 6, 8],
+      eq,
+      msg: `${eq}, not ${t}. No match, so slide j one step right and try again.`
+    });
+    j++;
+    c++;
+  }
+  return F;
+}
+/* SIMULATE:END */
+
+/* ---------- Audio Walkthrough Milestones ---------- */
+function makeAudio(url) {
+  if (typeof Audio === 'undefined') return null;
+  try {
+    const a = new Audio();
+    a.preload = 'none';
+    a.src = url;
+    return a;
+  } catch(e) {
+    return null;
+  }
+}
+
+const WALKTHROUGHS = {
+  '[2, 4, 6, 10], target 16': {
+    name: 'Target 16 ([2, 4, 6, 10])',
+    milestones: [
+      {
+        id: 'setup-probe1',
+        title: 'Setup & Testing First Pair (2, 4)',
+        clip: makeAudio('../audio-walkthroughs/can-sum/target-16/01-setup-and-first-probe.mp3'),
+        startIdx: 0,
+        endIdx: 1,
+        cues: [
+          { time: 0.0, frameIdx: 0 },
+          { time: 15.5, frameIdx: 1 }
+        ]
+      },
+      {
+        id: 'exhaust-2',
+        title: 'Testing Remaining Partners for 2',
+        clip: makeAudio('../audio-walkthroughs/can-sum/target-16/02-exhausting-first-element.mp3'),
+        startIdx: 2,
+        endIdx: 4,
+        cues: [
+          { time: 0.0, frameIdx: 2 },
+          { time: 7.5, frameIdx: 3 },
+          { time: 15.0, frameIdx: 4 }
+        ]
+      },
+      {
+        id: 'exhaust-4',
+        title: 'Testing Partners for 4',
+        clip: makeAudio('../audio-walkthroughs/can-sum/target-16/03-testing-with-second-element.mp3'),
+        startIdx: 5,
+        endIdx: 7,
+        cues: [
+          { time: 0.0, frameIdx: 5 },
+          { time: 8.5, frameIdx: 6 },
+          { time: 16.5, frameIdx: 7 }
+        ]
+      },
+      {
+        id: 'match-return',
+        title: 'Target Match (6, 10) Found',
+        clip: makeAudio('../audio-walkthroughs/can-sum/target-16/04-match-found-and-return.mp3'),
+        startIdx: 8,
+        endIdx: 8,
+        cues: [
+          { time: 0.0, frameIdx: 8 }
+        ]
+      }
+    ]
+  }
+};
+
+/* ---------- DOM Elements ---------- */
+const $ = id => document.getElementById(id);
+const $cv = $('cv'), $stage = $('stage'), $tag = $('tag'), $err = $('err');
+const $cap = $('caption'), $step = $('step'), $code = $('code'), $notes = $('notes');
+const $bTour = $('bTour'), $tourIcon = $('tourIcon'), $tourLabel = $('tourLabel');
+const $bBack = $('bBack'), $bPlay = $('bPlay'), $bNext = $('bNext'), $bReset = $('bReset');
+const $bMute = $('bMute'), $muteIcon = $('muteIcon');
+const $preset = $('preset'), $speed = $('speed');
+const $tourStatus = $('tourStatus'), $tourBadge = $('tourBadge'), $tourMsg = $('tourMsg');
+const $wrap = $('wrap'), $bToggleCode = $('bToggleCode'), $bShowCodeNav = $('bShowCodeNav');
+
+/* Render Python Source in Code Pane */
+const rows = SRC.map((line, idx) => {
+  const row = document.createElement('div');
+  row.className = 'row';
+  const ln = document.createElement('span');
+  ln.className = 'ln';
+  ln.textContent = String(idx + 1);
+  const codeSpan = document.createElement('span');
+  codeSpan.textContent = line;
+  row.append(ln, codeSpan);
+  $code.append(row);
+  return row;
+});
+
+/* Populate Preset Options */
+PRESETS.forEach((p, idx) => {
+  const opt = document.createElement('option');
+  opt.value = String(idx);
+  opt.textContent = p.name;
+  $preset.append(opt);
+});
+
+/* ---------- Collapsible Code Pane State ---------- */
+const STORAGE_KEY = 'animated_solutions_hide_code';
+let codeHidden = false;
+try {
+  codeHidden = localStorage.getItem(STORAGE_KEY) === 'true';
+} catch(e){}
+
+function setCodeHidden(hidden) {
+  codeHidden = !!hidden;
+  try {
+    localStorage.setItem(STORAGE_KEY, codeHidden ? 'true' : 'false');
+  } catch(e){}
+  if ($wrap) $wrap.classList.toggle('code-hidden', codeHidden);
+  if ($bToggleCode) {
+    $bToggleCode.setAttribute('aria-expanded', String(!codeHidden));
+    const label = $bToggleCode.querySelector('.toggle-label');
+    if (label) label.textContent = codeHidden ? 'Show Code' : 'Hide Code';
+  }
+  if ($bShowCodeNav) $bShowCodeNav.hidden = !codeHidden;
+  fit();
+}
+
+$bToggleCode.onclick = () => setCodeHidden(!codeHidden);
+$bShowCodeNav.onclick = () => setCodeHidden(false);
+if (codeHidden) setCodeHidden(true);
+
+/* ---------- Three.js 3D Setup ---------- */
+const SP = 1.7;
+const COL = {
+  g: 0x8a94a6,
+  i: 0x3b82f6,
+  j: 0xf59e0b,
+  w: 0x22c55e,
+  plate: 0x333d4e
+};
+
+let R = null, C = null, S = null, G = null;
+let bars = [], ix = 0, jx = 0, m = {}, ext = {}, yaw = 0, anim = 0;
+let tc = '#1b2030';
+
+try {
+  R = new THREE.WebGLRenderer({ canvas: $cv, antialias: true, alpha: true });
+  R.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  S = new THREE.Scene();
+  C = new THREE.PerspectiveCamera(32, 4 / 3, 0.1, 200);
+  S.add(new THREE.AmbientLight(0xffffff, 0.65));
+  const dl = new THREE.DirectionalLight(0xffffff, 0.85);
+  dl.position.set(3, 8, 10);
+  S.add(dl);
+  G = new THREE.Group();
+  S.add(G);
+} catch(e) {
+  R = null;
+  $err.hidden = false;
+}
+
+function render() {
+  if (R && S && C) R.render(S, C);
+}
+
+function tex(txt, w, h, fs, col) {
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  const x = c.getContext('2d');
+  x.font = `bold ${fs}px system-ui, sans-serif`;
+  x.textAlign = 'center';
+  x.textBaseline = 'middle';
+  x.fillStyle = col;
+  x.fillText(txt, w / 2, h / 2);
+  const t = new THREE.CanvasTexture(c);
+  t.userData = { c, x, w, h, fs };
+  return t;
+}
+
+function spr(txt, sw, sh, w, h, fs, col) {
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex(txt, w, h, fs, col), transparent: true, depthTest: false }));
+  s.scale.set(sw, sh, 1);
+  s.renderOrder = 5;
+  return s;
+}
+
+function setTxt(s, txt, col) {
+  const t = s.material.map, u = t.userData;
+  u.x.clearRect(0, 0, u.w, u.h);
+  u.x.font = `bold ${u.fs}px system-ui, sans-serif`;
+  u.x.textAlign = 'center';
+  u.x.textBaseline = 'middle';
+  u.x.fillStyle = col;
+  u.x.fillText(txt, u.w / 2, u.h / 2);
+  t.needsUpdate = true;
+}
+
+function clearG() {
+  while (G.children.length) {
+    const o = G.children.pop();
+    o.traverse(q => {
+      if (q.geometry) q.geometry.dispose();
+      if (q.material) {
+        if (q.material.map) q.material.map.dispose();
+        q.material.dispose();
+      }
+    });
+  }
+}
+
+const px = i => (i - (cur.a.length - 1) / 2) * SP;
+
+function build() {
+  const a = cur.a, n = a.length;
+  tc = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? '#e8ebf4' : '#1b2030';
+  if (!R) return;
+  clearG();
+  bars = [];
+
+  const mx = Math.max(1, ...a.map(Math.abs));
+  const kScale = 3.6 / mx;
+  const pos = Math.max(0, ...a) * kScale;
+  const neg = Math.max(0, ...a.map(v => -v)) * kScale;
+
+  a.forEach((v, i) => {
+    const h = Math.max(Math.abs(v) * kScale, 0.14);
+    const b = new THREE.Mesh(new THREE.BoxGeometry(1.0, h, 1.0), new THREE.MeshLambertMaterial({ color: COL.g }));
+    b.position.set(px(i), v >= 0 ? h / 2 : -h / 2, 0);
+    G.add(b);
+    bars.push(b);
+
+    const valSprite = spr(String(v), 1.3, 0.65, 160, 80, 52, tc);
+    valSprite.position.set(px(i), v >= 0 ? h + 0.55 : -h - 0.55, 0.8);
+    G.add(valSprite);
+
+    const idxSprite = spr(String(i), 1.1, 0.55, 128, 64, 40, tc);
+    idxSprite.position.set(px(i), -neg - 1.5, 0.8);
+    G.add(idxSprite);
+  });
+
+  // Array floor plate
+  const base = new THREE.Mesh(
+    new THREE.BoxGeometry(Math.max(n, 1) * SP + 0.8, 0.08, 2.2),
+    new THREE.MeshLambertMaterial({ color: COL.plate })
+  );
+  base.position.set(0, -0.04, 0.3);
+  G.add(base);
+
+  const top = pos + 1.5;
+  ext = { top, minY: -neg - 1.9, maxY: top + 2.4 };
+
+  const mk = (col, lab) => {
+    const g = new THREE.Group();
+    const c = new THREE.Mesh(new THREE.ConeGeometry(0.32, 0.6, 16), new THREE.MeshLambertMaterial({ color: col }));
+    c.rotation.x = Math.PI;
+    const l = spr(lab, 0.8, 0.5, 96, 64, 48, '#' + col.toString(16).padStart(6, '0'));
+    l.position.y = 0.75;
+    g.add(c, l);
+    g.position.set(0, top, 0.4);
+    G.add(g);
+    return g;
+  };
+
+  m.i = mk(COL.i, 'i');
+  m.j = mk(COL.j, 'j');
+
+  m.br = new THREE.Mesh(new THREE.BoxGeometry(1, 0.14, 0.14), new THREE.MeshLambertMaterial({ color: COL.g }));
+  m.br.position.set(0, top + 0.45, 0.4);
+  G.add(m.br);
+
+  m.eq = spr('', 5, 0.65, 640, 80, 52, tc);
+  m.eq.position.set(0, top + 1.9, 0.8);
+  G.add(m.eq);
+
+  if (!n) {
+    const e = spr('empty list', 4, 0.8, 512, 96, 56, tc);
+    e.position.set(0, 1.5, 0.8);
+    G.add(e);
+  }
+  fit();
+}
+
+function fit() {
+  if (!R) return;
+  const w = $stage.clientWidth || 600, h = $stage.clientHeight || 450;
+  R.setSize(w, h, false);
+  C.aspect = w / h;
+  const n = cur.a.length;
+  const W = Math.max((n + 1) * SP + 1.8, 7.5);
+  const H = (ext.maxY || 6) - (ext.minY || -2) + 0.4;
+  const t = Math.tan(16 * Math.PI / 180);
+  const cy = ((ext.maxY || 6) + (ext.minY || -2)) / 2;
+  const d = Math.max(H / 2 / t, W / 2 / C.aspect / t) * 1.08;
+  C.position.set(0, cy, d);
+  C.lookAt(0, cy, 0);
+  C.updateProjectionMatrix();
+  G.rotation.y = yaw;
+  render();
+}
+
+function place() {
+  if (!R) return;
+  m.i.position.x = ix;
+  m.j.position.x = jx;
+  const a = Math.min(ix, jx), b = Math.max(ix, jx);
+  m.br.scale.x = Math.max(b - a, 0.01);
+  m.br.position.x = (a + b) / 2;
+  render();
+}
+
+function showScene(f, animate) {
+  if (!R) return;
+  bars.forEach((b, i) => {
+    b.material.color.setHex(f.found && (i === f.i || i === f.j) ? COL.w : i === f.i ? COL.i : i === f.j ? COL.j : COL.g);
+  });
+  m.br.material.color.setHex(f.found ? COL.w : COL.g);
+  m.i.children[0].material.color.setHex(f.found ? COL.w : COL.i);
+  m.j.children[0].material.color.setHex(f.found ? COL.w : COL.j);
+  m.j.visible = true;
+  m.eq.visible = !!f.eq;
+  if (f.eq) setTxt(m.eq, f.eq, f.found ? '#16a34a' : tc);
+
+  const ti = px(f.i);
+  const tj = px(f.j);
+  const fi = ix, fj = jx;
+  cancelAnimationFrame(anim);
+
+  if (!animate || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
+    ix = ti;
+    jx = tj;
+    place();
+    return;
+  }
+  const t0 = performance.now();
+  (function s(now){
+    const u = Math.min(1, (now - t0) / 260);
+    const e = u * (2 - u);
+    ix = fi + (ti - fi) * e;
+    jx = fj + (tj - fj) * e;
+    place();
+    if (u < 1) anim = requestAnimationFrame(s);
+  })(t0);
+}
+
+/* ---------- State Machine & Audio Synchronization ---------- */
+let F = [];
+let k = 0;
+let timer = null;
+let cur = PRESETS[0];
+
+const S_PLAY = {
+  state: 'idle', // 'idle' | 'playing' | 'paused' | 'ended'
+  audioMuted: false,
+  currentClip: null,
+  currentMilestoneIdx: -1,
+  cueTimers: [],
+  tourToken: 0
+};
+
+function getActiveWalkthrough() {
+  return WALKTHROUGHS[cur.name] || null;
+}
+
+function clearCueTimers() {
+  while (S_PLAY.cueTimers.length > 0) {
+    clearTimeout(S_PLAY.cueTimers.pop());
+  }
+}
+
+function stopAudio() {
+  clearCueTimers();
+  S_PLAY.tourToken++;
+  if (S_PLAY.currentClip) {
+    try {
+      S_PLAY.currentClip.pause();
+      S_PLAY.currentClip.currentTime = 0;
+      S_PLAY.currentClip.onended = null;
+      S_PLAY.currentClip.onerror = null;
+    } catch(e){}
+    S_PLAY.currentClip = null;
+  }
+  S_PLAY.currentMilestoneIdx = -1;
+}
+
+function pauseAudio() {
+  clearCueTimers();
+  S_PLAY.tourToken++;
+  if (S_PLAY.currentClip) {
+    try {
+      S_PLAY.currentClip.pause();
+    } catch(e){}
+  }
+}
+
+function updateMuteButton() {
+  $bMute.setAttribute('aria-pressed', String(S_PLAY.audioMuted));
+  if ($muteIcon) $muteIcon.textContent = S_PLAY.audioMuted ? '🔇' : '🔊';
+  $bMute.title = S_PLAY.audioMuted ? 'Unmute voiceover (M)' : 'Mute voiceover (M)';
+}
+
+function updateButtons() {
+  const last = F.length - 1;
+  $bBack.disabled = k <= 0;
+  $bNext.disabled = k >= last;
+
+  const wt = getActiveWalkthrough();
+  const isTour = wt && !S_PLAY.audioMuted;
+
+  if (S_PLAY.state === 'playing') {
+    if (isTour) {
+      $bTour.classList.add('playing');
+      $tourIcon.textContent = '⏸';
+      $tourLabel.textContent = 'Pause Tour';
+      $bTour.title = 'Pause guided audio tour (Space)';
+    } else {
+      $bTour.classList.remove('playing');
+      $tourIcon.textContent = '▶';
+      $tourLabel.textContent = wt ? 'Audio Tour' : 'Tour';
+      $bTour.title = 'Start guided audio tour (Space)';
+    }
+    $bPlay.textContent = 'Pause';
+  } else {
+    $bTour.classList.remove('playing');
+    if (k >= last) {
+      $tourIcon.textContent = '↺';
+      $tourLabel.textContent = isTour ? 'Replay Tour' : 'Replay';
+      $bTour.title = 'Replay guided tour from start (Space)';
+      $bPlay.textContent = 'Replay';
+    } else if (k > 0) {
+      $tourIcon.textContent = '▶';
+      $tourLabel.textContent = isTour ? 'Resume Tour' : 'Resume';
+      $bTour.title = 'Resume guided tour (Space)';
+      $bPlay.textContent = 'Play';
+    } else {
+      $tourIcon.textContent = '▶';
+      $tourLabel.textContent = 'Audio Tour';
+      $bTour.title = 'Start guided audio tour (Space)';
+      $bPlay.textContent = 'Play';
+    }
+  }
+}
+
+function updateTourStatus() {
+  const wt = getActiveWalkthrough();
+  if (wt) {
+    let curM = 0;
+    for (let i = 0; i < wt.milestones.length; i++) {
+      const m = wt.milestones[i];
+      if (k >= m.startIdx && k <= m.endIdx) {
+        curM = i;
+        break;
+      }
+    }
+    const totalM = wt.milestones.length;
+
+    if (S_PLAY.state === 'ended') {
+      $tourBadge.textContent = 'Complete';
+      const lastF = F[F.length - 1];
+      $tourMsg.textContent = lastF && lastF.result !== 'None'
+        ? `Tour complete! Winning pair ${lastF.result} found.`
+        : 'Tour complete! No pair added up to target.';
+    } else if (S_PLAY.state === 'playing') {
+      $tourBadge.textContent = `Milestone ${curM + 1}/${totalM}`;
+      $tourMsg.textContent = S_PLAY.audioMuted ? 'Playing silently (voiceover muted).' : wt.milestones[curM].title;
+    } else {
+      $tourBadge.textContent = `Milestone ${curM + 1}/${totalM}`;
+      if (k === 0) {
+        $tourMsg.textContent = 'Ready to start guided audio tour for target ' + cur.t + '.';
+      } else {
+        $tourMsg.textContent = 'Tour paused at step ' + (k + 1) + ' of ' + F.length + '.';
+      }
+    }
+  } else {
+    $tourBadge.textContent = 'Custom';
+    if (S_PLAY.state === 'ended') {
+      $tourMsg.textContent = 'Simulation complete.';
+    } else if (S_PLAY.state === 'playing') {
+      $tourMsg.textContent = 'Playing simulation (silent mode).';
+    } else {
+      $tourMsg.textContent = `Ready: ${cur.a.length} elements, target ${cur.t} (silent mode).`;
+    }
+  }
+}
+
+function renderUI(animate) {
+  if (!F || !F[k]) return;
+  const f = F[k];
+  rows.forEach((r, idx) => {
+    r.classList.toggle('active', f.lines.includes(idx + 1));
+  });
+
+  $notes.textContent = '';
+  f.lines.forEach(n => {
+    const li = document.createElement('li');
+    const b = document.createElement('b');
+    b.textContent = 'Line ' + n + ': ';
+    li.append(b, NOTES[n - 1]);
+    $notes.append(li);
+  });
+
+  $tag.textContent = f.kind === 'end' || f.kind === 'win'
+    ? `Result: ${f.result} · Target ${cur.t}`
+    : `Target ${cur.t} · Call ${f.c} · i = ${f.i}, j = ${f.j}`;
+
+  $cap.textContent = f.msg;
+  $step.textContent = `Step ${k + 1} of ${F.length}`;
+
+  updateButtons();
+  updateTourStatus();
+  showScene(f, animate);
+}
+
+function startMilestone(mIdx, fromTime) {
+  const wt = getActiveWalkthrough();
+  if (!wt || S_PLAY.audioMuted) {
+    scheduleSilent();
+    return;
+  }
+  if (mIdx < 0 || mIdx >= wt.milestones.length) {
+    S_PLAY.state = 'ended';
+    S_PLAY.currentClip = null;
+    updateButtons();
+    updateTourStatus();
+    return;
+  }
+
+  stopAudio();
+  const m = wt.milestones[mIdx];
+  const clip = m.clip;
+  if (!clip) {
+    scheduleSilent();
+    return;
+  }
+
+  S_PLAY.currentMilestoneIdx = mIdx;
+  S_PLAY.currentClip = clip;
+  const token = ++S_PLAY.tourToken;
+  updateTourStatus();
+
+  clip.onended = function() {
+    if (token !== S_PLAY.tourToken || S_PLAY.state !== 'playing') return;
+    if (mIdx + 1 < wt.milestones.length) {
+      startMilestone(mIdx + 1, 0);
+    } else {
+      S_PLAY.state = 'ended';
+      S_PLAY.currentClip = null;
+      updateButtons();
+      updateTourStatus();
+    }
+  };
+
+  clip.onerror = function() {
+    if (token !== S_PLAY.tourToken) return;
+    console.warn('Audio clip failed to play, switching to silent mode.');
+    $tourMsg.textContent = 'Audio clip unavailable; continuing in silent mode.';
+    S_PLAY.audioMuted = true;
+    updateMuteButton();
+    if (S_PLAY.state === 'playing') scheduleSilent();
+  };
+
+  try {
+    clip.currentTime = fromTime || 0;
+  } catch(e){}
+
+  clearCueTimers();
+  if (Array.isArray(m.cues)) {
+    m.cues.forEach(cue => {
+      const cueTime = cue.time || 0;
+      const targetFrame = cue.frameIdx;
+      if (cueTime >= (fromTime || 0)) {
+        const delayMs = Math.max(0, (cueTime - (fromTime || 0)) * 1000);
+        const timerId = setTimeout(() => {
+          if (token === S_PLAY.tourToken && S_PLAY.state === 'playing') {
+            k = targetFrame;
+            renderUI(true);
+          }
+        }, delayMs);
+        S_PLAY.cueTimers.push(timerId);
+      }
+    });
+  }
+
+  const playPromise = clip.play();
+  if (playPromise !== undefined) {
+    playPromise.catch(err => {
+      if (token !== S_PLAY.tourToken) return;
+      if (err && err.name === 'NotAllowedError') {
+        $tourMsg.textContent = 'Click Audio Tour to enable audio in your browser.';
+      } else {
+        $tourMsg.textContent = 'Audio playback blocked; running silent mode.';
+      }
+      if (S_PLAY.state === 'playing') scheduleSilent();
+    });
+  }
+}
+
+function scheduleSilent() {
+  clearTimeout(timer);
+  if (S_PLAY.state !== 'playing') return;
+  const hold = (F[k] && F[k].hold) || 1.0;
+  const delay = (+$speed.value) * hold;
+  timer = setTimeout(() => {
+    if (S_PLAY.state !== 'playing') return;
+    if (k < F.length - 1) {
+      k++;
+      renderUI(true);
+      scheduleSilent();
+    } else {
+      S_PLAY.state = 'ended';
+      renderUI(false);
+    }
+  }, delay);
+}
+
+function pauseAll() {
+  S_PLAY.state = 'paused';
+  clearTimeout(timer);
+  pauseAudio();
+  if (F && F[k]) renderUI(false);
+}
+
+function playTour() {
+  const wt = getActiveWalkthrough();
+  if (k >= F.length - 1) {
+    k = 0;
+  }
+  S_PLAY.state = 'playing';
+
+  if (wt && !S_PLAY.audioMuted) {
+    // Find milestone corresponding to frame k
+    let mIdx = 0;
+    for (let i = 0; i < wt.milestones.length; i++) {
+      const m = wt.milestones[i];
+      if (k >= m.startIdx && k <= m.endIdx) {
+        mIdx = i;
+        break;
+      }
+    }
+    // Calculate approximate offset time from cues
+    let fromTime = 0;
+    const m = wt.milestones[mIdx];
+    if (m && m.cues) {
+      for (let c of m.cues) {
+        if (c.frameIdx === k) {
+          fromTime = c.time;
+          break;
+        }
+      }
+    }
+    renderUI(false);
+    startMilestone(mIdx, fromTime);
+  } else {
+    renderUI(false);
+    scheduleSilent();
+  }
+}
+
+/* Event Handlers */
+$bTour.onclick = () => {
+  if (S_PLAY.state === 'playing') {
+    pauseAll();
+  } else {
+    // Synchronous audio start on user click for autoplay compliance
+    playTour();
+  }
+};
+
+$bPlay.onclick = () => {
+  if (S_PLAY.state === 'playing') {
+    pauseAll();
+  } else {
+    playTour();
+  }
+};
+
+$bNext.onclick = () => {
+  pauseAll();
+  stopAudio();
+  if (k < F.length - 1) {
+    k++;
+    renderUI(true);
+  }
+};
+
+$bBack.onclick = () => {
+  pauseAll();
+  stopAudio();
+  if (k > 0) {
+    k--;
+    renderUI(true);
+  }
+};
+
+$bReset.onclick = () => {
+  pauseAll();
+  stopAudio();
+  k = 0;
+  renderUI(false);
+};
+
+$bMute.onclick = () => {
+  S_PLAY.audioMuted = !S_PLAY.audioMuted;
+  updateMuteButton();
+  if (S_PLAY.state === 'playing') {
+    if (S_PLAY.audioMuted) {
+      pauseAudio();
+      scheduleSilent();
+    } else {
+      clearTimeout(timer);
+      playTour();
+    }
+  }
+  updateTourStatus();
+};
+
+function loadPreset(idx) {
+  clearTimeout(timer);
+  stopAudio();
+  S_PLAY.state = 'paused';
+  cur = PRESETS[idx];
+  F = simulate(cur.a, cur.t);
+  k = 0;
+  yaw = 0;
+  build();
+  renderUI(false);
+}
+
+$preset.onchange = e => loadPreset(+e.target.value);
+
+window.addEventListener('keydown', e => {
+  if (/SELECT|BUTTON|INPUT/.test(document.activeElement.tagName)) return;
+  if (e.key === ' ') {
+    e.preventDefault();
+    $bTour.click();
+  } else if (e.key === 'ArrowRight') {
+    $bNext.click();
+  } else if (e.key === 'ArrowLeft') {
+    $bBack.click();
+  } else if (e.key === 'm' || e.key === 'M') {
+    $bMute.click();
+  } else if (e.key === 'c' || e.key === 'C') {
+    $bToggleCode.click();
+  }
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && S_PLAY.state === 'playing') {
+    pauseAll();
+  }
+});
+
+window.addEventListener('resize', fit);
+
+let dx = null, y0 = 0;
+$stage.addEventListener('pointerdown', e => {
+  dx = e.clientX;
+  y0 = yaw;
+});
+window.addEventListener('pointerup', () => dx = null);
+window.addEventListener('pointermove', e => {
+  if (dx === null || !R) return;
+  yaw = Math.max(-0.55, Math.min(0.55, y0 + (e.clientX - dx) * 0.006));
+  G.rotation.y = yaw;
+  render();
+});
+$stage.addEventListener('dblclick', () => {
+  yaw = 0;
+  if (R) {
+    G.rotation.y = 0;
+    render();
+  }
+});
+
+// Initial load
+loadPreset(0);
+
+})();
+</script>
+</body>
+</html>
