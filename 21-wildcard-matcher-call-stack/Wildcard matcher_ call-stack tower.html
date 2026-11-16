@@ -1,0 +1,1413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Wildcard Matcher in 3D: the call-stack tower</title>
+<style>
+:root {
+  --bg: #f6f7fb;
+  --panel: #ffffff;
+  --ink: #1b2030;
+  --muted: #5d6679;
+  --line: #d9deea;
+  --hl-bg: #fff3c4;
+  --hl-bar: #f59e0b;
+  --stage: #eef2f8;
+  --plate: #8893a8;
+  --accent: #2f7de1;
+  --btn: #ffffff;
+  --btnHover: #eef2f8;
+  --col-active: #2f7de1;
+  --col-wait: #55657e;
+  --col-true: #2e9e5b;
+  --col-false: #d0463c;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #10141c;
+    --panel: #1a2030;
+    --ink: #e8ecf4;
+    --muted: #9aa6bd;
+    --line: #2e3649;
+    --hl-bg: #5a4a12;
+    --hl-bar: #f59e0b;
+    --stage: #141a24;
+    --plate: #333d4e;
+    --accent: #6fb0ff;
+    --btn: #1a2030;
+    --btnHover: #252d42;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #10141c;
+  --panel: #1a2030;
+  --ink: #e8ecf4;
+  --muted: #9aa6bd;
+  --line: #2e3649;
+  --hl-bg: #5a4a12;
+  --hl-bar: #f59e0b;
+  --stage: #141a24;
+  --plate: #333d4e;
+  --accent: #6fb0ff;
+  --btn: #1a2030;
+  --btnHover: #252d42;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  min-height: 100vh;
+}
+main {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 12px 14px 32px;
+}
+
+/* ---------- top navigation bar ---------- */
+.top-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.875rem;
+}
+.top-nav a {
+  color: var(--ink);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 550;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 120ms ease, color 120ms ease;
+}
+.top-nav a:hover {
+  background: var(--btnHover);
+  color: var(--accent);
+}
+.top-nav a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.nav-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+.nav-back .nav-arrow {
+  font-size: 1.05em;
+  transition: transform 120ms ease;
+}
+.nav-back:hover .nav-arrow {
+  transform: translateX(-2px);
+}
+.nav-sequence {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.nav-btn {
+  background: var(--btn);
+  border: 1px solid var(--line);
+  padding: 3px 9px;
+  border-radius: 6px;
+  color: var(--ink);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.82rem;
+  font-weight: 550;
+}
+.nav-btn:hover:not(.disabled) {
+  background: var(--btnHover);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.nav-btn.disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.nav-indicator {
+  font-size: 0.8rem;
+  color: var(--muted);
+  padding: 0 6px;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+  font-weight: 600;
+}
+.nav-arrow {
+  font-size: 1em;
+  line-height: 1;
+}
+@media (max-width: 540px) {
+  .top-nav { flex-wrap: wrap; gap: 8px; }
+  .nav-back span:not(.nav-arrow) { font-size: 0.82rem; }
+  .btn-show-code .nav-label { display: none; }
+  .btn-show-code { padding: 3px 8px; }
+}
+
+h1 {
+  font-size: 1.25rem;
+  margin: 6px 0 2px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+.goal {
+  color: var(--muted);
+  margin: 0 0 14px;
+  font-size: 0.92rem;
+}
+
+/* ---------- 2-column layout ---------- */
+.wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  transition: grid-template-columns 180ms ease;
+}
+.wrap.code-hidden {
+  grid-template-columns: minmax(0, 1fr);
+}
+.wrap.code-hidden .code-pane {
+  display: none;
+}
+@media (max-width: 760px) {
+  .wrap { grid-template-columns: minmax(0, 1fr); }
+}
+
+.stagebox {
+  position: relative;
+  background: var(--stage);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  aspect-ratio: 4/3;
+  min-height: 280px;
+  max-height: 64vh;
+  width: 100%;
+  touch-action: pan-y;
+}
+#cv {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+#cv:active {
+  cursor: grabbing;
+}
+.hint {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  font-size: 11px;
+  color: var(--muted);
+  pointer-events: none;
+}
+.tag {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  right: 10px;
+  width: max-content;
+  max-width: calc(100% - 20px);
+  font: 600 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  padding: 2px 9px;
+  border-radius: 999px;
+  color: var(--ink);
+  pointer-events: none;
+}
+.err {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 20px;
+  color: var(--muted);
+  background: var(--stage);
+}
+.err[hidden] {
+  display: none;
+}
+
+#caption {
+  margin: 10px 2px 4px;
+  min-height: 2.8em;
+  font-size: 0.95rem;
+  color: var(--ink);
+  line-height: 1.5;
+}
+#watch {
+  color: var(--accent);
+  font-size: 12.5px;
+  min-height: 18px;
+  margin: 0 2px 8px;
+  font-weight: 550;
+}
+#step {
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+button, select {
+  font: inherit;
+  font-size: 0.88rem;
+  color: var(--ink);
+  background: var(--btn);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 12px;
+  min-height: 36px;
+}
+button {
+  cursor: pointer;
+}
+button:hover:not(:disabled) {
+  background: var(--btnHover);
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+button:focus-visible, select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.btn-tour {
+  background: var(--accent);
+  color: #ffffff;
+  font-weight: 650;
+  border-color: transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn-tour:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+.btn-tour.playing {
+  background: #ea580c;
+  color: #ffffff;
+}
+.btn-mute {
+  min-width: 40px;
+  padding: 6px 9px;
+  font-size: 1rem;
+}
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Tour status pill */
+.tour-status {
+  margin-top: 8px;
+  font-size: 0.85rem;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 1.8em;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 4px 10px;
+}
+.tour-badge {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.tour-msg {
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* How to read this details */
+details.how-to {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 13.5px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+details.how-to summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--ink);
+}
+.sw {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  margin-right: 5px;
+  vertical-align: -1px;
+}
+
+/* ---------- collapsible code pane ---------- */
+.code-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-bottom: none;
+  border-radius: 12px 12px 0 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.code-header .code-title {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.75rem;
+}
+.btn-toggle-code {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--muted);
+  padding: 2px 8px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: unset;
+  min-width: unset;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+.btn-toggle-code:hover {
+  background: var(--btnHover);
+  color: var(--ink);
+  border-color: var(--line);
+}
+.btn-toggle-code:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.btn-show-code {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.btn-show-code[hidden] {
+  display: none !important;
+}
+
+#code {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+  padding: 8px 0;
+  overflow: auto;
+  max-height: 52vh;
+  font: 13px/1.7 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  margin: 0;
+}
+@media (max-width: 420px) {
+  #code { font-size: 12px; }
+}
+.row {
+  display: flex;
+  min-width: max-content;
+  white-space: pre;
+  padding-right: 12px;
+  border-left: 4px solid transparent;
+}
+.ln {
+  flex: 0 0 2.4em;
+  text-align: right;
+  padding-right: 12px;
+  color: var(--muted);
+  user-select: none;
+}
+.row.active {
+  background: var(--hl-bg);
+  border-left-color: var(--hl-bar);
+}
+
+.notes-card {
+  margin-top: 12px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+.notes-card h2 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin: 0 0 6px;
+}
+#notes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13.5px;
+}
+#notes li {
+  margin: 4px 0;
+  padding-left: 8px;
+  border-left: 3px solid var(--hl-bar);
+  line-height: 1.45;
+}
+#notes b {
+  font-family: ui-monospace, monospace;
+}
+</style>
+</head>
+<body>
+<main>
+  <nav class="top-nav" aria-label="Visualizations navigation">
+    <a class="nav-back" href="../index.html" title="Return to all algorithm visualizations">
+      <span class="nav-arrow" aria-hidden="true">←</span>
+      <span>All Visualizations</span>
+    </a>
+    <div class="nav-sequence">
+      <button id="bShowCodeNav" type="button" class="nav-btn btn-show-code" title="Show code panel (C)" aria-label="Show code panel" hidden>
+        <span class="eye-icon" aria-hidden="true">👁</span><span class="nav-label">Show Code</span>
+      </button>
+      <a class="nav-btn prev" href="../20-can-sum/can_sum%20in%203D_%20trying%20every%20pair.html" title="Previous visualization: Can Sum in 3D">
+        <span class="nav-arrow" aria-hidden="true">‹</span><span class="nav-label">Prev</span>
+      </a>
+      <span class="nav-indicator" aria-label="Visualization 28 of 28" title="Visualization 28 of 28">28 / 28</span>
+      <span class="nav-btn next disabled" aria-disabled="true"><span class="nav-label">Next</span><span class="nav-arrow" aria-hidden="true">›</span></span>
+    </div>
+  </nav>
+
+  <h1>Wildcard Matcher: the call-stack tower</h1>
+  <p class="goal">Goal: return True if the pattern matches the whole text, where ? is any one letter and * is any run of letters (even none).</p>
+
+  <div class="wrap" id="wrap">
+    <div>
+      <div class="stagebox" id="stage">
+        <canvas id="cv" role="img" aria-label="3D visualization of the recursive call stack tower"></canvas>
+        <div class="tag" id="tag"></div>
+        <div class="hint">drag to rotate · double-click to reset</div>
+        <div class="err" id="err" hidden>3D view needs WebGL. Code and captions below still step.</div>
+      </div>
+      <p id="caption" role="status" aria-live="polite"></p>
+      <p id="watch"></p>
+      <div id="step"></div>
+
+      <div class="controls" role="group" aria-label="Playback controls">
+        <button id="bTour" type="button" class="btn-tour" title="Start guided audio tour (Space)">
+          <span class="tour-icon" id="tourIcon" aria-hidden="true">▶</span>
+          <span class="tour-label" id="tourLabel">Audio Tour</span>
+        </button>
+        <button id="bBack" type="button" title="Previous step (Left Arrow)">Back</button>
+        <button id="bPlay" type="button" title="Play / Pause (Space)">Play</button>
+        <button id="bNext" type="button" title="Next step (Right Arrow)">Next</button>
+        <button id="bReset" type="button" title="Reset to beginning">Reset</button>
+        <button id="bMute" type="button" class="btn-mute" aria-pressed="false" title="Toggle audio voiceover (M)">
+          <span class="mute-icon" id="muteIcon" aria-hidden="true">🔊</span>
+        </button>
+        <label class="sr" for="preset">Preset Example</label>
+        <select id="preset" aria-label="Preset Example"></select>
+        <label class="sr" for="speed">Playback Speed</label>
+        <select id="speed" aria-label="Playback Speed">
+          <option value="1300">Slow</option>
+          <option value="850" selected>Normal</option>
+          <option value="450">Fast</option>
+          <option value="220">Very fast</option>
+        </select>
+      </div>
+
+      <div class="tour-status" id="tourStatus" role="status" aria-live="polite">
+        <span class="tour-badge" id="tourBadge">Milestone 1/4</span>
+        <span class="tour-msg" id="tourMsg">Ready to start guided audio tour.</span>
+      </div>
+
+      <details class="how-to">
+        <summary>How to read this call-stack tower</summary>
+        <p style="margin:8px 0 0">
+          Each slab represents one active invocation of <code>is_match(text, pattern)</code>, stacked on the call that spawned it. The top slab is the currently executing frame.
+          <br><span class="sw" style="background:var(--col-active)"></span><b>ACTIVE</b>: running now.
+          <br><span class="sw" style="background:var(--col-wait)"></span><b>WAITING</b>: paused awaiting the return value of a child call above.
+          <br><span class="sw" style="background:var(--col-true)"></span><b>True</b>: this call found a match (glows green).
+          <br><span class="sw" style="background:var(--col-false)"></span><b>False</b>: this choice failed (the slab is popped/backtracked next).
+          <br>Drag sideways to turn the 3D tower; double-click to reset angle.
+        </p>
+      </details>
+    </div>
+
+    <div class="code-pane">
+      <div class="code-header">
+        <span class="code-title">Python Source</span>
+        <button id="bToggleCode" class="btn-toggle-code" type="button" aria-expanded="true" title="Hide code panel (C)">
+          <span class="eye-icon" aria-hidden="true">👁</span>
+          <span class="toggle-label">Hide Code</span>
+        </button>
+      </div>
+      <pre id="code" role="region" aria-label="Python source code"></pre>
+
+      <div class="notes-card">
+        <h2>What the highlighted lines do</h2>
+        <ul id="notes"></ul>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+
+/* SOURCE:BEGIN */
+const CODE = [
+  'def is_match(text, pattern):',
+  '    if pattern == "":',
+  '        return text == ""',
+  '    if pattern[0] == "*":',
+  '        if is_match(text, pattern[1:]):',
+  '            return True',
+  '        return text != "" and is_match(text[1:], pattern)',
+  '    if text == "":',
+  '        return False',
+  '    if pattern[0] in ("?", text[0]):',
+  '        return is_match(text[1:], pattern[1:])',
+  '    return False'
+];
+
+const NOTES = [
+  "Defines the function. text is the remaining string and pattern is the remaining wildcard pattern.",
+  "Base case 1: pattern is empty. Matches only if text is also empty.",
+  "Return whether text is empty (True) or still has letters (False).",
+  "Branching: pattern starts with *. * can match 0 or more characters.",
+  "First choice: try letting * match nothing (recurse on pattern[1:]).",
+  "If matching nothing worked, return True immediately without eating letters.",
+  "Second choice: if text is not empty, let * eat text[0] and keep the *.",
+  "Base case 2: text is empty but pattern still has non-star characters.",
+  "Text ran out before pattern was satisfied, so return False.",
+  "Single-character match: pattern has '?' or matches text[0] exactly.",
+  "Consume one character from both text and pattern, and recurse.",
+  "Mismatch: characters differ and pattern is not '?' or '*', so return False."
+];
+/* SOURCE:END */
+
+/* PRESETS:BEGIN */
+const PRE = [
+  { name: 'text "hello", pattern "h*o"', t: "hello", p: "h*o", hasTour: true },
+  { name: 'text "cat", pattern "c?t"', t: "cat", p: "c?t", hasTour: false },
+  { name: 'text "dog", pattern "d*g?"', t: "dog", p: "d*g?", hasTour: false },
+  { name: 'text "abc", pattern "*"', t: "abc", p: "*", hasTour: false },
+  { name: 'text "", pattern "*" (edge case)', t: "", p: "*", hasTour: false },
+  { name: 'text "", pattern "" (edge case)', t: "", p: "", hasTour: false },
+  { name: 'text "abc", pattern "***" (edge case)', t: "abc", p: "***", hasTour: false },
+  { name: 'text "abc", pattern "" (edge case)', t: "abc", p: "", hasTour: false }
+];
+/* PRESETS:END */
+
+/* SIMULATE:BEGIN */
+function simulate(T, P) {
+  const F = [], S = [];
+  let n = 0;
+  const q = x => '“' + x + '”';
+  const snap = (lines, msg, kind, watch) => F.push({
+    stack: S.map(s => Object.assign({}, s)),
+    lines,
+    msg,
+    kind,
+    watch: watch || '',
+    hold: kind === 'ret' ? 1.2 : 1
+  });
+
+  function fin(me, res, lines, msg) {
+    me.st = res ? 'T' : 'F';
+    snap(lines, msg, 'ret');
+    if (S.length > 1) {
+      S.pop();
+      S[S.length - 1].st = 'active';
+    }
+    return res;
+  }
+
+  function r(t, p) {
+    const me = { t, p, st: 'active', id: ++n };
+    if (S.length) S[S.length - 1].st = 'wait';
+    S.push(me);
+    let res;
+
+    if (p === '') {
+      res = t === '';
+      return fin(me, res, [0, 1, 2], 'The pattern is used up, so it matches only if the text is used up too: ' + q(t) + (res ? ' is empty' : ' still has letters') + ' → ' + res + '.');
+    }
+
+    if (p[0] === '*') {
+      snap([0, 1, 3], 'The pattern starts with *, so there are two choices. Try the cheaper one first: let * match nothing.', 'call', '* branches here: “match nothing” or “eat one letter”.');
+      const a = r(t, p.slice(1));
+      me.st = 'active';
+      if (a) return fin(me, true, [4, 5], 'Letting * match nothing worked, so this call returns True.');
+      if (t === '') return fin(me, false, [4, 6], 'Matching nothing failed and there is no letter left for * to eat, so return False.');
+      snap([4, 6], 'Matching nothing failed. Second choice: let * eat the letter ' + q(t[0]) + ' and keep the *.', 'call');
+      res = r(t.slice(1), p);
+      me.st = 'active';
+      return fin(me, res, [6], 'The “eat one letter” choice returned ' + res + ', so this call returns ' + res + '.');
+    }
+
+    if (t === '') return fin(me, false, [0, 1, 3, 7, 8], 'The text is empty but the pattern still needs a letter, so return False.');
+
+    if (p[0] === '?' || p[0] === t[0]) {
+      snap([0, 1, 3, 7, 9, 10], (p[0] === '?' ? '? matches any one letter, here ' + q(t[0]) : 'The letters match: ' + q(t[0])) + '. Use up one letter from each side.', 'call');
+      res = r(t.slice(1), p.slice(1));
+      me.st = 'active';
+      return fin(me, res, [10], 'The smaller problem returned ' + res + ', so this call returns ' + res + '.');
+    }
+
+    return fin(me, false, [0, 1, 3, 7, 9, 11], 'The letters ' + q(t[0]) + ' and ' + q(p[0]) + ' differ, so return False.');
+  }
+
+  const res = r(T, P);
+  const last = F[F.length - 1];
+  F.push({
+    stack: last.stack.map(s => Object.assign({}, s)),
+    lines: [],
+    msg: 'Final answer: ' + res + '. Takeaway: * simply tries two options, “match nothing” or “eat one letter”, and the answer is True if either works.',
+    kind: 'done',
+    watch: '',
+    hold: 2
+  });
+  return { frames: F, result: res };
+}
+/* SIMULATE:END */
+
+/* ---------- Audio Walkthrough Milestones ---------- */
+function makeAudio(url) {
+  if (typeof Audio === 'undefined') return null;
+  try {
+    const a = new Audio();
+    a.preload = 'none';
+    a.src = url;
+    return a;
+  } catch(e) {
+    return null;
+  }
+}
+
+const WALKTHROUGHS = {
+  'text "hello", pattern "h*o"': {
+    name: 'hello vs h*o',
+    milestones: [
+      {
+        id: 'first-match-branch',
+        title: 'Matching \'h\' & First Star Branch',
+        clip: makeAudio('../audio-walkthroughs/wildcard-matching/hello-h-star-o/01-first-match-and-star-branch.mp3'),
+        startIdx: 0,
+        endIdx: 3,
+        cues: [
+          { time: 0.0, frameIdx: 0 },
+          { time: 18.0, frameIdx: 1 },
+          { time: 28.5, frameIdx: 2 },
+          { time: 34.0, frameIdx: 3 }
+        ]
+      },
+      {
+        id: 'backtracking-star',
+        title: 'Backtracking & Consuming Letters with Star',
+        clip: makeAudio('../audio-walkthroughs/wildcard-matching/hello-h-star-o/02-backtracking-and-eating-letters.mp3'),
+        startIdx: 4,
+        endIdx: 9,
+        cues: [
+          { time: 0.0, frameIdx: 4 },
+          { time: 9.0, frameIdx: 5 },
+          { time: 13.0, frameIdx: 6 },
+          { time: 16.5, frameIdx: 7 },
+          { time: 22.0, frameIdx: 8 },
+          { time: 26.0, frameIdx: 9 }
+        ]
+      },
+      {
+        id: 'base-match-o',
+        title: 'Reaching Base Match on \'o\'',
+        clip: makeAudio('../audio-walkthroughs/wildcard-matching/hello-h-star-o/03-base-match-on-o.mp3'),
+        startIdx: 10,
+        endIdx: 14,
+        cues: [
+          { time: 0.0, frameIdx: 10 },
+          { time: 5.0, frameIdx: 11 },
+          { time: 12.0, frameIdx: 12 },
+          { time: 18.0, frameIdx: 13 },
+          { time: 21.5, frameIdx: 14 }
+        ]
+      },
+      {
+        id: 'unwinding-tower',
+        title: 'Unwinding Call Stack to Victory',
+        clip: makeAudio('../audio-walkthroughs/wildcard-matching/hello-h-star-o/04-unwinding-the-tower.mp3'),
+        startIdx: 15,
+        endIdx: 19,
+        cues: [
+          { time: 0.0, frameIdx: 15 },
+          { time: 5.0, frameIdx: 16 },
+          { time: 9.0, frameIdx: 17 },
+          { time: 13.0, frameIdx: 18 },
+          { time: 17.5, frameIdx: 19 }
+        ]
+      }
+    ]
+  }
+};
+
+/* ---------- DOM Elements ---------- */
+const $ = id => document.getElementById(id);
+const $cv = $('cv'), $stage = $('stage'), $tag = $('tag'), $err = $('err');
+const $cap = $('caption'), $watch = $('watch'), $step = $('step'), $code = $('code'), $notes = $('notes');
+const $bTour = $('bTour'), $tourIcon = $('tourIcon'), $tourLabel = $('tourLabel');
+const $bBack = $('bBack'), $bPlay = $('bPlay'), $bNext = $('bNext'), $bReset = $('bReset');
+const $bMute = $('bMute'), $muteIcon = $('muteIcon');
+const $preset = $('preset'), $speed = $('speed');
+const $tourStatus = $('tourStatus'), $tourBadge = $('tourBadge'), $tourMsg = $('tourMsg');
+const $wrap = $('wrap'), $bToggleCode = $('bToggleCode'), $bShowCodeNav = $('bShowCodeNav');
+
+/* Render Python Source in Code Pane */
+const rows = CODE.map((line, idx) => {
+  const row = document.createElement('div');
+  row.className = 'row';
+  const ln = document.createElement('span');
+  ln.className = 'ln';
+  ln.textContent = String(idx + 1);
+  const codeSpan = document.createElement('span');
+  codeSpan.textContent = line;
+  row.append(ln, codeSpan);
+  $code.append(row);
+  return row;
+});
+
+/* Populate Preset Options */
+PRE.forEach((p, idx) => {
+  const opt = document.createElement('option');
+  opt.value = String(idx);
+  opt.textContent = p.name;
+  $preset.append(opt);
+});
+
+/* ---------- Collapsible Code Pane State ---------- */
+const STORAGE_KEY = 'animated_solutions_hide_code';
+let codeHidden = false;
+try {
+  codeHidden = localStorage.getItem(STORAGE_KEY) === 'true';
+} catch(e){}
+
+function setCodeHidden(hidden) {
+  codeHidden = !!hidden;
+  try {
+    localStorage.setItem(STORAGE_KEY, codeHidden ? 'true' : 'false');
+  } catch(e){}
+  if ($wrap) $wrap.classList.toggle('code-hidden', codeHidden);
+  if ($bToggleCode) {
+    $bToggleCode.setAttribute('aria-expanded', String(!codeHidden));
+    const label = $bToggleCode.querySelector('.toggle-label');
+    if (label) label.textContent = codeHidden ? 'Show Code' : 'Hide Code';
+  }
+  if ($bShowCodeNav) $bShowCodeNav.hidden = !codeHidden;
+  fit();
+}
+
+$bToggleCode.onclick = () => setCodeHidden(!codeHidden);
+$bShowCodeNav.onclick = () => setCodeHidden(false);
+if (codeHidden) setCodeHidden(true);
+
+/* ---------- Three.js 3D Setup ---------- */
+const COL = {
+  active: 0x2f7de1,
+  wait: 0x55657e,
+  T: 0x2e9e5b,
+  F: 0xd0463c,
+  plate: 0x333d4e
+};
+const WORD = {
+  active: 'ACTIVE',
+  wait: 'WAITING',
+  T: '→ True',
+  F: '→ False'
+};
+
+let R = null, C = null, S = null, G = null, slabs = null, plate = null;
+let yaw = 0;
+
+try {
+  R = new THREE.WebGLRenderer({ canvas: $cv, antialias: true, alpha: true });
+  R.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  S = new THREE.Scene();
+  C = new THREE.PerspectiveCamera(32, 4 / 3, 0.1, 100);
+  C.position.set(4.5, 7.5, 20);
+  C.lookAt(0, 2.5, 0);
+
+  S.add(new THREE.AmbientLight(0xffffff, 0.65));
+  const dl = new THREE.DirectionalLight(0xffffff, 0.85);
+  dl.position.set(4, 10, 12);
+  S.add(dl);
+
+  G = new THREE.Group();
+  S.add(G);
+
+  plate = new THREE.Mesh(new THREE.BoxGeometry(9.2, 0.18, 4.2), new THREE.MeshLambertMaterial({ color: 0x55657e }));
+  plate.position.y = -0.09;
+  G.add(plate);
+
+  slabs = new THREE.Group();
+  G.add(slabs);
+} catch(e) {
+  R = null;
+  $err.hidden = false;
+}
+
+function render() {
+  if (R && S && C) R.render(S, C);
+}
+
+function makeSlabLabel(s) {
+  const c = document.createElement('canvas');
+  c.width = 1024;
+  c.height = 72;
+  const x = c.getContext('2d');
+  x.fillStyle = '#ffffff';
+  x.font = 'bold 36px ui-monospace, Menlo, monospace';
+  x.textBaseline = 'middle';
+  x.fillText('#' + s.id + '  text “' + s.t + '”  pattern “' + s.p + '”', 18, 38);
+  x.textAlign = 'right';
+  x.fillText(WORD[s.st] || '', 1006, 38);
+  const t = new THREE.CanvasTexture(c);
+  t.minFilter = THREE.LinearFilter;
+  t.generateMipmaps = false;
+  return t;
+}
+
+function drawStack(f) {
+  if (!R) return;
+  while (slabs.children.length) {
+    const o = slabs.children.pop();
+    o.traverse(q => {
+      if (q.geometry) q.geometry.dispose();
+      if (q.material) {
+        if (q.material.map) q.material.map.dispose();
+        q.material.dispose();
+      }
+    });
+  }
+
+  const stackLen = f.stack.length;
+  f.stack.forEach((s, i) => {
+    const colHex = COL[s.st] || COL.wait;
+    const m = new THREE.Mesh(
+      new THREE.BoxGeometry(8, 0.62, 2.4),
+      new THREE.MeshLambertMaterial({ color: colHex })
+    );
+    m.position.y = 0.36 + i * 0.72;
+
+    const labelTex = makeSlabLabel(s);
+    const l = new THREE.Mesh(
+      new THREE.PlaneGeometry(7.7, 0.54),
+      new THREE.MeshBasicMaterial({ map: labelTex, transparent: true })
+    );
+    l.position.z = 1.21;
+    m.add(l);
+    slabs.add(m);
+  });
+
+  // Adjust camera to look at center of stack tower smoothly
+  const towerH = Math.max(stackLen * 0.72, 2.5);
+  const targetY = towerH / 2;
+  C.lookAt(0, targetY, 0);
+
+  render();
+}
+
+function fit() {
+  if (!R) return;
+  const w = $stage.clientWidth || 600, h = $stage.clientHeight || 450;
+  R.setSize(w, h, false);
+  C.aspect = w / h;
+  C.updateProjectionMatrix();
+  G.rotation.y = yaw;
+  render();
+}
+
+/* ---------- State Machine & Audio Synchronization ---------- */
+let F = [];
+let k = 0;
+let timer = null;
+let cur = PRE[0];
+
+const S_PLAY = {
+  state: 'idle',
+  audioMuted: false,
+  currentClip: null,
+  currentMilestoneIdx: -1,
+  cueTimers: [],
+  tourToken: 0
+};
+
+function getActiveWalkthrough() {
+  return WALKTHROUGHS[cur.name] || null;
+}
+
+function clearCueTimers() {
+  while (S_PLAY.cueTimers.length > 0) {
+    clearTimeout(S_PLAY.cueTimers.pop());
+  }
+}
+
+function stopAudio() {
+  clearCueTimers();
+  S_PLAY.tourToken++;
+  if (S_PLAY.currentClip) {
+    try {
+      S_PLAY.currentClip.pause();
+      S_PLAY.currentClip.currentTime = 0;
+      S_PLAY.currentClip.onended = null;
+      S_PLAY.currentClip.onerror = null;
+    } catch(e){}
+    S_PLAY.currentClip = null;
+  }
+  S_PLAY.currentMilestoneIdx = -1;
+}
+
+function pauseAudio() {
+  clearCueTimers();
+  S_PLAY.tourToken++;
+  if (S_PLAY.currentClip) {
+    try {
+      S_PLAY.currentClip.pause();
+    } catch(e){}
+  }
+}
+
+function updateMuteButton() {
+  $bMute.setAttribute('aria-pressed', String(S_PLAY.audioMuted));
+  if ($muteIcon) $muteIcon.textContent = S_PLAY.audioMuted ? '🔇' : '🔊';
+  $bMute.title = S_PLAY.audioMuted ? 'Unmute voiceover (M)' : 'Mute voiceover (M)';
+}
+
+function updateButtons() {
+  const last = F.length - 1;
+  $bBack.disabled = k <= 0;
+  $bNext.disabled = k >= last;
+
+  const wt = getActiveWalkthrough();
+  const isTour = wt && !S_PLAY.audioMuted;
+
+  if (S_PLAY.state === 'playing') {
+    if (isTour) {
+      $bTour.classList.add('playing');
+      $tourIcon.textContent = '⏸';
+      $tourLabel.textContent = 'Pause Tour';
+      $bTour.title = 'Pause guided audio tour (Space)';
+    } else {
+      $bTour.classList.remove('playing');
+      $tourIcon.textContent = '▶';
+      $tourLabel.textContent = wt ? 'Audio Tour' : 'Tour';
+      $bTour.title = 'Start guided audio tour (Space)';
+    }
+    $bPlay.textContent = 'Pause';
+  } else {
+    $bTour.classList.remove('playing');
+    if (k >= last) {
+      $tourIcon.textContent = '↺';
+      $tourLabel.textContent = isTour ? 'Replay Tour' : 'Replay';
+      $bTour.title = 'Replay guided tour from start (Space)';
+      $bPlay.textContent = 'Replay';
+    } else if (k > 0) {
+      $tourIcon.textContent = '▶';
+      $tourLabel.textContent = isTour ? 'Resume Tour' : 'Resume';
+      $bTour.title = 'Resume guided tour (Space)';
+      $bPlay.textContent = 'Play';
+    } else {
+      $tourIcon.textContent = '▶';
+      $tourLabel.textContent = 'Audio Tour';
+      $bTour.title = 'Start guided audio tour (Space)';
+      $bPlay.textContent = 'Play';
+    }
+  }
+}
+
+function updateTourStatus() {
+  const wt = getActiveWalkthrough();
+  if (wt) {
+    let curM = 0;
+    for (let i = 0; i < wt.milestones.length; i++) {
+      const m = wt.milestones[i];
+      if (k >= m.startIdx && k <= m.endIdx) {
+        curM = i;
+        break;
+      }
+    }
+    const totalM = wt.milestones.length;
+
+    if (S_PLAY.state === 'ended') {
+      $tourBadge.textContent = 'Complete';
+      $tourMsg.textContent = 'Tour complete! Final wildcard answer is True.';
+    } else if (S_PLAY.state === 'playing') {
+      $tourBadge.textContent = `Milestone ${curM + 1}/${totalM}`;
+      $tourMsg.textContent = S_PLAY.audioMuted ? 'Playing silently (voiceover muted).' : wt.milestones[curM].title;
+    } else {
+      $tourBadge.textContent = `Milestone ${curM + 1}/${totalM}`;
+      if (k === 0) {
+        $tourMsg.textContent = 'Ready to start guided audio tour for ' + cur.t + ' vs ' + cur.p + '.';
+      } else {
+        $tourMsg.textContent = 'Tour paused at step ' + (k + 1) + ' of ' + F.length + '.';
+      }
+    }
+  } else {
+    $tourBadge.textContent = 'Custom';
+    if (S_PLAY.state === 'ended') {
+      $tourMsg.textContent = 'Simulation complete.';
+    } else if (S_PLAY.state === 'playing') {
+      $tourMsg.textContent = 'Playing simulation (silent mode).';
+    } else {
+      $tourMsg.textContent = `Ready: text "${cur.t}", pattern "${cur.p}" (silent mode).`;
+    }
+  }
+}
+
+function renderUI(animate) {
+  if (!F || !F[k]) return;
+  const f = F[k];
+
+  rows.forEach((r, idx) => {
+    r.classList.toggle('active', f.lines.includes(idx));
+  });
+
+  $notes.textContent = '';
+  f.lines.forEach(n => {
+    const li = document.createElement('li');
+    const b = document.createElement('b');
+    b.textContent = 'Line ' + (n + 1) + ': ';
+    li.append(b, NOTES[n] || '');
+    $notes.append(li);
+  });
+
+  const activeStack = f.stack.length ? f.stack[f.stack.length - 1] : null;
+  $tag.textContent = f.kind === 'done'
+    ? `Result: ${f.stack[0] ? f.stack[0].st === 'T' : 'True'} · Stack empty`
+    : `Stack: ${f.stack.length} call${f.stack.length === 1 ? '' : 's'} · Top #${activeStack ? activeStack.id : 1}`;
+
+  $cap.textContent = f.msg;
+  $watch.textContent = f.watch ? 'Watch: ' + f.watch : '';
+  $step.textContent = `Step ${k + 1} of ${F.length}`;
+
+  updateButtons();
+  updateTourStatus();
+  drawStack(f);
+}
+
+function startMilestone(mIdx, fromTime) {
+  const wt = getActiveWalkthrough();
+  if (!wt || S_PLAY.audioMuted) {
+    scheduleSilent();
+    return;
+  }
+  if (mIdx < 0 || mIdx >= wt.milestones.length) {
+    S_PLAY.state = 'ended';
+    S_PLAY.currentClip = null;
+    updateButtons();
+    updateTourStatus();
+    return;
+  }
+
+  stopAudio();
+  const m = wt.milestones[mIdx];
+  const clip = m.clip;
+  if (!clip) {
+    scheduleSilent();
+    return;
+  }
+
+  S_PLAY.currentMilestoneIdx = mIdx;
+  S_PLAY.currentClip = clip;
+  const token = ++S_PLAY.tourToken;
+  updateTourStatus();
+
+  clip.onended = function() {
+    if (token !== S_PLAY.tourToken || S_PLAY.state !== 'playing') return;
+    if (mIdx + 1 < wt.milestones.length) {
+      startMilestone(mIdx + 1, 0);
+    } else {
+      S_PLAY.state = 'ended';
+      S_PLAY.currentClip = null;
+      updateButtons();
+      updateTourStatus();
+    }
+  };
+
+  clip.onerror = function() {
+    if (token !== S_PLAY.tourToken) return;
+    console.warn('Audio clip failed to play, switching to silent mode.');
+    $tourMsg.textContent = 'Audio clip unavailable; continuing in silent mode.';
+    S_PLAY.audioMuted = true;
+    updateMuteButton();
+    if (S_PLAY.state === 'playing') scheduleSilent();
+  };
+
+  try {
+    clip.currentTime = fromTime || 0;
+  } catch(e){}
+
+  clearCueTimers();
+  if (Array.isArray(m.cues)) {
+    m.cues.forEach(cue => {
+      const cueTime = cue.time || 0;
+      const targetFrame = cue.frameIdx;
+      if (cueTime >= (fromTime || 0)) {
+        const delayMs = Math.max(0, (cueTime - (fromTime || 0)) * 1000);
+        const timerId = setTimeout(() => {
+          if (token === S_PLAY.tourToken && S_PLAY.state === 'playing') {
+            k = targetFrame;
+            renderUI(true);
+          }
+        }, delayMs);
+        S_PLAY.cueTimers.push(timerId);
+      }
+    });
+  }
+
+  const playPromise = clip.play();
+  if (playPromise !== undefined) {
+    playPromise.catch(err => {
+      if (token !== S_PLAY.tourToken) return;
+      if (err && err.name === 'NotAllowedError') {
+        $tourMsg.textContent = 'Click Audio Tour to enable audio in your browser.';
+      } else {
+        $tourMsg.textContent = 'Audio playback blocked; running silent mode.';
+      }
+      if (S_PLAY.state === 'playing') scheduleSilent();
+    });
+  }
+}
+
+function scheduleSilent() {
+  clearTimeout(timer);
+  if (S_PLAY.state !== 'playing') return;
+  const hold = (F[k] && F[k].hold) || 1.0;
+  const delay = (+$speed.value) * hold;
+  timer = setTimeout(() => {
+    if (S_PLAY.state !== 'playing') return;
+    if (k < F.length - 1) {
+      k++;
+      renderUI(true);
+      scheduleSilent();
+    } else {
+      S_PLAY.state = 'ended';
+      renderUI(false);
+    }
+  }, delay);
+}
+
+function pauseAll() {
+  S_PLAY.state = 'paused';
+  clearTimeout(timer);
+  pauseAudio();
+  if (F && F[k]) renderUI(false);
+}
+
+function playTour() {
+  const wt = getActiveWalkthrough();
+  if (k >= F.length - 1) {
+    k = 0;
+  }
+  S_PLAY.state = 'playing';
+
+  if (wt && !S_PLAY.audioMuted) {
+    let mIdx = 0;
+    for (let i = 0; i < wt.milestones.length; i++) {
+      const m = wt.milestones[i];
+      if (k >= m.startIdx && k <= m.endIdx) {
+        mIdx = i;
+        break;
+      }
+    }
+    let fromTime = 0;
+    const m = wt.milestones[mIdx];
+    if (m && m.cues) {
+      for (let c of m.cues) {
+        if (c.frameIdx === k) {
+          fromTime = c.time;
+          break;
+        }
+      }
+    }
+    renderUI(false);
+    startMilestone(mIdx, fromTime);
+  } else {
+    renderUI(false);
+    scheduleSilent();
+  }
+}
+
+/* Event Handlers */
+$bTour.onclick = () => {
+  if (S_PLAY.state === 'playing') {
+    pauseAll();
+  } else {
+    playTour();
+  }
+};
+
+$bPlay.onclick = () => {
+  if (S_PLAY.state === 'playing') {
+    pauseAll();
+  } else {
+    playTour();
+  }
+};
+
+$bNext.onclick = () => {
+  pauseAll();
+  stopAudio();
+  if (k < F.length - 1) {
+    k++;
+    renderUI(true);
+  }
+};
+
+$bBack.onclick = () => {
+  pauseAll();
+  stopAudio();
+  if (k > 0) {
+    k--;
+    renderUI(true);
+  }
+};
+
+$bReset.onclick = () => {
+  pauseAll();
+  stopAudio();
+  k = 0;
+  renderUI(false);
+};
+
+$bMute.onclick = () => {
+  S_PLAY.audioMuted = !S_PLAY.audioMuted;
+  updateMuteButton();
+  if (S_PLAY.state === 'playing') {
+    if (S_PLAY.audioMuted) {
+      pauseAudio();
+      scheduleSilent();
+    } else {
+      clearTimeout(timer);
+      playTour();
+    }
+  }
+  updateTourStatus();
+};
+
+function loadPreset(idx) {
+  clearTimeout(timer);
+  stopAudio();
+  S_PLAY.state = 'paused';
+  cur = PRE[idx];
+  F = simulate(cur.t, cur.p).frames;
+  k = 0;
+  yaw = 0;
+  fit();
+  renderUI(false);
+}
+
+$preset.onchange = e => loadPreset(+e.target.value);
+
+window.addEventListener('keydown', e => {
+  if (/SELECT|BUTTON|INPUT/.test(document.activeElement.tagName)) return;
+  if (e.key === ' ') {
+    e.preventDefault();
+    $bTour.click();
+  } else if (e.key === 'ArrowRight') {
+    $bNext.click();
+  } else if (e.key === 'ArrowLeft') {
+    $bBack.click();
+  } else if (e.key === 'm' || e.key === 'M') {
+    $bMute.click();
+  } else if (e.key === 'c' || e.key === 'C') {
+    $bToggleCode.click();
+  }
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && S_PLAY.state === 'playing') {
+    pauseAll();
+  }
+});
+
+window.addEventListener('resize', fit);
+
+let dx = null;
+$stage.addEventListener('pointerdown', e => {
+  dx = e.clientX;
+});
+window.addEventListener('pointerup', () => dx = null);
+window.addEventListener('pointermove', e => {
+  if (dx === null || !G) return;
+  yaw = Math.max(-0.55, Math.min(0.55, yaw + (e.clientX - dx) * 0.008));
+  dx = e.clientX;
+  G.rotation.y = yaw;
+  render();
+});
+$stage.addEventListener('dblclick', () => {
+  yaw = 0;
+  if (G) {
+    G.rotation.y = 0;
+    render();
+  }
+});
+
+// Initial load
+loadPreset(0);
+
+})();
+</script>
+</body>
+</html>
