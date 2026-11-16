@@ -1,0 +1,12 @@
+.git
+.github
+.agents
+.env*
+node_modules
+*.zip
+learn2earn-audit-export
+scratch
+ElevenLabs_*.mp3
+hanoi-*.mp3
+.DS_Store
+Thumbs.db

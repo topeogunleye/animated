@@ -10,6 +10,21 @@ or serve the project directory with any static file server. The homepage include
 both iterative and recursive leftmost binary search visualizations. Some pages load
 Three.js from a CDN, so an internet connection is needed for those visualizations.
 
+## Publish on Vercel
+
+The project is pre-configured for Vercel with [`vercel.json`](./vercel.json).
+
+### Option 1: Vercel Dashboard (Continuous Deployment)
+1. Go to [vercel.com/new](https://vercel.com/new).
+2. Select your GitHub repository (`topeogunleye/animated`).
+3. Click **Deploy**. Vercel will serve the static site directly without requiring any build step. Every commit pushed to `main` deploys automatically.
+
+### Option 2: Vercel CLI
+```sh
+npx vercel login
+npx vercel --prod
+```
+
 ## Publish with GitHub Pages
 
 This repository includes a GitHub Actions workflow that publishes the site on
